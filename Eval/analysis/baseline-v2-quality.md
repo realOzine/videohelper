@@ -4,7 +4,7 @@
 
 ## 证据与口径
 
-数据来自 `runs/baseline-v2-a/{report.json,per_query.jsonl,results.jsonl}`、`annotations/queries.jsonl` 和 `manifest.json`；路径均相对 `Eval/`。真实模型运行版本为 `bdbf87636e787e9c7f184b59eb4682b4cb8b18dc`，snapshot 为 `baseline-v2`，报告记录索引未改变、bridge 正常退出。5 个合成视频共 498 秒，30 个正例（speech / visual / mixed 各 10 个）和 5 个无答案查询；标签源于脚本和渲染时间线，未经独立人工审核。
+历史分析数据来自 `runs/baseline-v2-a/{report.json,per_query.jsonl,results.jsonl}`、`annotations/queries.jsonl` 和 `manifest.json`；路径均相对 `Eval/`。当前仅保留原样[基线汇总](../baselines/baseline-v2.json)，逐题输出与旧快照已清理。原始证据可从提交 `11a6668` 查看，例如 `git show 11a6668:Eval/runs/baseline-v2-a/results.jsonl`；下文例子与归因均针对该历史运行。真实模型运行版本为 `bdbf87636e787e9c7f184b59eb4682b4cb8b18dc`，snapshot 为 `baseline-v2`，报告记录索引未改变、bridge 正常退出。5 个合成视频共 498 秒，30 个正例（speech / visual / mixed 各 10 个）和 5 个无答案查询；标签源于脚本和渲染时间线，未经独立人工审核。
 
 每路召回 `K=50`，`rrf_k=60`，`merge_gap_cells=1`，各通道权重为 1。visual / speech 分别只启用对应通道；fused 启用 visual、speech、audio（不是仅前两者融合）。runner 每次请求最多返回 10 个 moment。WeMM 用于 visual 和 speech，Paraformer 用于 ASR，CLAP 用于 audio。
 
@@ -42,7 +42,7 @@ video Recall 只要求同一视频，不要求时间重叠；overlap 只要求�
 
 ## 下一轮最小实验
 
-1. 固定当前 corpus、labels、index 和模型，先补逐路 TopK 的距离、rank、span 与合并前 cell 分数诊断，再做 **visual+speech 与当前三通道** 对照；以 q017/q018/q024/q025 的视频排序变化及全部 30 正例指标判断 audio 的净贡献。audio 没有独立声音 gold，本轮不构成 CLAP 声音检索验收。
+1. 旧索引与快照已清理，先用冻结 corpus、labels 和选定模型重新索引；与旧基线只能作跨索引比较。随后固定新 index 和模型，先补逐路 TopK 的距离、rank、span 与合并前 cell 分数诊断，再做 **visual+speech 与当前三通道** 对照；以 q017/q018/q024/q025 的视频排序变化及全部 30 正例指标判断 audio 的净贡献。audio 没有独立声音 gold，本轮不构成 CLAP 声音检索验收。
 2. 固定通道，分别对照 `K=10/20/50` 与 `merge_gap_cells=0/1`，一次只变一个因素；同时记录召回、tIoU、jump_hit 和返回段长。若连续弱命中仍贯通长段，再评估保留局部高分峰/分段的设计，不能预先宣称减 K 或 gap 必定有效。
 3. 人工听看 q004/q017/q030，分别检查 ASR 原文与起点、目标证据、mixed 应取讲解还是场景窗口。审核形成独立记录；语义标签需要改变时发布新 dataset 版本，不覆盖当前标签。无答案能力需另留校准/验证查询，并保留原始距离等证据；5 个负例不足以制定可靠阈值。
 

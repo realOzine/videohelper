@@ -2,7 +2,7 @@
 
 本流程将**索引验收**与**固定索引检索回归**分开：上传、worker 和索引推理只在 `index` 执行；`retrieve` 校验已有索引，再调用真实查询编码和业务搜索。命令在仓库根目录执行。本文提供操作步骤；已执行结果与质量指标见 [基线报告](BASELINE.md)。
 
-`baseline-v1` 是保留的失败运行，不能当作可用快照。ASR 修复已从 `main` 的 `30efaef` 合入 `eval`（`a98cd20`），`baseline-v2` 已完成索引、重复检索和恢复验证，结果见 [基线报告](BASELINE.md)。后续每轮须确认对应 `index-run.json` 为 `status: passed` 且完整快照已保存，才能执行下文检索与恢复命令。已使用的 ID（成功或失败）均不能重跑；后续索引用新的 ID，例如 `baseline-v3`。
+`baseline-v1` 的失败及 ASR 修复后的 `baseline-v2` 索引、重复检索和恢复验证已形成历史结论，见[基线报告](BASELINE.md)。原始报告可从提交 `11a6668` 查看，例如 `git show 11a6668:Eval/runs/baseline-v2-index/report.md`。旧数据库、对象桶、快照和运行目录已清理，**不能跳过新一轮 `index` 直接使用 baseline-v2**。保留的 [baselines/baseline-v2.json](baselines/baseline-v2.json)仅用于评分比较，不能恢复索引。后续每轮须确认对应 `index-run.json` 为 `status: passed` 且完整快照已保存，才能执行检索与恢复。使用新的 ID，例如 `baseline-v3`。
 
 ## 前置条件与隔离资源
 
@@ -30,12 +30,12 @@
 
 资源选择以 [environment.py](tools/environment.py) 为准：
 
-| 资源 | `baseline-v2` | 约束 |
+| 资源 | `SNAPSHOT=baseline-v3` 示例 | 约束 |
 | --- | --- | --- |
-| 数据库 | `vh_eval_baseline_v2` | 固定本机端口 `55432`；必须不存在，不复用开发库 |
-| MinIO 桶 | `vh-eval-baseline-v2` | 使用 `config/local.yaml` 的本地 endpoint；必须不存在 |
+| 数据库 | `vh_eval_baseline_v3` | 固定本机端口 `55432`；必须不存在，不复用开发库 |
+| MinIO 桶 | `vh-eval-baseline-v3` | 使用 `config/local.yaml` 的本地 endpoint；必须不存在 |
 | Redis | `127.0.0.1:56380` | [独立 Compose](deploy/redis-compose.yml)，不使用开发队列 |
-| 本地状态 | `Eval/.runtime/baseline-v2/` | 必须不存在；配置与临时文件留在 Eval 内 |
+| 本地状态 | `Eval/.runtime/baseline-v3/` | 必须不存在；配置与临时文件留在 Eval 内 |
 
 `index` 自动启动 Eval Redis，发现非空即拒绝，不自动清队列。`run_id` 只接受 1–40 位小写字母、数字和中划线，首尾必须是字母或数字。重复运行应换新 ID；不要删除失败证据来复用旧 ID。`index` / `restore` 有互斥锁；整个基线流程期间不要并行启动会改写这些资源的 worker。
 
@@ -61,7 +61,7 @@ SNAPSHOT=baseline-v3
 RUN=check-01
 ```
 
-新索引使用尚未用过的 `SNAPSHOT`；当前 `baseline-v2` 已完成，不要用同名 ID 重跑；也不要并行执行新的索引轮次。若要复用已有快照，只有确认 `baseline-v2` 验收通过且归档完整后，才可改设 `SNAPSHOT=baseline-v2` 并**跳过下一条 `index`**。`RUN` 每次流程必须换新值；它会派生 `-a`、`-b`、`-tuned`、`-restored`、`-restored-check`，这些 ID 和输出目录均不可复用。新建索引的 `SNAPSHOT` 最多 34 字符（运行目录附加 `-index`），`RUN` 最多 25 字符，以便最长后缀仍满足 40 字符限制；二者均遵守前述 ID 字符规则。
+新索引使用尚未用过的 `SNAPSHOT`，不要并行执行新的索引轮次。旧 `baseline-v2` 快照已清理，以下 `index` 必须执行；本次新建快照以后才可在后续检索中复用。`RUN` 每次流程必须换新值；它会派生 `-a`、`-b`、`-tuned`、`-restored`、`-restored-check`，这些 ID 和输出目录均不可复用。新建索引的 `SNAPSHOT` 最多 34 字符（运行目录附加 `-index`），`RUN` 最多 25 字符，以便最长后缀仍满足 40 字符限制；二者均遵守前述 ID 字符规则。
 
 ```sh
 ml/.venv/bin/python Eval/tools/run.py index --run-id "$SNAPSHOT"
@@ -69,7 +69,7 @@ ml/.venv/bin/python Eval/tools/run.py index --run-id "$SNAPSHOT"
 
 默认索引等待上限为 7200 秒，可显式传 `--timeout-seconds 10800`。runner 创建独立数据库/桶，执行迁移和空间初始化，仅上传 5 个固定 MP4，通过真实分片上传及 worker 完成全流程。标注、字幕和参考讲解不导入应用。
 
-检查 `Eval/runs/${SNAPSHOT}-index/` 下的 `index-run.json`、`stages.json`、`inspection.json` 和 `worker.log`。当前 v2 的实际状态见 [index-run.json](runs/baseline-v2-index/index-run.json)。索引检查包含视频 ready、必要阶段、归属、非空 ASR、切片覆盖、向量和 HNSW/模型空间身份。worker 停止后保存数据库、对象及稳定的 `index_sha256`；上传源文件还会核对冻结视频哈希，归一化视频核对音视频流与时长。
+检查 `Eval/runs/${SNAPSHOT}-index/` 下的 `index-run.json`、`stages.json`、`inspection.json` 和 `worker.log`。历史 v2 状态可用 `git show 11a6668:Eval/runs/baseline-v2-index/index-run.json` 查看。索引检查包含视频 ready、必要阶段、归属、非空 ASR、切片覆盖、向量和 HNSW/模型空间身份。worker 停止后保存数据库、对象及稳定的 `index_sha256`；上传源文件还会核对冻结视频哈希，归一化视频核对音视频流与时长。
 
 只有索引报告为 `status: passed` 后，才使用 `Eval/snapshots/${SNAPSHOT}/` 的完整快照继续。失败则保留阶段、日志、已上传数据和资源，先查明原因；不能将部分成功或 fake 运行记为真实基线。
 
@@ -86,6 +86,14 @@ ml/.venv/bin/python Eval/tools/score.py compare --before "Eval/runs/${RUN}-a/rep
 `report.json` / `report.md` 为汇总，`per_query.jsonl` 为逐题评分，`raw-responses.jsonl` 保存桥接原始输出，`results.jsonl` 补充稳定 `media_id`，`metadata.json` 记录代码、模型、索引、通道与检索参数；新增的 `runtime` 明确记录本次实际数据库和桶，恢复验证必须核对为恢复资源。`requests.jsonl`、前后 `inspection-*.json` 与 `search.log` 用于追查失败。`passed=true` 仅表示响应有效且索引稳定，**没有设定质量达标阈值**。
 
 比较输出 `delta.json` / `delta.md`；核对 `compatible`、`fixed_index_regression`、`identical_retrieval_conditions`，再看逐题变化。语料、标签、评分定义不一致会拒绝比较；快照或模型变化会标明，不能称作固定索引回归。同条件重复运行也要保留实际差异，不预先宣称结果一致。
+
+与保留的历史基线比较，使用同一轮已生成的报告：
+
+```sh
+ml/.venv/bin/python Eval/tools/score.py compare --before Eval/baselines/baseline-v2.json --after "Eval/runs/${RUN}-a/report.json" --output "Eval/runs/${RUN}-vs-baseline-v2"
+```
+
+本轮重新索引，与旧基线的比较属于跨索引比较；以比较报告中的身份检查为准，不能称作旧 baseline-v2 的固定索引回归。同一新快照内的 A/B、调参与恢复验证仍按固定索引规则判读。
 
 固定索引上试验召回数、RRF 常数和合并间隙时，使用新 run ID，参数进入报告，不改快照：
 
@@ -116,7 +124,9 @@ ml/.venv/bin/python Eval/tools/score.py compare --before "Eval/runs/${RUN}-a/rep
 
 ## 保留、停止与提交
 
-保留真实质量失败及原因。报告、逐题结果、元数据、快照清单和检查结果可以版本化；`database.dump`、`snapshots/*/objects/`、`.runtime/`、`bin/` 及日志按 [Eval/.gitignore](.gitignore) 忽略。dump/对象可能很大，须另行备份；不要用 `git add -f` 填进仓库。源图、提示词、音频、冻结成片和标注保持原样。
+当前最小保留集合是冻结素材/视频/标注、复核页面、评估工具与测试、缺陷与质量结论，以及 `baselines/baseline-v2.json`。`defects/asr-timestamps/` 的 `minimal-repro.json` 和视频 3、4 的 raw/stages JSON 是回归测试必需输入，不是可清理的日志。
+
+新运行会按需生成 `runs/`、`snapshots/`、`.runtime/` 和 `bin/`。运行期间保留真实质量失败、逐题结果和诊断证据，完成结论后再按需要归档或清理。整个 `runs/`、`snapshots/` 以及 `.runtime/`、`bin/` 等运行产物按 [Eval/.gitignore](.gitignore) 忽略；需要版本化的精选结论报告可复制到 `baselines/`，不要用 `git add -f` 提交运行目录。若需要继续复用或跨机器恢复某轮索引，必须保留完整 dump 和对象归档，单独提交报告不够。冻结源图、提示词、音频、成片和标注保持原样。
 
 `index` 在成功或异常退出时都会尝试停止其 worker。结束后可停止 Eval Redis并保留持久化数据：
 
@@ -124,18 +134,18 @@ ml/.venv/bin/python Eval/tools/score.py compare --before "Eval/runs/${RUN}-a/rep
 docker compose -f Eval/deploy/redis-compose.yml down
 ```
 
-不自动删除数据库、桶、快照或运行目录。下一轮索引若因 Eval 队列非空被拒绝，先确认该轮 Eval worker 已停并保存证据，再执行上述 `compose down`。独立 Redis 的持久化目录是 `Eval/.runtime/redis/`；将它整体归档到旧轮次目录，保留原数据，再建空目录。以下仅用于 **baseline-v2 已结束之后**，不得在当前索引运行时执行：
+runner 不自动删除数据库、桶、快照或运行目录。下一轮索引若因 Eval 队列非空被拒绝，先确认该轮 Eval worker 已停并保存证据，再执行上述 `compose down`。独立 Redis 的持久化目录是 `Eval/.runtime/redis/`；需要保留时，将它整体归档到已结束轮次，再建空目录。以下命令仅可在 `$SNAPSHOT` 对应索引及其 worker 已结束、Redis 已停止后执行：
 
 ```sh
 (
   set -e
-  test -d Eval/.runtime/baseline-v2
-  test ! -e Eval/.runtime/baseline-v2/redis-archive
-  mv Eval/.runtime/redis Eval/.runtime/baseline-v2/redis-archive
+  test -d "Eval/.runtime/$SNAPSHOT"
+  test ! -e "Eval/.runtime/$SNAPSHOT/redis-archive"
+  mv Eval/.runtime/redis "Eval/.runtime/$SNAPSHOT/redis-archive"
   mkdir Eval/.runtime/redis
 )
 ```
 
-`baseline-v1` 的旧队列已保存在 `Eval/.runtime/baseline-v1/redis-archive/`，不要覆盖。归档名若已存在，应换一个未使用的路径。下一轮 `index` 会自行启动独立 Redis 并检查空队列；归档操作不删除数据库、桶或失败证据。
+归档名若已存在，应换一个未使用的路径。下一轮 `index` 会自行启动独立 Redis 并检查空队列；归档操作不删除数据库、桶或失败证据。旧 baseline-v1/v2 的队列归档已随本次运行数据一起清理。
 
 开发按 [AGENTS.md](AGENTS.md) 的小单元进行：并行任务使用独立 `Eval/.worktrees/`、`gpt-6.1-sol` / high effort；各单元运行相应检查后独立 commit，协调者评审并合并到 `eval`，再删除已合并 worktree，不直接集成到 `main`。提交时检查 diff 和忽略规则，只提交对应单元及真实证据；本说明不代替实际执行记录或运行报告。

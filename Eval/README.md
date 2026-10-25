@@ -1,8 +1,8 @@
 # VideoHelper Eval
 
-当前真实运行结果见 [基线报告](BASELINE.md)：`baseline-v1` 索引验收失败证据已保留；ASR 修复已合入 `eval`，`baseline-v2` 已完成真实索引验收、固定快照重复检索与恢复验证，并形成可对比报告。
+当前真实运行结果见 [基线报告](BASELINE.md)：`baseline-v1` 索引验收失败、ASR 修复后 `baseline-v2` 的真实索引验收、重复检索与恢复验证均有历史结论。保留[基线汇总](baselines/baseline-v2.json)供比较；原始报告可从提交 `11a6668` 查看，旧运行资源与快照已清理。
 
-这个目录集中保存新增的评估工具、视频、素材、标注、复核页面和评估结果。后续的 Eval / Evaluation 系统也放在这里；已有应用单元测试保持原位。
+这个目录集中保存评估工具、视频、素材、标注、复核页面和必要结论。后续的 Eval / Evaluation 系统也放在这里；已有应用单元测试保持原位。
 
 固定的小型合成视频库 `videohelper-synthetic-v1` 包含 **5 个视频，30 条有答案查询，5 条无答案查询，总长 8 分 18 秒**。真实索引验收、快照保存/恢复、固定索引检索和评分工具已实现；执行方法、结果判读与数据保留规则见 [基线运行说明](RUNBOOK.md)，接口与验收边界见 [评估契约](CONTRACT.md)。工具已实现不代表真实模型质量基线已经通过；以具体运行报告为准。
 
@@ -24,7 +24,7 @@ ml/.venv/bin/python Eval/tools/serve.py
 | [海边小城的一天](videos/vlog_zh.mp4) | 中文旅行 vlog；早餐、单车、地图、海港 | 1:36 |
 | [Six Quiet Landscapes](videos/landscape_en.mp4) | 英文旁白与配乐；雪山、瀑布、沙丘、竹林、花田、极光 | 1:30 |
 
-每个视频有 6 个场景。统一编码为 1280×720、24 fps、H.264 / yuv420p、AAC 48 kHz 单声道。视频文件合计约 72.9 MiB；源音频、原图和中间文件会额外占用空间。时长覆盖 90 秒以下、等于 90 秒和超过 90 秒，便于后续观察切片边界。
+每个视频有 6 个场景。统一编码为 1280×720、24 fps、H.264 / yuv420p、AAC 48 kHz 单声道。视频文件合计约 72.9 MiB；保留的源音频和原图会额外占用空间。时长覆盖 90 秒以下、等于 90 秒和超过 90 秒，便于后续观察切片边界。
 
 ## 标注是什么
 
@@ -63,7 +63,7 @@ shasum -a 256 -c checksums.sha256
 
 ## 运行评估
 
-[RUNBOOK.md](RUNBOOK.md) 给出可直接执行的命令：先用 `tools/run.py index` 单独验收真实上传和索引并冻结快照，再用 `retrieve` 对同一索引执行两次完整检索，通过 `tools/score.py compare` 比较。`restore` 可将数据库和对象恢复到新的独立资源，再验证索引指纹。
+[RUNBOOK.md](RUNBOOK.md) 给出可直接执行的命令。旧 `baseline-v2` 快照已清理，下一轮必须先新建索引：用 `tools/run.py index` 单独验收真实上传和索引并冻结快照，再用 `retrieve` 对同一索引执行两次完整检索，通过 `tools/score.py compare` 比较。`restore` 可将数据库和对象恢复到新的独立资源，再验证索引指纹。
 
 每轮都搜索全部 5 个视频，执行 35 条查询的 `visual`、`speech`、`fused` 三种模式；融合包含当前 active 的 `audio`，本库没有独立声音金标。查询、标注、字幕和参考讲解不作为视频内容导入。真实失败保留在报告中；不改本版标签或排除失败题来提高分数。
 
@@ -78,12 +78,12 @@ Eval/
   tools/           合成、校验、预览、运行、评分工具及测试
   deploy/          独立 Eval Redis 配置
   review/          复核页面、成片代表帧、校验报告
-  runs/            每轮索引证据、检索原始响应与评分报告
-  snapshots/       冻结索引元数据、数据库备份与对象归档
-  .runtime/        已忽略的隔离运行配置、状态与临时文件
-  bin/            已忽略的评估二进制
-  .work/           已忽略的合成中间文件
+  baselines/       保留的机器可读基线汇总
+  analysis/        检索质量结论与后续实验建议
+  defects/         缺陷结论、回归测试及所需 frozen ASR fixtures
 ```
+
+`runs/`、`snapshots/`、`.runtime/`、`bin/` 和 `.work/` 由后续构建或运行按需生成，当前旧内容已清理。旧 Eval 数据库和对象桶也不再保留；历史报告可用 `git show 11a6668:Eval/runs/baseline-v2-a/report.md` 查看。`defects/asr-timestamps/` 中最小复现与两个视频的 raw/stages JSON 是测试输入，不能按日志清理；其用途见[缺陷说明](defects/asr-timestamps/README.md)。
 
 素材由内置 ImageGen、代码绘图、macOS 系统 TTS 和原创程序合成配乐构成，详见 [素材来源](assets/SOURCES.md) 与 [图像生成提示词](assets/image-prompts.json)。未下载外部图库或歌曲。
 
