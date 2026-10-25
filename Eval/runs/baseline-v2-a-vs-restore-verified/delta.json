@@ -1,0 +1,6221 @@
+{
+  "before_run_id": "baseline-v2-a",
+  "after_run_id": "baseline-v2-restored-verified",
+  "compatible": true,
+  "fixed_index_regression": true,
+  "metadata_changes": {
+    "code_revision": {
+      "before": "bdbf87636e787e9c7f184b59eb4682b4cb8b18dc",
+      "after": "e82103946696d567400ff4ef429909c89fe70eca"
+    },
+    "run_id": {
+      "before": "baseline-v2-a",
+      "after": "baseline-v2-restored-verified"
+    },
+    "runtime": {
+      "before": null,
+      "after": {
+        "run_id": "baseline-v2-restored",
+        "db_name": "vh_eval_baseline_v2_restored",
+        "bucket": "vh-eval-baseline-v2-restored"
+      }
+    }
+  },
+  "identical_retrieval_conditions": true,
+  "positive_metric_delta": {
+    "visual": {
+      "video_recall@1": 0.0,
+      "video_recall@5": 0.0,
+      "video_recall@10": 0.0,
+      "overlap_recall@1": 0.0,
+      "overlap_recall@5": 0.0,
+      "overlap_recall@10": 0.0,
+      "tiou_0.3_recall@1": 0.0,
+      "tiou_0.3_recall@5": 0.0,
+      "tiou_0.3_recall@10": 0.0,
+      "tiou_0.5_recall@1": 0.0,
+      "tiou_0.5_recall@5": 0.0,
+      "tiou_0.5_recall@10": 0.0,
+      "jump_hit@1": 0.0,
+      "jump_hit@5": 0.0,
+      "jump_hit@10": 0.0,
+      "overlap_mrr": 0.0,
+      "best_tiou": 0.0
+    },
+    "speech": {
+      "video_recall@1": 0.0,
+      "video_recall@5": 0.0,
+      "video_recall@10": 0.0,
+      "overlap_recall@1": 0.0,
+      "overlap_recall@5": 0.0,
+      "overlap_recall@10": 0.0,
+      "tiou_0.3_recall@1": 0.0,
+      "tiou_0.3_recall@5": 0.0,
+      "tiou_0.3_recall@10": 0.0,
+      "tiou_0.5_recall@1": 0.0,
+      "tiou_0.5_recall@5": 0.0,
+      "tiou_0.5_recall@10": 0.0,
+      "jump_hit@1": 0.0,
+      "jump_hit@5": 0.0,
+      "jump_hit@10": 0.0,
+      "overlap_mrr": 0.0,
+      "best_tiou": 0.0
+    },
+    "fused": {
+      "video_recall@1": 0.0,
+      "video_recall@5": 0.0,
+      "video_recall@10": 0.0,
+      "overlap_recall@1": 0.0,
+      "overlap_recall@5": 0.0,
+      "overlap_recall@10": 0.0,
+      "tiou_0.3_recall@1": 0.0,
+      "tiou_0.3_recall@5": 0.0,
+      "tiou_0.3_recall@10": 0.0,
+      "tiou_0.5_recall@1": 0.0,
+      "tiou_0.5_recall@5": 0.0,
+      "tiou_0.5_recall@10": 0.0,
+      "jump_hit@1": 0.0,
+      "jump_hit@5": 0.0,
+      "jump_hit@10": 0.0,
+      "overlap_mrr": 0.0,
+      "best_tiou": 0.0
+    }
+  },
+  "per_query_changes": [],
+  "summary_before": {
+    "visual": {
+      "all": {
+        "query_count": 35,
+        "positive_count": 30,
+        "negative_count": 5,
+        "status_counts": {
+          "ok": 35
+        },
+        "positive_metrics": {
+          "video_recall@1": {
+            "numerator": 29,
+            "denominator": 30,
+            "value": 0.9666666666666667
+          },
+          "video_recall@5": {
+            "numerator": 29,
+            "denominator": 30,
+            "value": 0.9666666666666667
+          },
+          "video_recall@10": {
+            "numerator": 30,
+            "denominator": 30,
+            "value": 1.0
+          },
+          "overlap_recall@1": {
+            "numerator": 27,
+            "denominator": 30,
+            "value": 0.9
+          },
+          "overlap_recall@5": {
+            "numerator": 29,
+            "denominator": 30,
+            "value": 0.9666666666666667
+          },
+          "overlap_recall@10": {
+            "numerator": 30,
+            "denominator": 30,
+            "value": 1.0
+          },
+          "tiou_0.3_recall@1": {
+            "numerator": 10,
+            "denominator": 30,
+            "value": 0.3333333333333333
+          },
+          "tiou_0.3_recall@5": {
+            "numerator": 12,
+            "denominator": 30,
+            "value": 0.4
+          },
+          "tiou_0.3_recall@10": {
+            "numerator": 13,
+            "denominator": 30,
+            "value": 0.43333333333333335
+          },
+          "tiou_0.5_recall@1": {
+            "numerator": 6,
+            "denominator": 30,
+            "value": 0.2
+          },
+          "tiou_0.5_recall@5": {
+            "numerator": 7,
+            "denominator": 30,
+            "value": 0.23333333333333334
+          },
+          "tiou_0.5_recall@10": {
+            "numerator": 7,
+            "denominator": 30,
+            "value": 0.23333333333333334
+          },
+          "jump_hit@1": {
+            "numerator": 9,
+            "denominator": 30,
+            "value": 0.3
+          },
+          "jump_hit@5": {
+            "numerator": 10,
+            "denominator": 30,
+            "value": 0.3333333333333333
+          },
+          "jump_hit@10": {
+            "numerator": 11,
+            "denominator": 30,
+            "value": 0.36666666666666664
+          },
+          "overlap_mrr": {
+            "numerator": 28.0,
+            "denominator": 30,
+            "value": 0.9333333333333333
+          },
+          "best_tiou": {
+            "numerator": 9.288076053894168,
+            "denominator": 30,
+            "value": 0.30960253512980557
+          }
+        },
+        "top1_correct_video_localization": {
+          "start_absolute_error_ms": {
+            "n": 29,
+            "mean": 26706.896551724138,
+            "min": 1000,
+            "max": 101000,
+            "p50": 16000,
+            "p95": 91000
+          },
+          "end_absolute_error_ms": {
+            "n": 29,
+            "mean": 28280.689655172413,
+            "min": 0,
+            "max": 85195,
+            "p50": 18000,
+            "p95": 80000
+          },
+          "tiou": {
+            "n": 29,
+            "mean": 0.2715870439828945,
+            "min": 0.0,
+            "max": 0.9333333333333333,
+            "p50": 0.1850952380952381,
+            "p95": 0.5735
+          }
+        },
+        "negative": {
+          "failed_count": 0,
+          "nonempty_rate": {
+            "numerator": 5,
+            "denominator": 5,
+            "value": 1.0
+          },
+          "top1_scores": {
+            "n": 5,
+            "mean": 0.01639344262295082,
+            "min": 0.01639344262295082,
+            "max": 0.01639344262295082,
+            "p50": 0.01639344262295082,
+            "p95": 0.01639344262295082
+          }
+        },
+        "latency_ms": {
+          "n": 35,
+          "mean": 187.85237142857142,
+          "min": 122.892,
+          "max": 959.696,
+          "p50": 139.351,
+          "p95": 914.315
+        }
+      },
+      "by_category": {
+        "mixed": {
+          "query_count": 10,
+          "positive_count": 10,
+          "negative_count": 0,
+          "status_counts": {
+            "ok": 10
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "video_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "video_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 1,
+              "denominator": 10,
+              "value": 0.1
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 1,
+              "denominator": 10,
+              "value": 0.1
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 1,
+              "denominator": 10,
+              "value": 0.1
+            },
+            "jump_hit@1": {
+              "numerator": 4,
+              "denominator": 10,
+              "value": 0.4
+            },
+            "jump_hit@5": {
+              "numerator": 4,
+              "denominator": 10,
+              "value": 0.4
+            },
+            "jump_hit@10": {
+              "numerator": 4,
+              "denominator": 10,
+              "value": 0.4
+            },
+            "overlap_mrr": {
+              "numerator": 10.0,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "best_tiou": {
+              "numerator": 2.361993713522064,
+              "denominator": 10,
+              "value": 0.23619937135220642
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 10,
+              "mean": 33050.0,
+              "min": 1000,
+              "max": 101000,
+              "p50": 23000,
+              "p95": 101000
+            },
+            "end_absolute_error_ms": {
+              "n": 10,
+              "mean": 23340.7,
+              "min": 5021,
+              "max": 67872,
+              "p50": 8082,
+              "p95": 67872
+            },
+            "tiou": {
+              "n": 10,
+              "mean": 0.23619937135220642,
+              "min": 0.06497222222222222,
+              "max": 0.5699285714285715,
+              "p50": 0.12456666666666667,
+              "p95": 0.5699285714285715
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "top1_scores": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "latency_ms": {
+            "n": 10,
+            "mean": 152.8352,
+            "min": 134.144,
+            "max": 188.559,
+            "p50": 143.503,
+            "p95": 188.559
+          }
+        },
+        "negative": {
+          "query_count": 5,
+          "positive_count": 0,
+          "negative_count": 5,
+          "status_counts": {
+            "ok": 5
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "video_recall@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "video_recall@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "overlap_recall@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "overlap_recall@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "overlap_recall@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "jump_hit@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "jump_hit@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "jump_hit@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "overlap_mrr": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "best_tiou": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            },
+            "end_absolute_error_ms": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            },
+            "tiou": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 5,
+              "denominator": 5,
+              "value": 1.0
+            },
+            "top1_scores": {
+              "n": 5,
+              "mean": 0.01639344262295082,
+              "min": 0.01639344262295082,
+              "max": 0.01639344262295082,
+              "p50": 0.01639344262295082,
+              "p95": 0.01639344262295082
+            }
+          },
+          "latency_ms": {
+            "n": 5,
+            "mean": 129.7798,
+            "min": 122.892,
+            "max": 135,
+            "p50": 133.644,
+            "p95": 135
+          }
+        },
+        "speech": {
+          "query_count": 10,
+          "positive_count": 10,
+          "negative_count": 0,
+          "status_counts": {
+            "ok": 10
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 9,
+              "denominator": 10,
+              "value": 0.9
+            },
+            "video_recall@5": {
+              "numerator": 9,
+              "denominator": 10,
+              "value": 0.9
+            },
+            "video_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 7,
+              "denominator": 10,
+              "value": 0.7
+            },
+            "overlap_recall@5": {
+              "numerator": 9,
+              "denominator": 10,
+              "value": 0.9
+            },
+            "overlap_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 1,
+              "denominator": 10,
+              "value": 0.1
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 4,
+              "denominator": 10,
+              "value": 0.4
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 1,
+              "denominator": 10,
+              "value": 0.1
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 2,
+              "denominator": 10,
+              "value": 0.2
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 2,
+              "denominator": 10,
+              "value": 0.2
+            },
+            "jump_hit@1": {
+              "numerator": 5,
+              "denominator": 10,
+              "value": 0.5
+            },
+            "jump_hit@5": {
+              "numerator": 6,
+              "denominator": 10,
+              "value": 0.6
+            },
+            "jump_hit@10": {
+              "numerator": 7,
+              "denominator": 10,
+              "value": 0.7
+            },
+            "overlap_mrr": {
+              "numerator": 8.0,
+              "denominator": 10,
+              "value": 0.8
+            },
+            "best_tiou": {
+              "numerator": 2.912722016485464,
+              "denominator": 10,
+              "value": 0.2912722016485464
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 9,
+              "mean": 22388.88888888889,
+              "min": 1000,
+              "max": 61000,
+              "p50": 1000,
+              "p95": 61000
+            },
+            "end_absolute_error_ms": {
+              "n": 9,
+              "mean": 42248.11111111111,
+              "min": 4971,
+              "max": 85195,
+              "p50": 39760,
+              "p95": 85195
+            },
+            "tiou": {
+              "n": 9,
+              "mean": 0.16674113756613756,
+              "min": 0.0,
+              "max": 0.5735,
+              "p50": 0.1174,
+              "p95": 0.5735
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "top1_scores": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "latency_ms": {
+            "n": 10,
+            "mean": 219.0471,
+            "min": 125.5,
+            "max": 959.696,
+            "p50": 135.296,
+            "p95": 959.696
+          }
+        },
+        "visual": {
+          "query_count": 10,
+          "positive_count": 10,
+          "negative_count": 0,
+          "status_counts": {
+            "ok": 10
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "video_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "video_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 6,
+              "denominator": 10,
+              "value": 0.6
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 6,
+              "denominator": 10,
+              "value": 0.6
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 6,
+              "denominator": 10,
+              "value": 0.6
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 4,
+              "denominator": 10,
+              "value": 0.4
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 4,
+              "denominator": 10,
+              "value": 0.4
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 4,
+              "denominator": 10,
+              "value": 0.4
+            },
+            "jump_hit@1": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "jump_hit@5": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "jump_hit@10": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "overlap_mrr": {
+              "numerator": 10.0,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "best_tiou": {
+              "numerator": 4.01336032388664,
+              "denominator": 10,
+              "value": 0.401336032388664
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 10,
+              "mean": 24250.0,
+              "min": 1000,
+              "max": 72000,
+              "p50": 15000,
+              "p95": 72000
+            },
+            "end_absolute_error_ms": {
+              "n": 10,
+              "mean": 20650.0,
+              "min": 0,
+              "max": 80000,
+              "p50": 500,
+              "p95": 80000
+            },
+            "tiou": {
+              "n": 10,
+              "mean": 0.401336032388664,
+              "min": 0.16666666666666666,
+              "max": 0.9333333333333333,
+              "p50": 0.42105263157894735,
+              "p95": 0.9333333333333333
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "top1_scores": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "latency_ms": {
+            "n": 10,
+            "mean": 220.7111,
+            "min": 133.859,
+            "max": 914.315,
+            "p50": 140.125,
+            "p95": 914.315
+          }
+        }
+      },
+      "by_language": {
+        "en": {
+          "query_count": 14,
+          "positive_count": 12,
+          "negative_count": 2,
+          "status_counts": {
+            "ok": 14
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 11,
+              "denominator": 12,
+              "value": 0.9166666666666666
+            },
+            "video_recall@5": {
+              "numerator": 11,
+              "denominator": 12,
+              "value": 0.9166666666666666
+            },
+            "video_recall@10": {
+              "numerator": 12,
+              "denominator": 12,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 11,
+              "denominator": 12,
+              "value": 0.9166666666666666
+            },
+            "overlap_recall@5": {
+              "numerator": 11,
+              "denominator": 12,
+              "value": 0.9166666666666666
+            },
+            "overlap_recall@10": {
+              "numerator": 12,
+              "denominator": 12,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 2,
+              "denominator": 12,
+              "value": 0.16666666666666666
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 2,
+              "denominator": 12,
+              "value": 0.16666666666666666
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 3,
+              "denominator": 12,
+              "value": 0.25
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 1,
+              "denominator": 12,
+              "value": 0.08333333333333333
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 1,
+              "denominator": 12,
+              "value": 0.08333333333333333
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 1,
+              "denominator": 12,
+              "value": 0.08333333333333333
+            },
+            "jump_hit@1": {
+              "numerator": 4,
+              "denominator": 12,
+              "value": 0.3333333333333333
+            },
+            "jump_hit@5": {
+              "numerator": 4,
+              "denominator": 12,
+              "value": 0.3333333333333333
+            },
+            "jump_hit@10": {
+              "numerator": 5,
+              "denominator": 12,
+              "value": 0.4166666666666667
+            },
+            "overlap_mrr": {
+              "numerator": 11.166666666666666,
+              "denominator": 12,
+              "value": 0.9305555555555555
+            },
+            "best_tiou": {
+              "numerator": 2.552978101141549,
+              "denominator": 12,
+              "value": 0.21274817509512908
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 11,
+              "mean": 32090.909090909092,
+              "min": 1000,
+              "max": 91000,
+              "p50": 18000,
+              "p95": 91000
+            },
+            "end_absolute_error_ms": {
+              "n": 11,
+              "mean": 32807.181818181816,
+              "min": 0,
+              "max": 72000,
+              "p50": 22026,
+              "p95": 72000
+            },
+            "tiou": {
+              "n": 11,
+              "mean": 0.19756473063973062,
+              "min": 0.06275,
+              "max": 0.5,
+              "p50": 0.16666666666666666,
+              "p95": 0.5
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 2,
+              "denominator": 2,
+              "value": 1.0
+            },
+            "top1_scores": {
+              "n": 2,
+              "mean": 0.01639344262295082,
+              "min": 0.01639344262295082,
+              "max": 0.01639344262295082,
+              "p50": 0.01639344262295082,
+              "p95": 0.01639344262295082
+            }
+          },
+          "latency_ms": {
+            "n": 14,
+            "mean": 195.5822142857143,
+            "min": 123.047,
+            "max": 914.315,
+            "p50": 135.66,
+            "p95": 914.315
+          }
+        },
+        "zh": {
+          "query_count": 21,
+          "positive_count": 18,
+          "negative_count": 3,
+          "status_counts": {
+            "ok": 21
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 18,
+              "denominator": 18,
+              "value": 1.0
+            },
+            "video_recall@5": {
+              "numerator": 18,
+              "denominator": 18,
+              "value": 1.0
+            },
+            "video_recall@10": {
+              "numerator": 18,
+              "denominator": 18,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 16,
+              "denominator": 18,
+              "value": 0.8888888888888888
+            },
+            "overlap_recall@5": {
+              "numerator": 18,
+              "denominator": 18,
+              "value": 1.0
+            },
+            "overlap_recall@10": {
+              "numerator": 18,
+              "denominator": 18,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 8,
+              "denominator": 18,
+              "value": 0.4444444444444444
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 10,
+              "denominator": 18,
+              "value": 0.5555555555555556
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 10,
+              "denominator": 18,
+              "value": 0.5555555555555556
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 5,
+              "denominator": 18,
+              "value": 0.2777777777777778
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 6,
+              "denominator": 18,
+              "value": 0.3333333333333333
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 6,
+              "denominator": 18,
+              "value": 0.3333333333333333
+            },
+            "jump_hit@1": {
+              "numerator": 5,
+              "denominator": 18,
+              "value": 0.2777777777777778
+            },
+            "jump_hit@5": {
+              "numerator": 6,
+              "denominator": 18,
+              "value": 0.3333333333333333
+            },
+            "jump_hit@10": {
+              "numerator": 6,
+              "denominator": 18,
+              "value": 0.3333333333333333
+            },
+            "overlap_mrr": {
+              "numerator": 16.833333333333332,
+              "denominator": 18,
+              "value": 0.9351851851851851
+            },
+            "best_tiou": {
+              "numerator": 6.735097952752619,
+              "denominator": 18,
+              "value": 0.3741721084862566
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 18,
+              "mean": 23416.666666666668,
+              "min": 1000,
+              "max": 101000,
+              "p50": 15000,
+              "p95": 101000
+            },
+            "end_absolute_error_ms": {
+              "n": 18,
+              "mean": 25514.5,
+              "min": 0,
+              "max": 85195,
+              "p50": 8082,
+              "p95": 85195
+            },
+            "tiou": {
+              "n": 18,
+              "mean": 0.3168229021370503,
+              "min": 0.0,
+              "max": 0.9333333333333333,
+              "p50": 0.19158762886597938,
+              "p95": 0.9333333333333333
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 3,
+              "denominator": 3,
+              "value": 1.0
+            },
+            "top1_scores": {
+              "n": 3,
+              "mean": 0.01639344262295082,
+              "min": 0.01639344262295082,
+              "max": 0.01639344262295082,
+              "p50": 0.01639344262295082,
+              "p95": 0.01639344262295082
+            }
+          },
+          "latency_ms": {
+            "n": 21,
+            "mean": 182.69914285714285,
+            "min": 122.892,
+            "max": 959.696,
+            "p50": 139.514,
+            "p95": 188.559
+          }
+        }
+      }
+    },
+    "speech": {
+      "all": {
+        "query_count": 35,
+        "positive_count": 30,
+        "negative_count": 5,
+        "status_counts": {
+          "ok": 35
+        },
+        "positive_metrics": {
+          "video_recall@1": {
+            "numerator": 28,
+            "denominator": 30,
+            "value": 0.9333333333333333
+          },
+          "video_recall@5": {
+            "numerator": 30,
+            "denominator": 30,
+            "value": 1.0
+          },
+          "video_recall@10": {
+            "numerator": 30,
+            "denominator": 30,
+            "value": 1.0
+          },
+          "overlap_recall@1": {
+            "numerator": 26,
+            "denominator": 30,
+            "value": 0.8666666666666667
+          },
+          "overlap_recall@5": {
+            "numerator": 29,
+            "denominator": 30,
+            "value": 0.9666666666666667
+          },
+          "overlap_recall@10": {
+            "numerator": 30,
+            "denominator": 30,
+            "value": 1.0
+          },
+          "tiou_0.3_recall@1": {
+            "numerator": 14,
+            "denominator": 30,
+            "value": 0.4666666666666667
+          },
+          "tiou_0.3_recall@5": {
+            "numerator": 16,
+            "denominator": 30,
+            "value": 0.5333333333333333
+          },
+          "tiou_0.3_recall@10": {
+            "numerator": 17,
+            "denominator": 30,
+            "value": 0.5666666666666667
+          },
+          "tiou_0.5_recall@1": {
+            "numerator": 5,
+            "denominator": 30,
+            "value": 0.16666666666666666
+          },
+          "tiou_0.5_recall@5": {
+            "numerator": 6,
+            "denominator": 30,
+            "value": 0.2
+          },
+          "tiou_0.5_recall@10": {
+            "numerator": 7,
+            "denominator": 30,
+            "value": 0.23333333333333334
+          },
+          "jump_hit@1": {
+            "numerator": 8,
+            "denominator": 30,
+            "value": 0.26666666666666666
+          },
+          "jump_hit@5": {
+            "numerator": 8,
+            "denominator": 30,
+            "value": 0.26666666666666666
+          },
+          "jump_hit@10": {
+            "numerator": 8,
+            "denominator": 30,
+            "value": 0.26666666666666666
+          },
+          "overlap_mrr": {
+            "numerator": 27.666666666666668,
+            "denominator": 30,
+            "value": 0.9222222222222223
+          },
+          "best_tiou": {
+            "numerator": 10.507683304832822,
+            "denominator": 30,
+            "value": 0.3502561101610941
+          }
+        },
+        "top1_correct_video_localization": {
+          "start_absolute_error_ms": {
+            "n": 28,
+            "mean": 21892.85714285714,
+            "min": 0,
+            "max": 91000,
+            "p50": 15000,
+            "p95": 72000
+          },
+          "end_absolute_error_ms": {
+            "n": 28,
+            "mean": 21876.321428571428,
+            "min": 240,
+            "max": 99189,
+            "p50": 15000,
+            "p95": 64000
+          },
+          "tiou": {
+            "n": 28,
+            "mean": 0.304355488400114,
+            "min": 0.0,
+            "max": 0.84528,
+            "p50": 0.21863529411764707,
+            "p95": 0.845
+          }
+        },
+        "negative": {
+          "failed_count": 0,
+          "nonempty_rate": {
+            "numerator": 5,
+            "denominator": 5,
+            "value": 1.0
+          },
+          "top1_scores": {
+            "n": 5,
+            "mean": 0.01639344262295082,
+            "min": 0.01639344262295082,
+            "max": 0.01639344262295082,
+            "p50": 0.01639344262295082,
+            "p95": 0.01639344262295082
+          }
+        },
+        "latency_ms": {
+          "n": 35,
+          "mean": 133.09725714285716,
+          "min": 123.617,
+          "max": 142.706,
+          "p50": 133.431,
+          "p95": 140.983
+        }
+      },
+      "by_category": {
+        "mixed": {
+          "query_count": 10,
+          "positive_count": 10,
+          "negative_count": 0,
+          "status_counts": {
+            "ok": 10
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "video_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "video_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 6,
+              "denominator": 10,
+              "value": 0.6
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 6,
+              "denominator": 10,
+              "value": 0.6
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 6,
+              "denominator": 10,
+              "value": 0.6
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 2,
+              "denominator": 10,
+              "value": 0.2
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 2,
+              "denominator": 10,
+              "value": 0.2
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 2,
+              "denominator": 10,
+              "value": 0.2
+            },
+            "jump_hit@1": {
+              "numerator": 5,
+              "denominator": 10,
+              "value": 0.5
+            },
+            "jump_hit@5": {
+              "numerator": 5,
+              "denominator": 10,
+              "value": 0.5
+            },
+            "jump_hit@10": {
+              "numerator": 5,
+              "denominator": 10,
+              "value": 0.5
+            },
+            "overlap_mrr": {
+              "numerator": 10.0,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "best_tiou": {
+              "numerator": 3.2944278315801845,
+              "denominator": 10,
+              "value": 0.32944278315801845
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 10,
+              "mean": 24350.0,
+              "min": 1000,
+              "max": 91000,
+              "p50": 18000,
+              "p95": 91000
+            },
+            "end_absolute_error_ms": {
+              "n": 10,
+              "mean": 10690.7,
+              "min": 240,
+              "max": 38483,
+              "p50": 3082,
+              "p95": 38483
+            },
+            "tiou": {
+              "n": 10,
+              "mean": 0.32944278315801845,
+              "min": 0.07423,
+              "max": 0.845,
+              "p50": 0.30688461538461537,
+              "p95": 0.845
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "top1_scores": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "latency_ms": {
+            "n": 10,
+            "mean": 134.9753,
+            "min": 131.192,
+            "max": 138.621,
+            "p50": 133.616,
+            "p95": 138.621
+          }
+        },
+        "negative": {
+          "query_count": 5,
+          "positive_count": 0,
+          "negative_count": 5,
+          "status_counts": {
+            "ok": 5
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "video_recall@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "video_recall@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "overlap_recall@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "overlap_recall@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "overlap_recall@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "jump_hit@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "jump_hit@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "jump_hit@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "overlap_mrr": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "best_tiou": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            },
+            "end_absolute_error_ms": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            },
+            "tiou": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 5,
+              "denominator": 5,
+              "value": 1.0
+            },
+            "top1_scores": {
+              "n": 5,
+              "mean": 0.01639344262295082,
+              "min": 0.01639344262295082,
+              "max": 0.01639344262295082,
+              "p50": 0.01639344262295082,
+              "p95": 0.01639344262295082
+            }
+          },
+          "latency_ms": {
+            "n": 5,
+            "mean": 126.2674,
+            "min": 125.397,
+            "max": 127.005,
+            "p50": 126.213,
+            "p95": 127.005
+          }
+        },
+        "speech": {
+          "query_count": 10,
+          "positive_count": 10,
+          "negative_count": 0,
+          "status_counts": {
+            "ok": 10
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "video_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "video_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 9,
+              "denominator": 10,
+              "value": 0.9
+            },
+            "overlap_recall@5": {
+              "numerator": 9,
+              "denominator": 10,
+              "value": 0.9
+            },
+            "overlap_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 5,
+              "denominator": 10,
+              "value": 0.5
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 5,
+              "denominator": 10,
+              "value": 0.5
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 6,
+              "denominator": 10,
+              "value": 0.6
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 2,
+              "denominator": 10,
+              "value": 0.2
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 2,
+              "denominator": 10,
+              "value": 0.2
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "jump_hit@1": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "jump_hit@5": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "jump_hit@10": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "overlap_mrr": {
+              "numerator": 9.166666666666666,
+              "denominator": 10,
+              "value": 0.9166666666666666
+            },
+            "best_tiou": {
+              "numerator": 3.7511225392254803,
+              "denominator": 10,
+              "value": 0.37511225392254804
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 10,
+              "mean": 15200.0,
+              "min": 0,
+              "max": 55000,
+              "p50": 4000,
+              "p95": 55000
+            },
+            "end_absolute_error_ms": {
+              "n": 10,
+              "mean": 28363.0,
+              "min": 934,
+              "max": 99189,
+              "p50": 16695,
+              "p95": 99189
+            },
+            "tiou": {
+              "n": 10,
+              "mean": 0.30200225392254804,
+              "min": 0.0,
+              "max": 0.84528,
+              "p50": 0.1652,
+              "p95": 0.84528
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "top1_scores": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "latency_ms": {
+            "n": 10,
+            "mean": 133.1866,
+            "min": 123.617,
+            "max": 140.983,
+            "p50": 130.641,
+            "p95": 140.983
+          }
+        },
+        "visual": {
+          "query_count": 10,
+          "positive_count": 10,
+          "negative_count": 0,
+          "status_counts": {
+            "ok": 10
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 8,
+              "denominator": 10,
+              "value": 0.8
+            },
+            "video_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "video_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 7,
+              "denominator": 10,
+              "value": 0.7
+            },
+            "overlap_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 5,
+              "denominator": 10,
+              "value": 0.5
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 5,
+              "denominator": 10,
+              "value": 0.5
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 1,
+              "denominator": 10,
+              "value": 0.1
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 2,
+              "denominator": 10,
+              "value": 0.2
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 2,
+              "denominator": 10,
+              "value": 0.2
+            },
+            "jump_hit@1": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "jump_hit@5": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "jump_hit@10": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "overlap_mrr": {
+              "numerator": 8.5,
+              "denominator": 10,
+              "value": 0.85
+            },
+            "best_tiou": {
+              "numerator": 3.4621329340271574,
+              "denominator": 10,
+              "value": 0.3462132934027157
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 8,
+              "mean": 27187.5,
+              "min": 0,
+              "max": 72000,
+              "p50": 15000,
+              "p95": 72000
+            },
+            "end_absolute_error_ms": {
+              "n": 8,
+              "mean": 27750.0,
+              "min": 5000,
+              "max": 64000,
+              "p50": 15000,
+              "p95": 64000
+            },
+            "tiou": {
+              "n": 8,
+              "mean": 0.275937913049691,
+              "min": 0.0,
+              "max": 0.5714285714285714,
+              "p50": 0.18,
+              "p95": 0.5714285714285714
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "top1_scores": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "latency_ms": {
+            "n": 10,
+            "mean": 134.5448,
+            "min": 127.931,
+            "max": 142.706,
+            "p50": 134.079,
+            "p95": 142.706
+          }
+        }
+      },
+      "by_language": {
+        "en": {
+          "query_count": 14,
+          "positive_count": 12,
+          "negative_count": 2,
+          "status_counts": {
+            "ok": 14
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 12,
+              "denominator": 12,
+              "value": 1.0
+            },
+            "video_recall@5": {
+              "numerator": 12,
+              "denominator": 12,
+              "value": 1.0
+            },
+            "video_recall@10": {
+              "numerator": 12,
+              "denominator": 12,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 11,
+              "denominator": 12,
+              "value": 0.9166666666666666
+            },
+            "overlap_recall@5": {
+              "numerator": 11,
+              "denominator": 12,
+              "value": 0.9166666666666666
+            },
+            "overlap_recall@10": {
+              "numerator": 12,
+              "denominator": 12,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 2,
+              "denominator": 12,
+              "value": 0.16666666666666666
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 2,
+              "denominator": 12,
+              "value": 0.16666666666666666
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 3,
+              "denominator": 12,
+              "value": 0.25
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 1,
+              "denominator": 12,
+              "value": 0.08333333333333333
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 1,
+              "denominator": 12,
+              "value": 0.08333333333333333
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 2,
+              "denominator": 12,
+              "value": 0.16666666666666666
+            },
+            "jump_hit@1": {
+              "numerator": 3,
+              "denominator": 12,
+              "value": 0.25
+            },
+            "jump_hit@5": {
+              "numerator": 3,
+              "denominator": 12,
+              "value": 0.25
+            },
+            "jump_hit@10": {
+              "numerator": 3,
+              "denominator": 12,
+              "value": 0.25
+            },
+            "overlap_mrr": {
+              "numerator": 11.166666666666666,
+              "denominator": 12,
+              "value": 0.9305555555555555
+            },
+            "best_tiou": {
+              "numerator": 2.822371131194387,
+              "denominator": 12,
+              "value": 0.2351975942661989
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 12,
+              "mean": 33916.666666666664,
+              "min": 1000,
+              "max": 91000,
+              "p50": 21000,
+              "p95": 91000
+            },
+            "end_absolute_error_ms": {
+              "n": 12,
+              "mean": 34441.333333333336,
+              "min": 1209,
+              "max": 99189,
+              "p50": 31526,
+              "p95": 99189
+            },
+            "tiou": {
+              "n": 12,
+              "mean": 0.1742725942661989,
+              "min": 0.0,
+              "max": 0.6854,
+              "p50": 0.09962857142857143,
+              "p95": 0.6854
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 2,
+              "denominator": 2,
+              "value": 1.0
+            },
+            "top1_scores": {
+              "n": 2,
+              "mean": 0.01639344262295082,
+              "min": 0.01639344262295082,
+              "max": 0.01639344262295082,
+              "p50": 0.01639344262295082,
+              "p95": 0.01639344262295082
+            }
+          },
+          "latency_ms": {
+            "n": 14,
+            "mean": 131.93300000000002,
+            "min": 125.64,
+            "max": 140.757,
+            "p50": 131.192,
+            "p95": 140.757
+          }
+        },
+        "zh": {
+          "query_count": 21,
+          "positive_count": 18,
+          "negative_count": 3,
+          "status_counts": {
+            "ok": 21
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 16,
+              "denominator": 18,
+              "value": 0.8888888888888888
+            },
+            "video_recall@5": {
+              "numerator": 18,
+              "denominator": 18,
+              "value": 1.0
+            },
+            "video_recall@10": {
+              "numerator": 18,
+              "denominator": 18,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 15,
+              "denominator": 18,
+              "value": 0.8333333333333334
+            },
+            "overlap_recall@5": {
+              "numerator": 18,
+              "denominator": 18,
+              "value": 1.0
+            },
+            "overlap_recall@10": {
+              "numerator": 18,
+              "denominator": 18,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 12,
+              "denominator": 18,
+              "value": 0.6666666666666666
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 14,
+              "denominator": 18,
+              "value": 0.7777777777777778
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 14,
+              "denominator": 18,
+              "value": 0.7777777777777778
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 4,
+              "denominator": 18,
+              "value": 0.2222222222222222
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 5,
+              "denominator": 18,
+              "value": 0.2777777777777778
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 5,
+              "denominator": 18,
+              "value": 0.2777777777777778
+            },
+            "jump_hit@1": {
+              "numerator": 5,
+              "denominator": 18,
+              "value": 0.2777777777777778
+            },
+            "jump_hit@5": {
+              "numerator": 5,
+              "denominator": 18,
+              "value": 0.2777777777777778
+            },
+            "jump_hit@10": {
+              "numerator": 5,
+              "denominator": 18,
+              "value": 0.2777777777777778
+            },
+            "overlap_mrr": {
+              "numerator": 16.5,
+              "denominator": 18,
+              "value": 0.9166666666666666
+            },
+            "best_tiou": {
+              "numerator": 7.685312173638436,
+              "denominator": 18,
+              "value": 0.42696178742435753
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 16,
+              "mean": 12875.0,
+              "min": 0,
+              "max": 60000,
+              "p50": 4000,
+              "p95": 60000
+            },
+            "end_absolute_error_ms": {
+              "n": 16,
+              "mean": 12452.5625,
+              "min": 240,
+              "max": 55000,
+              "p50": 5000,
+              "p95": 55000
+            },
+            "tiou": {
+              "n": 16,
+              "mean": 0.4019176590005504,
+              "min": 0.0,
+              "max": 0.84528,
+              "p50": 0.3424,
+              "p95": 0.84528
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 3,
+              "denominator": 3,
+              "value": 1.0
+            },
+            "top1_scores": {
+              "n": 3,
+              "mean": 0.01639344262295082,
+              "min": 0.01639344262295082,
+              "max": 0.01639344262295082,
+              "p50": 0.01639344262295082,
+              "p95": 0.01639344262295082
+            }
+          },
+          "latency_ms": {
+            "n": 21,
+            "mean": 133.87342857142858,
+            "min": 123.617,
+            "max": 142.706,
+            "p50": 134.447,
+            "p95": 140.983
+          }
+        }
+      }
+    },
+    "fused": {
+      "all": {
+        "query_count": 35,
+        "positive_count": 30,
+        "negative_count": 5,
+        "status_counts": {
+          "ok": 35
+        },
+        "positive_metrics": {
+          "video_recall@1": {
+            "numerator": 26,
+            "denominator": 30,
+            "value": 0.8666666666666667
+          },
+          "video_recall@5": {
+            "numerator": 30,
+            "denominator": 30,
+            "value": 1.0
+          },
+          "video_recall@10": {
+            "numerator": 30,
+            "denominator": 30,
+            "value": 1.0
+          },
+          "overlap_recall@1": {
+            "numerator": 24,
+            "denominator": 30,
+            "value": 0.8
+          },
+          "overlap_recall@5": {
+            "numerator": 30,
+            "denominator": 30,
+            "value": 1.0
+          },
+          "overlap_recall@10": {
+            "numerator": 30,
+            "denominator": 30,
+            "value": 1.0
+          },
+          "tiou_0.3_recall@1": {
+            "numerator": 4,
+            "denominator": 30,
+            "value": 0.13333333333333333
+          },
+          "tiou_0.3_recall@5": {
+            "numerator": 5,
+            "denominator": 30,
+            "value": 0.16666666666666666
+          },
+          "tiou_0.3_recall@10": {
+            "numerator": 5,
+            "denominator": 30,
+            "value": 0.16666666666666666
+          },
+          "tiou_0.5_recall@1": {
+            "numerator": 0,
+            "denominator": 30,
+            "value": 0.0
+          },
+          "tiou_0.5_recall@5": {
+            "numerator": 0,
+            "denominator": 30,
+            "value": 0.0
+          },
+          "tiou_0.5_recall@10": {
+            "numerator": 0,
+            "denominator": 30,
+            "value": 0.0
+          },
+          "jump_hit@1": {
+            "numerator": 5,
+            "denominator": 30,
+            "value": 0.16666666666666666
+          },
+          "jump_hit@5": {
+            "numerator": 8,
+            "denominator": 30,
+            "value": 0.26666666666666666
+          },
+          "jump_hit@10": {
+            "numerator": 8,
+            "denominator": 30,
+            "value": 0.26666666666666666
+          },
+          "overlap_mrr": {
+            "numerator": 26.833333333333332,
+            "denominator": 30,
+            "value": 0.8944444444444444
+          },
+          "best_tiou": {
+            "numerator": 5.374532574164538,
+            "denominator": 30,
+            "value": 0.17915108580548458
+          }
+        },
+        "top1_correct_video_localization": {
+          "start_absolute_error_ms": {
+            "n": 26,
+            "mean": 29846.153846153848,
+            "min": 1000,
+            "max": 101000,
+            "p50": 20000,
+            "p95": 80000
+          },
+          "end_absolute_error_ms": {
+            "n": 26,
+            "mean": 39321.346153846156,
+            "min": 5021,
+            "max": 108434,
+            "p50": 32026,
+            "p95": 99689
+          },
+          "tiou": {
+            "n": 26,
+            "mean": 0.16200289879149932,
+            "min": 0.0,
+            "max": 0.45693333333333336,
+            "p50": 0.1521391304347826,
+            "p95": 0.35654545454545455
+          }
+        },
+        "negative": {
+          "failed_count": 0,
+          "nonempty_rate": {
+            "numerator": 5,
+            "denominator": 5,
+            "value": 1.0
+          },
+          "top1_scores": {
+            "n": 5,
+            "mean": 0.04215216731403337,
+            "min": 0.03662057044079516,
+            "max": 0.04507165184914545,
+            "p50": 0.042285619688776074,
+            "p95": 0.04507165184914545
+          }
+        },
+        "latency_ms": {
+          "n": 35,
+          "mean": 160.82217142857144,
+          "min": 133.798,
+          "max": 590.239,
+          "p50": 146.434,
+          "p95": 164.558
+        }
+      },
+      "by_category": {
+        "mixed": {
+          "query_count": 10,
+          "positive_count": 10,
+          "negative_count": 0,
+          "status_counts": {
+            "ok": 10
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 8,
+              "denominator": 10,
+              "value": 0.8
+            },
+            "video_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "video_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 7,
+              "denominator": 10,
+              "value": 0.7
+            },
+            "overlap_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 1,
+              "denominator": 10,
+              "value": 0.1
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 1,
+              "denominator": 10,
+              "value": 0.1
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 1,
+              "denominator": 10,
+              "value": 0.1
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "jump_hit@1": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "jump_hit@5": {
+              "numerator": 5,
+              "denominator": 10,
+              "value": 0.5
+            },
+            "jump_hit@10": {
+              "numerator": 5,
+              "denominator": 10,
+              "value": 0.5
+            },
+            "overlap_mrr": {
+              "numerator": 8.333333333333334,
+              "denominator": 10,
+              "value": 0.8333333333333334
+            },
+            "best_tiou": {
+              "numerator": 1.7380719973960002,
+              "denominator": 10,
+              "value": 0.17380719973960002
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 8,
+              "mean": 35875.0,
+              "min": 1000,
+              "max": 101000,
+              "p50": 31000,
+              "p95": 101000
+            },
+            "end_absolute_error_ms": {
+              "n": 8,
+              "mean": 29392.75,
+              "min": 5021,
+              "max": 67872,
+              "p50": 15752,
+              "p95": 67872
+            },
+            "tiou": {
+              "n": 8,
+              "mean": 0.154540539452496,
+              "min": 0.0,
+              "max": 0.45693333333333336,
+              "p50": 0.09098333333333333,
+              "p95": 0.45693333333333336
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "top1_scores": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "latency_ms": {
+            "n": 10,
+            "mean": 148.8983,
+            "min": 143.109,
+            "max": 156.674,
+            "p50": 147.604,
+            "p95": 156.674
+          }
+        },
+        "negative": {
+          "query_count": 5,
+          "positive_count": 0,
+          "negative_count": 5,
+          "status_counts": {
+            "ok": 5
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "video_recall@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "video_recall@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "overlap_recall@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "overlap_recall@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "overlap_recall@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "jump_hit@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "jump_hit@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "jump_hit@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "overlap_mrr": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "best_tiou": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            },
+            "end_absolute_error_ms": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            },
+            "tiou": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 5,
+              "denominator": 5,
+              "value": 1.0
+            },
+            "top1_scores": {
+              "n": 5,
+              "mean": 0.04215216731403337,
+              "min": 0.03662057044079516,
+              "max": 0.04507165184914545,
+              "p50": 0.042285619688776074,
+              "p95": 0.04507165184914545
+            }
+          },
+          "latency_ms": {
+            "n": 5,
+            "mean": 145.595,
+            "min": 137.652,
+            "max": 160.347,
+            "p50": 142.07,
+            "p95": 160.347
+          }
+        },
+        "speech": {
+          "query_count": 10,
+          "positive_count": 10,
+          "negative_count": 0,
+          "status_counts": {
+            "ok": 10
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 9,
+              "denominator": 10,
+              "value": 0.9
+            },
+            "video_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "video_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 9,
+              "denominator": 10,
+              "value": 0.9
+            },
+            "overlap_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 1,
+              "denominator": 10,
+              "value": 0.1
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 1,
+              "denominator": 10,
+              "value": 0.1
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 1,
+              "denominator": 10,
+              "value": 0.1
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "jump_hit@1": {
+              "numerator": 2,
+              "denominator": 10,
+              "value": 0.2
+            },
+            "jump_hit@5": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "jump_hit@10": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "overlap_mrr": {
+              "numerator": 9.5,
+              "denominator": 10,
+              "value": 0.95
+            },
+            "best_tiou": {
+              "numerator": 1.3340654210168916,
+              "denominator": 10,
+              "value": 0.13340654210168917
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 9,
+              "mean": 19333.333333333332,
+              "min": 1000,
+              "max": 61000,
+              "p50": 4000,
+              "p95": 61000
+            },
+            "end_absolute_error_ms": {
+              "n": 9,
+              "mean": 51634.77777777778,
+              "min": 16695,
+              "max": 108434,
+              "p50": 43226,
+              "p95": 108434
+            },
+            "tiou": {
+              "n": 9,
+              "mean": 0.13778028487489272,
+              "min": 0.06275,
+              "max": 0.35654545454545455,
+              "p50": 0.08805,
+              "p95": 0.35654545454545455
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "top1_scores": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "latency_ms": {
+            "n": 10,
+            "mean": 191.73110000000003,
+            "min": 135.959,
+            "max": 590.239,
+            "p50": 144.691,
+            "p95": 590.239
+          }
+        },
+        "visual": {
+          "query_count": 10,
+          "positive_count": 10,
+          "negative_count": 0,
+          "status_counts": {
+            "ok": 10
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 9,
+              "denominator": 10,
+              "value": 0.9
+            },
+            "video_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "video_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 8,
+              "denominator": 10,
+              "value": 0.8
+            },
+            "overlap_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 2,
+              "denominator": 10,
+              "value": 0.2
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "jump_hit@1": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "jump_hit@5": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "jump_hit@10": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "overlap_mrr": {
+              "numerator": 9.0,
+              "denominator": 10,
+              "value": 0.9
+            },
+            "best_tiou": {
+              "numerator": 2.302395155751646,
+              "denominator": 10,
+              "value": 0.2302395155751646
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 9,
+              "mean": 35000.0,
+              "min": 14000,
+              "max": 80000,
+              "p50": 20000,
+              "p95": 80000
+            },
+            "end_absolute_error_ms": {
+              "n": 9,
+              "mean": 35833.333333333336,
+              "min": 10000,
+              "max": 80000,
+              "p50": 20000,
+              "p95": 80000
+            },
+            "tiou": {
+              "n": 9,
+              "mean": 0.19285872100944215,
+              "min": 0.0,
+              "max": 0.34146341463414637,
+              "p50": 0.16666666666666666,
+              "p95": 0.34146341463414637
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "top1_scores": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "latency_ms": {
+            "n": 10,
+            "mean": 149.4507,
+            "min": 133.798,
+            "max": 164.422,
+            "p50": 143.89,
+            "p95": 164.422
+          }
+        }
+      },
+      "by_language": {
+        "en": {
+          "query_count": 14,
+          "positive_count": 12,
+          "negative_count": 2,
+          "status_counts": {
+            "ok": 14
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 9,
+              "denominator": 12,
+              "value": 0.75
+            },
+            "video_recall@5": {
+              "numerator": 12,
+              "denominator": 12,
+              "value": 1.0
+            },
+            "video_recall@10": {
+              "numerator": 12,
+              "denominator": 12,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 9,
+              "denominator": 12,
+              "value": 0.75
+            },
+            "overlap_recall@5": {
+              "numerator": 12,
+              "denominator": 12,
+              "value": 1.0
+            },
+            "overlap_recall@10": {
+              "numerator": 12,
+              "denominator": 12,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 1,
+              "denominator": 12,
+              "value": 0.08333333333333333
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 1,
+              "denominator": 12,
+              "value": 0.08333333333333333
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 1,
+              "denominator": 12,
+              "value": 0.08333333333333333
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 0,
+              "denominator": 12,
+              "value": 0.0
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 0,
+              "denominator": 12,
+              "value": 0.0
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 0,
+              "denominator": 12,
+              "value": 0.0
+            },
+            "jump_hit@1": {
+              "numerator": 1,
+              "denominator": 12,
+              "value": 0.08333333333333333
+            },
+            "jump_hit@5": {
+              "numerator": 3,
+              "denominator": 12,
+              "value": 0.25
+            },
+            "jump_hit@10": {
+              "numerator": 3,
+              "denominator": 12,
+              "value": 0.25
+            },
+            "overlap_mrr": {
+              "numerator": 10.5,
+              "denominator": 12,
+              "value": 0.875
+            },
+            "best_tiou": {
+              "numerator": 1.6135932228446934,
+              "denominator": 12,
+              "value": 0.13446610190372446
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 9,
+              "mean": 29444.444444444445,
+              "min": 1000,
+              "max": 61000,
+              "p50": 31000,
+              "p95": 61000
+            },
+            "end_absolute_error_ms": {
+              "n": 9,
+              "mean": 51255.77777777778,
+              "min": 7146,
+              "max": 99689,
+              "p50": 48709,
+              "p95": 99689
+            },
+            "tiou": {
+              "n": 9,
+              "mean": 0.14268357972818757,
+              "min": 0.06275,
+              "max": 0.45693333333333336,
+              "p50": 0.08304444444444445,
+              "p95": 0.45693333333333336
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 2,
+              "denominator": 2,
+              "value": 1.0
+            },
+            "top1_scores": {
+              "n": 2,
+              "mean": 0.043678635768960763,
+              "min": 0.042285619688776074,
+              "max": 0.04507165184914545,
+              "p50": 0.042285619688776074,
+              "p95": 0.04507165184914545
+            }
+          },
+          "latency_ms": {
+            "n": 14,
+            "mean": 147.49078571428572,
+            "min": 135.959,
+            "max": 161.617,
+            "p50": 145.868,
+            "p95": 161.617
+          }
+        },
+        "zh": {
+          "query_count": 21,
+          "positive_count": 18,
+          "negative_count": 3,
+          "status_counts": {
+            "ok": 21
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 17,
+              "denominator": 18,
+              "value": 0.9444444444444444
+            },
+            "video_recall@5": {
+              "numerator": 18,
+              "denominator": 18,
+              "value": 1.0
+            },
+            "video_recall@10": {
+              "numerator": 18,
+              "denominator": 18,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 15,
+              "denominator": 18,
+              "value": 0.8333333333333334
+            },
+            "overlap_recall@5": {
+              "numerator": 18,
+              "denominator": 18,
+              "value": 1.0
+            },
+            "overlap_recall@10": {
+              "numerator": 18,
+              "denominator": 18,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 3,
+              "denominator": 18,
+              "value": 0.16666666666666666
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 4,
+              "denominator": 18,
+              "value": 0.2222222222222222
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 4,
+              "denominator": 18,
+              "value": 0.2222222222222222
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 0,
+              "denominator": 18,
+              "value": 0.0
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 0,
+              "denominator": 18,
+              "value": 0.0
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 0,
+              "denominator": 18,
+              "value": 0.0
+            },
+            "jump_hit@1": {
+              "numerator": 4,
+              "denominator": 18,
+              "value": 0.2222222222222222
+            },
+            "jump_hit@5": {
+              "numerator": 5,
+              "denominator": 18,
+              "value": 0.2777777777777778
+            },
+            "jump_hit@10": {
+              "numerator": 5,
+              "denominator": 18,
+              "value": 0.2777777777777778
+            },
+            "overlap_mrr": {
+              "numerator": 16.333333333333332,
+              "denominator": 18,
+              "value": 0.9074074074074073
+            },
+            "best_tiou": {
+              "numerator": 3.7609393513198444,
+              "denominator": 18,
+              "value": 0.20894107507332468
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 17,
+              "mean": 30058.823529411766,
+              "min": 1000,
+              "max": 101000,
+              "p50": 20000,
+              "p95": 101000
+            },
+            "end_absolute_error_ms": {
+              "n": 17,
+              "mean": 33003.117647058825,
+              "min": 5021,
+              "max": 108434,
+              "p50": 16695,
+              "p95": 108434
+            },
+            "tiou": {
+              "n": 17,
+              "mean": 0.17223077358972314,
+              "min": 0.0,
+              "max": 0.35654545454545455,
+              "p50": 0.16666666666666666,
+              "p95": 0.35654545454545455
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 3,
+              "denominator": 3,
+              "value": 1.0
+            },
+            "top1_scores": {
+              "n": 3,
+              "mean": 0.04113452167741511,
+              "min": 0.03662057044079516,
+              "max": 0.0447650709945792,
+              "p50": 0.04201792359687097,
+              "p95": 0.0447650709945792
+            }
+          },
+          "latency_ms": {
+            "n": 21,
+            "mean": 169.7097619047619,
+            "min": 133.798,
+            "max": 590.239,
+            "p50": 149.817,
+            "p95": 164.558
+          }
+        }
+      }
+    }
+  },
+  "summary_after": {
+    "visual": {
+      "all": {
+        "query_count": 35,
+        "positive_count": 30,
+        "negative_count": 5,
+        "status_counts": {
+          "ok": 35
+        },
+        "positive_metrics": {
+          "video_recall@1": {
+            "numerator": 29,
+            "denominator": 30,
+            "value": 0.9666666666666667
+          },
+          "video_recall@5": {
+            "numerator": 29,
+            "denominator": 30,
+            "value": 0.9666666666666667
+          },
+          "video_recall@10": {
+            "numerator": 30,
+            "denominator": 30,
+            "value": 1.0
+          },
+          "overlap_recall@1": {
+            "numerator": 27,
+            "denominator": 30,
+            "value": 0.9
+          },
+          "overlap_recall@5": {
+            "numerator": 29,
+            "denominator": 30,
+            "value": 0.9666666666666667
+          },
+          "overlap_recall@10": {
+            "numerator": 30,
+            "denominator": 30,
+            "value": 1.0
+          },
+          "tiou_0.3_recall@1": {
+            "numerator": 10,
+            "denominator": 30,
+            "value": 0.3333333333333333
+          },
+          "tiou_0.3_recall@5": {
+            "numerator": 12,
+            "denominator": 30,
+            "value": 0.4
+          },
+          "tiou_0.3_recall@10": {
+            "numerator": 13,
+            "denominator": 30,
+            "value": 0.43333333333333335
+          },
+          "tiou_0.5_recall@1": {
+            "numerator": 6,
+            "denominator": 30,
+            "value": 0.2
+          },
+          "tiou_0.5_recall@5": {
+            "numerator": 7,
+            "denominator": 30,
+            "value": 0.23333333333333334
+          },
+          "tiou_0.5_recall@10": {
+            "numerator": 7,
+            "denominator": 30,
+            "value": 0.23333333333333334
+          },
+          "jump_hit@1": {
+            "numerator": 9,
+            "denominator": 30,
+            "value": 0.3
+          },
+          "jump_hit@5": {
+            "numerator": 10,
+            "denominator": 30,
+            "value": 0.3333333333333333
+          },
+          "jump_hit@10": {
+            "numerator": 11,
+            "denominator": 30,
+            "value": 0.36666666666666664
+          },
+          "overlap_mrr": {
+            "numerator": 28.0,
+            "denominator": 30,
+            "value": 0.9333333333333333
+          },
+          "best_tiou": {
+            "numerator": 9.288076053894168,
+            "denominator": 30,
+            "value": 0.30960253512980557
+          }
+        },
+        "top1_correct_video_localization": {
+          "start_absolute_error_ms": {
+            "n": 29,
+            "mean": 26706.896551724138,
+            "min": 1000,
+            "max": 101000,
+            "p50": 16000,
+            "p95": 91000
+          },
+          "end_absolute_error_ms": {
+            "n": 29,
+            "mean": 28280.689655172413,
+            "min": 0,
+            "max": 85195,
+            "p50": 18000,
+            "p95": 80000
+          },
+          "tiou": {
+            "n": 29,
+            "mean": 0.2715870439828945,
+            "min": 0.0,
+            "max": 0.9333333333333333,
+            "p50": 0.1850952380952381,
+            "p95": 0.5735
+          }
+        },
+        "negative": {
+          "failed_count": 0,
+          "nonempty_rate": {
+            "numerator": 5,
+            "denominator": 5,
+            "value": 1.0
+          },
+          "top1_scores": {
+            "n": 5,
+            "mean": 0.01639344262295082,
+            "min": 0.01639344262295082,
+            "max": 0.01639344262295082,
+            "p50": 0.01639344262295082,
+            "p95": 0.01639344262295082
+          }
+        },
+        "latency_ms": {
+          "n": 35,
+          "mean": 154.7991714285714,
+          "min": 122.827,
+          "max": 801.51,
+          "p50": 134.821,
+          "p95": 179.217
+        }
+      },
+      "by_category": {
+        "mixed": {
+          "query_count": 10,
+          "positive_count": 10,
+          "negative_count": 0,
+          "status_counts": {
+            "ok": 10
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "video_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "video_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 1,
+              "denominator": 10,
+              "value": 0.1
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 1,
+              "denominator": 10,
+              "value": 0.1
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 1,
+              "denominator": 10,
+              "value": 0.1
+            },
+            "jump_hit@1": {
+              "numerator": 4,
+              "denominator": 10,
+              "value": 0.4
+            },
+            "jump_hit@5": {
+              "numerator": 4,
+              "denominator": 10,
+              "value": 0.4
+            },
+            "jump_hit@10": {
+              "numerator": 4,
+              "denominator": 10,
+              "value": 0.4
+            },
+            "overlap_mrr": {
+              "numerator": 10.0,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "best_tiou": {
+              "numerator": 2.361993713522064,
+              "denominator": 10,
+              "value": 0.23619937135220642
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 10,
+              "mean": 33050.0,
+              "min": 1000,
+              "max": 101000,
+              "p50": 23000,
+              "p95": 101000
+            },
+            "end_absolute_error_ms": {
+              "n": 10,
+              "mean": 23340.7,
+              "min": 5021,
+              "max": 67872,
+              "p50": 8082,
+              "p95": 67872
+            },
+            "tiou": {
+              "n": 10,
+              "mean": 0.23619937135220642,
+              "min": 0.06497222222222222,
+              "max": 0.5699285714285715,
+              "p50": 0.12456666666666667,
+              "p95": 0.5699285714285715
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "top1_scores": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "latency_ms": {
+            "n": 10,
+            "mean": 137.4173,
+            "min": 132.094,
+            "max": 143.921,
+            "p50": 135.598,
+            "p95": 143.921
+          }
+        },
+        "negative": {
+          "query_count": 5,
+          "positive_count": 0,
+          "negative_count": 5,
+          "status_counts": {
+            "ok": 5
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "video_recall@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "video_recall@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "overlap_recall@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "overlap_recall@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "overlap_recall@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "jump_hit@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "jump_hit@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "jump_hit@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "overlap_mrr": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "best_tiou": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            },
+            "end_absolute_error_ms": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            },
+            "tiou": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 5,
+              "denominator": 5,
+              "value": 1.0
+            },
+            "top1_scores": {
+              "n": 5,
+              "mean": 0.01639344262295082,
+              "min": 0.01639344262295082,
+              "max": 0.01639344262295082,
+              "p50": 0.01639344262295082,
+              "p95": 0.01639344262295082
+            }
+          },
+          "latency_ms": {
+            "n": 5,
+            "mean": 131.25920000000002,
+            "min": 122.827,
+            "max": 156.04,
+            "p50": 126.407,
+            "p95": 156.04
+          }
+        },
+        "speech": {
+          "query_count": 10,
+          "positive_count": 10,
+          "negative_count": 0,
+          "status_counts": {
+            "ok": 10
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 9,
+              "denominator": 10,
+              "value": 0.9
+            },
+            "video_recall@5": {
+              "numerator": 9,
+              "denominator": 10,
+              "value": 0.9
+            },
+            "video_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 7,
+              "denominator": 10,
+              "value": 0.7
+            },
+            "overlap_recall@5": {
+              "numerator": 9,
+              "denominator": 10,
+              "value": 0.9
+            },
+            "overlap_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 1,
+              "denominator": 10,
+              "value": 0.1
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 4,
+              "denominator": 10,
+              "value": 0.4
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 1,
+              "denominator": 10,
+              "value": 0.1
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 2,
+              "denominator": 10,
+              "value": 0.2
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 2,
+              "denominator": 10,
+              "value": 0.2
+            },
+            "jump_hit@1": {
+              "numerator": 5,
+              "denominator": 10,
+              "value": 0.5
+            },
+            "jump_hit@5": {
+              "numerator": 6,
+              "denominator": 10,
+              "value": 0.6
+            },
+            "jump_hit@10": {
+              "numerator": 7,
+              "denominator": 10,
+              "value": 0.7
+            },
+            "overlap_mrr": {
+              "numerator": 8.0,
+              "denominator": 10,
+              "value": 0.8
+            },
+            "best_tiou": {
+              "numerator": 2.912722016485464,
+              "denominator": 10,
+              "value": 0.2912722016485464
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 9,
+              "mean": 22388.88888888889,
+              "min": 1000,
+              "max": 61000,
+              "p50": 1000,
+              "p95": 61000
+            },
+            "end_absolute_error_ms": {
+              "n": 9,
+              "mean": 42248.11111111111,
+              "min": 4971,
+              "max": 85195,
+              "p50": 39760,
+              "p95": 85195
+            },
+            "tiou": {
+              "n": 9,
+              "mean": 0.16674113756613756,
+              "min": 0.0,
+              "max": 0.5735,
+              "p50": 0.1174,
+              "p95": 0.5735
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "top1_scores": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "latency_ms": {
+            "n": 10,
+            "mean": 200.2317,
+            "min": 123.566,
+            "max": 801.51,
+            "p50": 133.798,
+            "p95": 801.51
+          }
+        },
+        "visual": {
+          "query_count": 10,
+          "positive_count": 10,
+          "negative_count": 0,
+          "status_counts": {
+            "ok": 10
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "video_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "video_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 6,
+              "denominator": 10,
+              "value": 0.6
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 6,
+              "denominator": 10,
+              "value": 0.6
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 6,
+              "denominator": 10,
+              "value": 0.6
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 4,
+              "denominator": 10,
+              "value": 0.4
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 4,
+              "denominator": 10,
+              "value": 0.4
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 4,
+              "denominator": 10,
+              "value": 0.4
+            },
+            "jump_hit@1": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "jump_hit@5": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "jump_hit@10": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "overlap_mrr": {
+              "numerator": 10.0,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "best_tiou": {
+              "numerator": 4.01336032388664,
+              "denominator": 10,
+              "value": 0.401336032388664
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 10,
+              "mean": 24250.0,
+              "min": 1000,
+              "max": 72000,
+              "p50": 15000,
+              "p95": 72000
+            },
+            "end_absolute_error_ms": {
+              "n": 10,
+              "mean": 20650.0,
+              "min": 0,
+              "max": 80000,
+              "p50": 500,
+              "p95": 80000
+            },
+            "tiou": {
+              "n": 10,
+              "mean": 0.401336032388664,
+              "min": 0.16666666666666666,
+              "max": 0.9333333333333333,
+              "p50": 0.42105263157894735,
+              "p95": 0.9333333333333333
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "top1_scores": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "latency_ms": {
+            "n": 10,
+            "mean": 138.5185,
+            "min": 128.025,
+            "max": 179.217,
+            "p50": 132.637,
+            "p95": 179.217
+          }
+        }
+      },
+      "by_language": {
+        "en": {
+          "query_count": 14,
+          "positive_count": 12,
+          "negative_count": 2,
+          "status_counts": {
+            "ok": 14
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 11,
+              "denominator": 12,
+              "value": 0.9166666666666666
+            },
+            "video_recall@5": {
+              "numerator": 11,
+              "denominator": 12,
+              "value": 0.9166666666666666
+            },
+            "video_recall@10": {
+              "numerator": 12,
+              "denominator": 12,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 11,
+              "denominator": 12,
+              "value": 0.9166666666666666
+            },
+            "overlap_recall@5": {
+              "numerator": 11,
+              "denominator": 12,
+              "value": 0.9166666666666666
+            },
+            "overlap_recall@10": {
+              "numerator": 12,
+              "denominator": 12,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 2,
+              "denominator": 12,
+              "value": 0.16666666666666666
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 2,
+              "denominator": 12,
+              "value": 0.16666666666666666
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 3,
+              "denominator": 12,
+              "value": 0.25
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 1,
+              "denominator": 12,
+              "value": 0.08333333333333333
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 1,
+              "denominator": 12,
+              "value": 0.08333333333333333
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 1,
+              "denominator": 12,
+              "value": 0.08333333333333333
+            },
+            "jump_hit@1": {
+              "numerator": 4,
+              "denominator": 12,
+              "value": 0.3333333333333333
+            },
+            "jump_hit@5": {
+              "numerator": 4,
+              "denominator": 12,
+              "value": 0.3333333333333333
+            },
+            "jump_hit@10": {
+              "numerator": 5,
+              "denominator": 12,
+              "value": 0.4166666666666667
+            },
+            "overlap_mrr": {
+              "numerator": 11.166666666666666,
+              "denominator": 12,
+              "value": 0.9305555555555555
+            },
+            "best_tiou": {
+              "numerator": 2.552978101141549,
+              "denominator": 12,
+              "value": 0.21274817509512908
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 11,
+              "mean": 32090.909090909092,
+              "min": 1000,
+              "max": 91000,
+              "p50": 18000,
+              "p95": 91000
+            },
+            "end_absolute_error_ms": {
+              "n": 11,
+              "mean": 32807.181818181816,
+              "min": 0,
+              "max": 72000,
+              "p50": 22026,
+              "p95": 72000
+            },
+            "tiou": {
+              "n": 11,
+              "mean": 0.19756473063973062,
+              "min": 0.06275,
+              "max": 0.5,
+              "p50": 0.16666666666666666,
+              "p95": 0.5
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 2,
+              "denominator": 2,
+              "value": 1.0
+            },
+            "top1_scores": {
+              "n": 2,
+              "mean": 0.01639344262295082,
+              "min": 0.01639344262295082,
+              "max": 0.01639344262295082,
+              "p50": 0.01639344262295082,
+              "p95": 0.01639344262295082
+            }
+          },
+          "latency_ms": {
+            "n": 14,
+            "mean": 135.8367142857143,
+            "min": 126.339,
+            "max": 156.04,
+            "p50": 134.133,
+            "p95": 156.04
+          }
+        },
+        "zh": {
+          "query_count": 21,
+          "positive_count": 18,
+          "negative_count": 3,
+          "status_counts": {
+            "ok": 21
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 18,
+              "denominator": 18,
+              "value": 1.0
+            },
+            "video_recall@5": {
+              "numerator": 18,
+              "denominator": 18,
+              "value": 1.0
+            },
+            "video_recall@10": {
+              "numerator": 18,
+              "denominator": 18,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 16,
+              "denominator": 18,
+              "value": 0.8888888888888888
+            },
+            "overlap_recall@5": {
+              "numerator": 18,
+              "denominator": 18,
+              "value": 1.0
+            },
+            "overlap_recall@10": {
+              "numerator": 18,
+              "denominator": 18,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 8,
+              "denominator": 18,
+              "value": 0.4444444444444444
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 10,
+              "denominator": 18,
+              "value": 0.5555555555555556
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 10,
+              "denominator": 18,
+              "value": 0.5555555555555556
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 5,
+              "denominator": 18,
+              "value": 0.2777777777777778
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 6,
+              "denominator": 18,
+              "value": 0.3333333333333333
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 6,
+              "denominator": 18,
+              "value": 0.3333333333333333
+            },
+            "jump_hit@1": {
+              "numerator": 5,
+              "denominator": 18,
+              "value": 0.2777777777777778
+            },
+            "jump_hit@5": {
+              "numerator": 6,
+              "denominator": 18,
+              "value": 0.3333333333333333
+            },
+            "jump_hit@10": {
+              "numerator": 6,
+              "denominator": 18,
+              "value": 0.3333333333333333
+            },
+            "overlap_mrr": {
+              "numerator": 16.833333333333332,
+              "denominator": 18,
+              "value": 0.9351851851851851
+            },
+            "best_tiou": {
+              "numerator": 6.735097952752619,
+              "denominator": 18,
+              "value": 0.3741721084862566
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 18,
+              "mean": 23416.666666666668,
+              "min": 1000,
+              "max": 101000,
+              "p50": 15000,
+              "p95": 101000
+            },
+            "end_absolute_error_ms": {
+              "n": 18,
+              "mean": 25514.5,
+              "min": 0,
+              "max": 85195,
+              "p50": 8082,
+              "p95": 85195
+            },
+            "tiou": {
+              "n": 18,
+              "mean": 0.3168229021370503,
+              "min": 0.0,
+              "max": 0.9333333333333333,
+              "p50": 0.19158762886597938,
+              "p95": 0.9333333333333333
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 3,
+              "denominator": 3,
+              "value": 1.0
+            },
+            "top1_scores": {
+              "n": 3,
+              "mean": 0.01639344262295082,
+              "min": 0.01639344262295082,
+              "max": 0.01639344262295082,
+              "p50": 0.01639344262295082,
+              "p95": 0.01639344262295082
+            }
+          },
+          "latency_ms": {
+            "n": 21,
+            "mean": 167.44080952380952,
+            "min": 122.827,
+            "max": 801.51,
+            "p50": 135.43,
+            "p95": 179.217
+          }
+        }
+      }
+    },
+    "speech": {
+      "all": {
+        "query_count": 35,
+        "positive_count": 30,
+        "negative_count": 5,
+        "status_counts": {
+          "ok": 35
+        },
+        "positive_metrics": {
+          "video_recall@1": {
+            "numerator": 28,
+            "denominator": 30,
+            "value": 0.9333333333333333
+          },
+          "video_recall@5": {
+            "numerator": 30,
+            "denominator": 30,
+            "value": 1.0
+          },
+          "video_recall@10": {
+            "numerator": 30,
+            "denominator": 30,
+            "value": 1.0
+          },
+          "overlap_recall@1": {
+            "numerator": 26,
+            "denominator": 30,
+            "value": 0.8666666666666667
+          },
+          "overlap_recall@5": {
+            "numerator": 29,
+            "denominator": 30,
+            "value": 0.9666666666666667
+          },
+          "overlap_recall@10": {
+            "numerator": 30,
+            "denominator": 30,
+            "value": 1.0
+          },
+          "tiou_0.3_recall@1": {
+            "numerator": 14,
+            "denominator": 30,
+            "value": 0.4666666666666667
+          },
+          "tiou_0.3_recall@5": {
+            "numerator": 16,
+            "denominator": 30,
+            "value": 0.5333333333333333
+          },
+          "tiou_0.3_recall@10": {
+            "numerator": 17,
+            "denominator": 30,
+            "value": 0.5666666666666667
+          },
+          "tiou_0.5_recall@1": {
+            "numerator": 5,
+            "denominator": 30,
+            "value": 0.16666666666666666
+          },
+          "tiou_0.5_recall@5": {
+            "numerator": 6,
+            "denominator": 30,
+            "value": 0.2
+          },
+          "tiou_0.5_recall@10": {
+            "numerator": 7,
+            "denominator": 30,
+            "value": 0.23333333333333334
+          },
+          "jump_hit@1": {
+            "numerator": 8,
+            "denominator": 30,
+            "value": 0.26666666666666666
+          },
+          "jump_hit@5": {
+            "numerator": 8,
+            "denominator": 30,
+            "value": 0.26666666666666666
+          },
+          "jump_hit@10": {
+            "numerator": 8,
+            "denominator": 30,
+            "value": 0.26666666666666666
+          },
+          "overlap_mrr": {
+            "numerator": 27.666666666666668,
+            "denominator": 30,
+            "value": 0.9222222222222223
+          },
+          "best_tiou": {
+            "numerator": 10.507683304832822,
+            "denominator": 30,
+            "value": 0.3502561101610941
+          }
+        },
+        "top1_correct_video_localization": {
+          "start_absolute_error_ms": {
+            "n": 28,
+            "mean": 21892.85714285714,
+            "min": 0,
+            "max": 91000,
+            "p50": 15000,
+            "p95": 72000
+          },
+          "end_absolute_error_ms": {
+            "n": 28,
+            "mean": 21876.321428571428,
+            "min": 240,
+            "max": 99189,
+            "p50": 15000,
+            "p95": 64000
+          },
+          "tiou": {
+            "n": 28,
+            "mean": 0.304355488400114,
+            "min": 0.0,
+            "max": 0.84528,
+            "p50": 0.21863529411764707,
+            "p95": 0.845
+          }
+        },
+        "negative": {
+          "failed_count": 0,
+          "nonempty_rate": {
+            "numerator": 5,
+            "denominator": 5,
+            "value": 1.0
+          },
+          "top1_scores": {
+            "n": 5,
+            "mean": 0.01639344262295082,
+            "min": 0.01639344262295082,
+            "max": 0.01639344262295082,
+            "p50": 0.01639344262295082,
+            "p95": 0.01639344262295082
+          }
+        },
+        "latency_ms": {
+          "n": 35,
+          "mean": 133.0064857142857,
+          "min": 117.565,
+          "max": 148.469,
+          "p50": 133.571,
+          "p95": 141.735
+        }
+      },
+      "by_category": {
+        "mixed": {
+          "query_count": 10,
+          "positive_count": 10,
+          "negative_count": 0,
+          "status_counts": {
+            "ok": 10
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "video_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "video_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 6,
+              "denominator": 10,
+              "value": 0.6
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 6,
+              "denominator": 10,
+              "value": 0.6
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 6,
+              "denominator": 10,
+              "value": 0.6
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 2,
+              "denominator": 10,
+              "value": 0.2
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 2,
+              "denominator": 10,
+              "value": 0.2
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 2,
+              "denominator": 10,
+              "value": 0.2
+            },
+            "jump_hit@1": {
+              "numerator": 5,
+              "denominator": 10,
+              "value": 0.5
+            },
+            "jump_hit@5": {
+              "numerator": 5,
+              "denominator": 10,
+              "value": 0.5
+            },
+            "jump_hit@10": {
+              "numerator": 5,
+              "denominator": 10,
+              "value": 0.5
+            },
+            "overlap_mrr": {
+              "numerator": 10.0,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "best_tiou": {
+              "numerator": 3.2944278315801845,
+              "denominator": 10,
+              "value": 0.32944278315801845
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 10,
+              "mean": 24350.0,
+              "min": 1000,
+              "max": 91000,
+              "p50": 18000,
+              "p95": 91000
+            },
+            "end_absolute_error_ms": {
+              "n": 10,
+              "mean": 10690.7,
+              "min": 240,
+              "max": 38483,
+              "p50": 3082,
+              "p95": 38483
+            },
+            "tiou": {
+              "n": 10,
+              "mean": 0.32944278315801845,
+              "min": 0.07423,
+              "max": 0.845,
+              "p50": 0.30688461538461537,
+              "p95": 0.845
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "top1_scores": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "latency_ms": {
+            "n": 10,
+            "mean": 134.751,
+            "min": 130.401,
+            "max": 138.616,
+            "p50": 135.242,
+            "p95": 138.616
+          }
+        },
+        "negative": {
+          "query_count": 5,
+          "positive_count": 0,
+          "negative_count": 5,
+          "status_counts": {
+            "ok": 5
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "video_recall@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "video_recall@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "overlap_recall@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "overlap_recall@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "overlap_recall@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "jump_hit@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "jump_hit@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "jump_hit@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "overlap_mrr": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "best_tiou": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            },
+            "end_absolute_error_ms": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            },
+            "tiou": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 5,
+              "denominator": 5,
+              "value": 1.0
+            },
+            "top1_scores": {
+              "n": 5,
+              "mean": 0.01639344262295082,
+              "min": 0.01639344262295082,
+              "max": 0.01639344262295082,
+              "p50": 0.01639344262295082,
+              "p95": 0.01639344262295082
+            }
+          },
+          "latency_ms": {
+            "n": 5,
+            "mean": 124.06559999999999,
+            "min": 117.565,
+            "max": 127.411,
+            "p50": 125.114,
+            "p95": 127.411
+          }
+        },
+        "speech": {
+          "query_count": 10,
+          "positive_count": 10,
+          "negative_count": 0,
+          "status_counts": {
+            "ok": 10
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "video_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "video_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 9,
+              "denominator": 10,
+              "value": 0.9
+            },
+            "overlap_recall@5": {
+              "numerator": 9,
+              "denominator": 10,
+              "value": 0.9
+            },
+            "overlap_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 5,
+              "denominator": 10,
+              "value": 0.5
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 5,
+              "denominator": 10,
+              "value": 0.5
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 6,
+              "denominator": 10,
+              "value": 0.6
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 2,
+              "denominator": 10,
+              "value": 0.2
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 2,
+              "denominator": 10,
+              "value": 0.2
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "jump_hit@1": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "jump_hit@5": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "jump_hit@10": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "overlap_mrr": {
+              "numerator": 9.166666666666666,
+              "denominator": 10,
+              "value": 0.9166666666666666
+            },
+            "best_tiou": {
+              "numerator": 3.7511225392254803,
+              "denominator": 10,
+              "value": 0.37511225392254804
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 10,
+              "mean": 15200.0,
+              "min": 0,
+              "max": 55000,
+              "p50": 4000,
+              "p95": 55000
+            },
+            "end_absolute_error_ms": {
+              "n": 10,
+              "mean": 28363.0,
+              "min": 934,
+              "max": 99189,
+              "p50": 16695,
+              "p95": 99189
+            },
+            "tiou": {
+              "n": 10,
+              "mean": 0.30200225392254804,
+              "min": 0.0,
+              "max": 0.84528,
+              "p50": 0.1652,
+              "p95": 0.84528
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "top1_scores": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "latency_ms": {
+            "n": 10,
+            "mean": 132.8252,
+            "min": 122.476,
+            "max": 140.968,
+            "p50": 131.178,
+            "p95": 140.968
+          }
+        },
+        "visual": {
+          "query_count": 10,
+          "positive_count": 10,
+          "negative_count": 0,
+          "status_counts": {
+            "ok": 10
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 8,
+              "denominator": 10,
+              "value": 0.8
+            },
+            "video_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "video_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 7,
+              "denominator": 10,
+              "value": 0.7
+            },
+            "overlap_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 5,
+              "denominator": 10,
+              "value": 0.5
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 5,
+              "denominator": 10,
+              "value": 0.5
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 1,
+              "denominator": 10,
+              "value": 0.1
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 2,
+              "denominator": 10,
+              "value": 0.2
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 2,
+              "denominator": 10,
+              "value": 0.2
+            },
+            "jump_hit@1": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "jump_hit@5": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "jump_hit@10": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "overlap_mrr": {
+              "numerator": 8.5,
+              "denominator": 10,
+              "value": 0.85
+            },
+            "best_tiou": {
+              "numerator": 3.4621329340271574,
+              "denominator": 10,
+              "value": 0.3462132934027157
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 8,
+              "mean": 27187.5,
+              "min": 0,
+              "max": 72000,
+              "p50": 15000,
+              "p95": 72000
+            },
+            "end_absolute_error_ms": {
+              "n": 8,
+              "mean": 27750.0,
+              "min": 5000,
+              "max": 64000,
+              "p50": 15000,
+              "p95": 64000
+            },
+            "tiou": {
+              "n": 8,
+              "mean": 0.275937913049691,
+              "min": 0.0,
+              "max": 0.5714285714285714,
+              "p50": 0.18,
+              "p95": 0.5714285714285714
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "top1_scores": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "latency_ms": {
+            "n": 10,
+            "mean": 135.9137,
+            "min": 127.243,
+            "max": 148.469,
+            "p50": 133.748,
+            "p95": 148.469
+          }
+        }
+      },
+      "by_language": {
+        "en": {
+          "query_count": 14,
+          "positive_count": 12,
+          "negative_count": 2,
+          "status_counts": {
+            "ok": 14
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 12,
+              "denominator": 12,
+              "value": 1.0
+            },
+            "video_recall@5": {
+              "numerator": 12,
+              "denominator": 12,
+              "value": 1.0
+            },
+            "video_recall@10": {
+              "numerator": 12,
+              "denominator": 12,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 11,
+              "denominator": 12,
+              "value": 0.9166666666666666
+            },
+            "overlap_recall@5": {
+              "numerator": 11,
+              "denominator": 12,
+              "value": 0.9166666666666666
+            },
+            "overlap_recall@10": {
+              "numerator": 12,
+              "denominator": 12,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 2,
+              "denominator": 12,
+              "value": 0.16666666666666666
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 2,
+              "denominator": 12,
+              "value": 0.16666666666666666
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 3,
+              "denominator": 12,
+              "value": 0.25
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 1,
+              "denominator": 12,
+              "value": 0.08333333333333333
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 1,
+              "denominator": 12,
+              "value": 0.08333333333333333
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 2,
+              "denominator": 12,
+              "value": 0.16666666666666666
+            },
+            "jump_hit@1": {
+              "numerator": 3,
+              "denominator": 12,
+              "value": 0.25
+            },
+            "jump_hit@5": {
+              "numerator": 3,
+              "denominator": 12,
+              "value": 0.25
+            },
+            "jump_hit@10": {
+              "numerator": 3,
+              "denominator": 12,
+              "value": 0.25
+            },
+            "overlap_mrr": {
+              "numerator": 11.166666666666666,
+              "denominator": 12,
+              "value": 0.9305555555555555
+            },
+            "best_tiou": {
+              "numerator": 2.822371131194387,
+              "denominator": 12,
+              "value": 0.2351975942661989
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 12,
+              "mean": 33916.666666666664,
+              "min": 1000,
+              "max": 91000,
+              "p50": 21000,
+              "p95": 91000
+            },
+            "end_absolute_error_ms": {
+              "n": 12,
+              "mean": 34441.333333333336,
+              "min": 1209,
+              "max": 99189,
+              "p50": 31526,
+              "p95": 99189
+            },
+            "tiou": {
+              "n": 12,
+              "mean": 0.1742725942661989,
+              "min": 0.0,
+              "max": 0.6854,
+              "p50": 0.09962857142857143,
+              "p95": 0.6854
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 2,
+              "denominator": 2,
+              "value": 1.0
+            },
+            "top1_scores": {
+              "n": 2,
+              "mean": 0.01639344262295082,
+              "min": 0.01639344262295082,
+              "max": 0.01639344262295082,
+              "p50": 0.01639344262295082,
+              "p95": 0.01639344262295082
+            }
+          },
+          "latency_ms": {
+            "n": 14,
+            "mean": 133.54785714285714,
+            "min": 124.723,
+            "max": 148.469,
+            "p50": 133.04,
+            "p95": 148.469
+          }
+        },
+        "zh": {
+          "query_count": 21,
+          "positive_count": 18,
+          "negative_count": 3,
+          "status_counts": {
+            "ok": 21
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 16,
+              "denominator": 18,
+              "value": 0.8888888888888888
+            },
+            "video_recall@5": {
+              "numerator": 18,
+              "denominator": 18,
+              "value": 1.0
+            },
+            "video_recall@10": {
+              "numerator": 18,
+              "denominator": 18,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 15,
+              "denominator": 18,
+              "value": 0.8333333333333334
+            },
+            "overlap_recall@5": {
+              "numerator": 18,
+              "denominator": 18,
+              "value": 1.0
+            },
+            "overlap_recall@10": {
+              "numerator": 18,
+              "denominator": 18,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 12,
+              "denominator": 18,
+              "value": 0.6666666666666666
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 14,
+              "denominator": 18,
+              "value": 0.7777777777777778
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 14,
+              "denominator": 18,
+              "value": 0.7777777777777778
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 4,
+              "denominator": 18,
+              "value": 0.2222222222222222
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 5,
+              "denominator": 18,
+              "value": 0.2777777777777778
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 5,
+              "denominator": 18,
+              "value": 0.2777777777777778
+            },
+            "jump_hit@1": {
+              "numerator": 5,
+              "denominator": 18,
+              "value": 0.2777777777777778
+            },
+            "jump_hit@5": {
+              "numerator": 5,
+              "denominator": 18,
+              "value": 0.2777777777777778
+            },
+            "jump_hit@10": {
+              "numerator": 5,
+              "denominator": 18,
+              "value": 0.2777777777777778
+            },
+            "overlap_mrr": {
+              "numerator": 16.5,
+              "denominator": 18,
+              "value": 0.9166666666666666
+            },
+            "best_tiou": {
+              "numerator": 7.685312173638436,
+              "denominator": 18,
+              "value": 0.42696178742435753
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 16,
+              "mean": 12875.0,
+              "min": 0,
+              "max": 60000,
+              "p50": 4000,
+              "p95": 60000
+            },
+            "end_absolute_error_ms": {
+              "n": 16,
+              "mean": 12452.5625,
+              "min": 240,
+              "max": 55000,
+              "p50": 5000,
+              "p95": 55000
+            },
+            "tiou": {
+              "n": 16,
+              "mean": 0.4019176590005504,
+              "min": 0.0,
+              "max": 0.84528,
+              "p50": 0.3424,
+              "p95": 0.84528
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 3,
+              "denominator": 3,
+              "value": 1.0
+            },
+            "top1_scores": {
+              "n": 3,
+              "mean": 0.01639344262295082,
+              "min": 0.01639344262295082,
+              "max": 0.01639344262295082,
+              "p50": 0.01639344262295082,
+              "p95": 0.01639344262295082
+            }
+          },
+          "latency_ms": {
+            "n": 21,
+            "mean": 132.64557142857143,
+            "min": 117.565,
+            "max": 141.735,
+            "p50": 133.748,
+            "p95": 140.968
+          }
+        }
+      }
+    },
+    "fused": {
+      "all": {
+        "query_count": 35,
+        "positive_count": 30,
+        "negative_count": 5,
+        "status_counts": {
+          "ok": 35
+        },
+        "positive_metrics": {
+          "video_recall@1": {
+            "numerator": 26,
+            "denominator": 30,
+            "value": 0.8666666666666667
+          },
+          "video_recall@5": {
+            "numerator": 30,
+            "denominator": 30,
+            "value": 1.0
+          },
+          "video_recall@10": {
+            "numerator": 30,
+            "denominator": 30,
+            "value": 1.0
+          },
+          "overlap_recall@1": {
+            "numerator": 24,
+            "denominator": 30,
+            "value": 0.8
+          },
+          "overlap_recall@5": {
+            "numerator": 30,
+            "denominator": 30,
+            "value": 1.0
+          },
+          "overlap_recall@10": {
+            "numerator": 30,
+            "denominator": 30,
+            "value": 1.0
+          },
+          "tiou_0.3_recall@1": {
+            "numerator": 4,
+            "denominator": 30,
+            "value": 0.13333333333333333
+          },
+          "tiou_0.3_recall@5": {
+            "numerator": 5,
+            "denominator": 30,
+            "value": 0.16666666666666666
+          },
+          "tiou_0.3_recall@10": {
+            "numerator": 5,
+            "denominator": 30,
+            "value": 0.16666666666666666
+          },
+          "tiou_0.5_recall@1": {
+            "numerator": 0,
+            "denominator": 30,
+            "value": 0.0
+          },
+          "tiou_0.5_recall@5": {
+            "numerator": 0,
+            "denominator": 30,
+            "value": 0.0
+          },
+          "tiou_0.5_recall@10": {
+            "numerator": 0,
+            "denominator": 30,
+            "value": 0.0
+          },
+          "jump_hit@1": {
+            "numerator": 5,
+            "denominator": 30,
+            "value": 0.16666666666666666
+          },
+          "jump_hit@5": {
+            "numerator": 8,
+            "denominator": 30,
+            "value": 0.26666666666666666
+          },
+          "jump_hit@10": {
+            "numerator": 8,
+            "denominator": 30,
+            "value": 0.26666666666666666
+          },
+          "overlap_mrr": {
+            "numerator": 26.833333333333332,
+            "denominator": 30,
+            "value": 0.8944444444444444
+          },
+          "best_tiou": {
+            "numerator": 5.374532574164538,
+            "denominator": 30,
+            "value": 0.17915108580548458
+          }
+        },
+        "top1_correct_video_localization": {
+          "start_absolute_error_ms": {
+            "n": 26,
+            "mean": 29846.153846153848,
+            "min": 1000,
+            "max": 101000,
+            "p50": 20000,
+            "p95": 80000
+          },
+          "end_absolute_error_ms": {
+            "n": 26,
+            "mean": 39321.346153846156,
+            "min": 5021,
+            "max": 108434,
+            "p50": 32026,
+            "p95": 99689
+          },
+          "tiou": {
+            "n": 26,
+            "mean": 0.16200289879149932,
+            "min": 0.0,
+            "max": 0.45693333333333336,
+            "p50": 0.1521391304347826,
+            "p95": 0.35654545454545455
+          }
+        },
+        "negative": {
+          "failed_count": 0,
+          "nonempty_rate": {
+            "numerator": 5,
+            "denominator": 5,
+            "value": 1.0
+          },
+          "top1_scores": {
+            "n": 5,
+            "mean": 0.04215216731403337,
+            "min": 0.03662057044079516,
+            "max": 0.04507165184914545,
+            "p50": 0.042285619688776074,
+            "p95": 0.04507165184914545
+          }
+        },
+        "latency_ms": {
+          "n": 35,
+          "mean": 171.56688571428572,
+          "min": 134.085,
+          "max": 713.667,
+          "p50": 148.826,
+          "p95": 369.033
+        }
+      },
+      "by_category": {
+        "mixed": {
+          "query_count": 10,
+          "positive_count": 10,
+          "negative_count": 0,
+          "status_counts": {
+            "ok": 10
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 8,
+              "denominator": 10,
+              "value": 0.8
+            },
+            "video_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "video_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 7,
+              "denominator": 10,
+              "value": 0.7
+            },
+            "overlap_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 1,
+              "denominator": 10,
+              "value": 0.1
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 1,
+              "denominator": 10,
+              "value": 0.1
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 1,
+              "denominator": 10,
+              "value": 0.1
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "jump_hit@1": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "jump_hit@5": {
+              "numerator": 5,
+              "denominator": 10,
+              "value": 0.5
+            },
+            "jump_hit@10": {
+              "numerator": 5,
+              "denominator": 10,
+              "value": 0.5
+            },
+            "overlap_mrr": {
+              "numerator": 8.333333333333334,
+              "denominator": 10,
+              "value": 0.8333333333333334
+            },
+            "best_tiou": {
+              "numerator": 1.7380719973960002,
+              "denominator": 10,
+              "value": 0.17380719973960002
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 8,
+              "mean": 35875.0,
+              "min": 1000,
+              "max": 101000,
+              "p50": 31000,
+              "p95": 101000
+            },
+            "end_absolute_error_ms": {
+              "n": 8,
+              "mean": 29392.75,
+              "min": 5021,
+              "max": 67872,
+              "p50": 15752,
+              "p95": 67872
+            },
+            "tiou": {
+              "n": 8,
+              "mean": 0.154540539452496,
+              "min": 0.0,
+              "max": 0.45693333333333336,
+              "p50": 0.09098333333333333,
+              "p95": 0.45693333333333336
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "top1_scores": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "latency_ms": {
+            "n": 10,
+            "mean": 152.6002,
+            "min": 141.031,
+            "max": 173.936,
+            "p50": 150.567,
+            "p95": 173.936
+          }
+        },
+        "negative": {
+          "query_count": 5,
+          "positive_count": 0,
+          "negative_count": 5,
+          "status_counts": {
+            "ok": 5
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "video_recall@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "video_recall@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "overlap_recall@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "overlap_recall@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "overlap_recall@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "jump_hit@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "jump_hit@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "jump_hit@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "overlap_mrr": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "best_tiou": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            },
+            "end_absolute_error_ms": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            },
+            "tiou": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 5,
+              "denominator": 5,
+              "value": 1.0
+            },
+            "top1_scores": {
+              "n": 5,
+              "mean": 0.04215216731403337,
+              "min": 0.03662057044079516,
+              "max": 0.04507165184914545,
+              "p50": 0.042285619688776074,
+              "p95": 0.04507165184914545
+            }
+          },
+          "latency_ms": {
+            "n": 5,
+            "mean": 141.8388,
+            "min": 135.126,
+            "max": 148.826,
+            "p50": 140.598,
+            "p95": 148.826
+          }
+        },
+        "speech": {
+          "query_count": 10,
+          "positive_count": 10,
+          "negative_count": 0,
+          "status_counts": {
+            "ok": 10
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 9,
+              "denominator": 10,
+              "value": 0.9
+            },
+            "video_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "video_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 9,
+              "denominator": 10,
+              "value": 0.9
+            },
+            "overlap_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 1,
+              "denominator": 10,
+              "value": 0.1
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 1,
+              "denominator": 10,
+              "value": 0.1
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 1,
+              "denominator": 10,
+              "value": 0.1
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "jump_hit@1": {
+              "numerator": 2,
+              "denominator": 10,
+              "value": 0.2
+            },
+            "jump_hit@5": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "jump_hit@10": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "overlap_mrr": {
+              "numerator": 9.5,
+              "denominator": 10,
+              "value": 0.95
+            },
+            "best_tiou": {
+              "numerator": 1.3340654210168916,
+              "denominator": 10,
+              "value": 0.13340654210168917
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 9,
+              "mean": 19333.333333333332,
+              "min": 1000,
+              "max": 61000,
+              "p50": 4000,
+              "p95": 61000
+            },
+            "end_absolute_error_ms": {
+              "n": 9,
+              "mean": 51634.77777777778,
+              "min": 16695,
+              "max": 108434,
+              "p50": 43226,
+              "p95": 108434
+            },
+            "tiou": {
+              "n": 9,
+              "mean": 0.13778028487489272,
+              "min": 0.06275,
+              "max": 0.35654545454545455,
+              "p50": 0.08805,
+              "p95": 0.35654545454545455
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "top1_scores": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "latency_ms": {
+            "n": 10,
+            "mean": 201.131,
+            "min": 134.085,
+            "max": 713.667,
+            "p50": 139.534,
+            "p95": 713.667
+          }
+        },
+        "visual": {
+          "query_count": 10,
+          "positive_count": 10,
+          "negative_count": 0,
+          "status_counts": {
+            "ok": 10
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 9,
+              "denominator": 10,
+              "value": 0.9
+            },
+            "video_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "video_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 8,
+              "denominator": 10,
+              "value": 0.8
+            },
+            "overlap_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 2,
+              "denominator": 10,
+              "value": 0.2
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "jump_hit@1": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "jump_hit@5": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "jump_hit@10": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "overlap_mrr": {
+              "numerator": 9.0,
+              "denominator": 10,
+              "value": 0.9
+            },
+            "best_tiou": {
+              "numerator": 2.302395155751646,
+              "denominator": 10,
+              "value": 0.2302395155751646
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 9,
+              "mean": 35000.0,
+              "min": 14000,
+              "max": 80000,
+              "p50": 20000,
+              "p95": 80000
+            },
+            "end_absolute_error_ms": {
+              "n": 9,
+              "mean": 35833.333333333336,
+              "min": 10000,
+              "max": 80000,
+              "p50": 20000,
+              "p95": 80000
+            },
+            "tiou": {
+              "n": 9,
+              "mean": 0.19285872100944215,
+              "min": 0.0,
+              "max": 0.34146341463414637,
+              "p50": 0.16666666666666666,
+              "p95": 0.34146341463414637
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "top1_scores": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "latency_ms": {
+            "n": 10,
+            "mean": 175.83350000000002,
+            "min": 139.313,
+            "max": 369.033,
+            "p50": 153.709,
+            "p95": 369.033
+          }
+        }
+      },
+      "by_language": {
+        "en": {
+          "query_count": 14,
+          "positive_count": 12,
+          "negative_count": 2,
+          "status_counts": {
+            "ok": 14
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 9,
+              "denominator": 12,
+              "value": 0.75
+            },
+            "video_recall@5": {
+              "numerator": 12,
+              "denominator": 12,
+              "value": 1.0
+            },
+            "video_recall@10": {
+              "numerator": 12,
+              "denominator": 12,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 9,
+              "denominator": 12,
+              "value": 0.75
+            },
+            "overlap_recall@5": {
+              "numerator": 12,
+              "denominator": 12,
+              "value": 1.0
+            },
+            "overlap_recall@10": {
+              "numerator": 12,
+              "denominator": 12,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 1,
+              "denominator": 12,
+              "value": 0.08333333333333333
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 1,
+              "denominator": 12,
+              "value": 0.08333333333333333
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 1,
+              "denominator": 12,
+              "value": 0.08333333333333333
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 0,
+              "denominator": 12,
+              "value": 0.0
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 0,
+              "denominator": 12,
+              "value": 0.0
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 0,
+              "denominator": 12,
+              "value": 0.0
+            },
+            "jump_hit@1": {
+              "numerator": 1,
+              "denominator": 12,
+              "value": 0.08333333333333333
+            },
+            "jump_hit@5": {
+              "numerator": 3,
+              "denominator": 12,
+              "value": 0.25
+            },
+            "jump_hit@10": {
+              "numerator": 3,
+              "denominator": 12,
+              "value": 0.25
+            },
+            "overlap_mrr": {
+              "numerator": 10.5,
+              "denominator": 12,
+              "value": 0.875
+            },
+            "best_tiou": {
+              "numerator": 1.6135932228446934,
+              "denominator": 12,
+              "value": 0.13446610190372446
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 9,
+              "mean": 29444.444444444445,
+              "min": 1000,
+              "max": 61000,
+              "p50": 31000,
+              "p95": 61000
+            },
+            "end_absolute_error_ms": {
+              "n": 9,
+              "mean": 51255.77777777778,
+              "min": 7146,
+              "max": 99689,
+              "p50": 48709,
+              "p95": 99689
+            },
+            "tiou": {
+              "n": 9,
+              "mean": 0.14268357972818757,
+              "min": 0.06275,
+              "max": 0.45693333333333336,
+              "p50": 0.08304444444444445,
+              "p95": 0.45693333333333336
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 2,
+              "denominator": 2,
+              "value": 1.0
+            },
+            "top1_scores": {
+              "n": 2,
+              "mean": 0.043678635768960763,
+              "min": 0.042285619688776074,
+              "max": 0.04507165184914545,
+              "p50": 0.042285619688776074,
+              "p95": 0.04507165184914545
+            }
+          },
+          "latency_ms": {
+            "n": 14,
+            "mean": 161.27514285714284,
+            "min": 134.085,
+            "max": 369.033,
+            "p50": 142.121,
+            "p95": 369.033
+          }
+        },
+        "zh": {
+          "query_count": 21,
+          "positive_count": 18,
+          "negative_count": 3,
+          "status_counts": {
+            "ok": 21
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 17,
+              "denominator": 18,
+              "value": 0.9444444444444444
+            },
+            "video_recall@5": {
+              "numerator": 18,
+              "denominator": 18,
+              "value": 1.0
+            },
+            "video_recall@10": {
+              "numerator": 18,
+              "denominator": 18,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 15,
+              "denominator": 18,
+              "value": 0.8333333333333334
+            },
+            "overlap_recall@5": {
+              "numerator": 18,
+              "denominator": 18,
+              "value": 1.0
+            },
+            "overlap_recall@10": {
+              "numerator": 18,
+              "denominator": 18,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 3,
+              "denominator": 18,
+              "value": 0.16666666666666666
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 4,
+              "denominator": 18,
+              "value": 0.2222222222222222
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 4,
+              "denominator": 18,
+              "value": 0.2222222222222222
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 0,
+              "denominator": 18,
+              "value": 0.0
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 0,
+              "denominator": 18,
+              "value": 0.0
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 0,
+              "denominator": 18,
+              "value": 0.0
+            },
+            "jump_hit@1": {
+              "numerator": 4,
+              "denominator": 18,
+              "value": 0.2222222222222222
+            },
+            "jump_hit@5": {
+              "numerator": 5,
+              "denominator": 18,
+              "value": 0.2777777777777778
+            },
+            "jump_hit@10": {
+              "numerator": 5,
+              "denominator": 18,
+              "value": 0.2777777777777778
+            },
+            "overlap_mrr": {
+              "numerator": 16.333333333333332,
+              "denominator": 18,
+              "value": 0.9074074074074073
+            },
+            "best_tiou": {
+              "numerator": 3.7609393513198444,
+              "denominator": 18,
+              "value": 0.20894107507332468
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 17,
+              "mean": 30058.823529411766,
+              "min": 1000,
+              "max": 101000,
+              "p50": 20000,
+              "p95": 101000
+            },
+            "end_absolute_error_ms": {
+              "n": 17,
+              "mean": 33003.117647058825,
+              "min": 5021,
+              "max": 108434,
+              "p50": 16695,
+              "p95": 108434
+            },
+            "tiou": {
+              "n": 17,
+              "mean": 0.17223077358972314,
+              "min": 0.0,
+              "max": 0.35654545454545455,
+              "p50": 0.16666666666666666,
+              "p95": 0.35654545454545455
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 3,
+              "denominator": 3,
+              "value": 1.0
+            },
+            "top1_scores": {
+              "n": 3,
+              "mean": 0.04113452167741511,
+              "min": 0.03662057044079516,
+              "max": 0.0447650709945792,
+              "p50": 0.04201792359687097,
+              "p95": 0.0447650709945792
+            }
+          },
+          "latency_ms": {
+            "n": 21,
+            "mean": 178.42804761904762,
+            "min": 135.126,
+            "max": 713.667,
+            "p50": 150.755,
+            "p95": 173.936
+          }
+        }
+      }
+    }
+  },
+  "limitations": [
+    "Labels are synthetic script/timeline derived and have not been independently human reviewed.",
+    "Fused uses active channels including audio; this corpus has no independent sound-channel gold labels.",
+    "Negative nonempty rates describe returned candidates, not calibrated refusal quality. RRF scores are not probabilities.",
+    "Fake model runs establish process behavior only, not real-model retrieval quality."
+  ]
+}
