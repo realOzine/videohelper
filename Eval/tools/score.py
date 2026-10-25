@@ -27,6 +27,7 @@ SCORING = {
     "localization": "rank-1 only when correct media; target maximizing tIoU, then minimum boundary error",
     "best_tiou": "maximum across all returned same-media moments, failures and misses zero",
     "negative_denominator": "valid responses only; failures separately counted, never empty successes",
+    "percentiles": "nearest rank: sorted values[ceil(p*n)-1]",
 }
 LIMITATIONS = [
     "Labels are synthetic script/timeline derived and have not been independently human reviewed.",
@@ -53,8 +54,11 @@ def _ratio(numerator, denominator):
 
 
 def _stats(values):
+    ordered = sorted(values)
     return {"n": len(values), "mean": sum(values) / len(values) if values else None,
-            "min": min(values) if values else None, "max": max(values) if values else None}
+            "min": min(values) if values else None, "max": max(values) if values else None,
+            "p50": ordered[math.ceil(0.5 * len(values)) - 1] if values else None,
+            "p95": ordered[math.ceil(0.95 * len(values)) - 1] if values else None}
 
 
 def _validate_queries(queries):
@@ -98,9 +102,13 @@ def _response_issues(response):
         if not isinstance(moment, dict):
             issues.append(f"moment {index}: expected object")
             continue
+        video_id = moment.get("video_id")
+        valid_video_id = ((type(video_id) is int and video_id > 0)
+                          or (isinstance(video_id, str) and video_id.isascii()
+                              and video_id.isdecimal() and int(video_id) > 0))
         if (not isinstance(moment.get("media_id"), str) or not moment["media_id"]
-                or not isinstance(moment.get("video_id"), str) or not moment["video_id"]):
-            issues.append(f"moment {index}: media_id and video_id required")
+                or not valid_video_id):
+            issues.append(f"moment {index}: media_id and positive video_id required")
         if (not _interval(moment.get("start_ms"), moment.get("end_ms"))
                 or type(moment.get("jump_ms")) is not int
                 or not moment.get("start_ms", 0) <= moment.get("jump_ms", -1) < moment.get("end_ms", 0)):
@@ -181,6 +189,9 @@ def evaluate(queries, results, metadata):
             raise ValueError(f"metadata requires {key}")
     # Also reject NaN/Infinity anywhere in metadata before writing JSON artifacts.
     json.dumps(metadata, allow_nan=False)
+    languages = metadata.get("languages", {})
+    if not isinstance(languages, dict) or any(not isinstance(value, str) or not value for value in languages.values()):
+        raise ValueError("metadata languages must map query IDs to nonempty language strings")
     query_ids = {query["id"] for query in queries}
     indexed = defaultdict(list)
     for response in results:
@@ -201,6 +212,7 @@ def evaluate(queries, results, metadata):
             moments = (response.get("moments") or []) if not issues else []
             metrics, localization = _positive_metrics(query["targets"], moments)
             rows.append({"query_id": query["id"], "mode": mode, "category": query["category"],
+                         "language": languages.get(query["id"], "unknown"),
                          "answerable": query["answerable"], "status": "failed" if issues else "ok",
                          "issues": issues, "result_count": len(moments) if not issues else None,
                          "top1_score": moments[0]["score"] if moments else None,
@@ -213,6 +225,10 @@ def evaluate(queries, results, metadata):
         by_mode[mode] = {"all": _aggregate(selected), "by_category": {
             category: _aggregate([row for row in selected if row["category"] == category])
             for category in sorted({row["category"] for row in selected})}}
+        if languages:
+            by_mode[mode]["by_language"] = {
+                language: _aggregate([row for row in selected if row["language"] == language])
+                for language in sorted({row["language"] for row in selected})}
     return {"scoring": SCORING, "metadata": dict(metadata), "limitations": LIMITATIONS,
             "passed": all(row["status"] == "ok" for row in rows), "by_mode": by_mode,
             "per_query": rows}
@@ -231,7 +247,9 @@ def _report_markdown(report):
              f"All query-mode responses valid: **{report['passed']}**", "", "## Metadata", "",
              "```json", json.dumps(report["metadata"], ensure_ascii=False, indent=2), "```", ""]
     for mode, groups in report["by_mode"].items():
-        for category, group in [("all", groups["all"]), *groups["by_category"].items()]:
+        sections = [("all", groups["all"]), *groups["by_category"].items()]
+        sections.extend((f"language: {language}", group) for language, group in groups.get("by_language", {}).items())
+        for category, group in sections:
             lines.extend([f"## {mode} / {category}", "",
                           f"Queries: {group['query_count']}; positives: {group['positive_count']}; "
                           f"negatives: {group['negative_count']}; status: {group['status_counts']}", "",
@@ -312,10 +330,12 @@ def compare_reports(before, after):
             metric_delta[mode][name] = value - metric["value"] if value is not None and metric["value"] is not None else None
     fixed = not any(key in changes for key in (
         "snapshot_id", "index_sha256", "model_mode", "model_fingerprints",
-        "models_config_sha256", "channels", "search_config",
+        "models_config_sha256",
     ))
+    identical_conditions = fixed and not any(key in changes for key in ("channels", "search_config"))
     return {"before_run_id": before["metadata"]["run_id"], "after_run_id": after["metadata"]["run_id"],
             "compatible": True, "fixed_index_regression": fixed, "metadata_changes": changes,
+            "identical_retrieval_conditions": identical_conditions,
             "positive_metric_delta": metric_delta, "per_query_changes": rows,
             "summary_before": before["by_mode"], "summary_after": after["by_mode"],
             "limitations": LIMITATIONS}
@@ -327,7 +347,8 @@ def write_comparison(delta, output_dir):
     _json_write(output / "delta.json", delta)
     lines = ["# Evaluation comparison", "", f"`{delta['before_run_id']}` → `{delta['after_run_id']}`", "",
              f"Compatible corpus/labels/scoring: **{delta['compatible']}**. "
-             f"Fixed-index conditions: **{delta['fixed_index_regression']}**.", "",
+             f"Fixed-index regression: **{delta['fixed_index_regression']}**. "
+             f"Identical retrieval conditions: **{delta['identical_retrieval_conditions']}**.", "",
              "## Metadata changes", "", "```json", json.dumps(delta["metadata_changes"], ensure_ascii=False, indent=2), "```", "",
              "## Positive metric deltas", "", "| Mode | Metric | After − before |", "|---|---|---:|"]
     for mode, metrics in delta["positive_metric_delta"].items():

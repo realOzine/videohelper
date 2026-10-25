@@ -16,7 +16,7 @@ def query(qid="q1", answerable=True):
 
 
 def moment(**updates):
-    value = {"media_id": "media1", "video_id": "db-video", "start_ms": 100,
+    value = {"media_id": "media1", "video_id": 1, "start_ms": 100,
              "end_ms": 200, "jump_ms": 100, "score": 0.02}
     return value | updates
 
@@ -198,6 +198,45 @@ class ScoreTests(unittest.TestCase):
             report = json.loads((root / "report.json").read_text())
             self.assertFalse(report["passed"])
             self.assertEqual(len(report["per_query"]), 3)
+
+    def test_positive_integer_video_ids_and_numeric_string_compatibility(self):
+        items = [query()]
+        for video_id in (1, 987, "123"):
+            with self.subTest(video_id=video_id):
+                self.assertTrue(score.evaluate(items, responses(items, [moment(video_id=video_id)]), metadata())["passed"])
+        for video_id in (0, -1, True, None, 1.0, "0", "-1", "db-video"):
+            with self.subTest(video_id=video_id):
+                self.assertFalse(score.evaluate(items, responses(items, [moment(video_id=video_id)]), metadata())["passed"])
+
+    def test_latency_percentiles_and_language_groups(self):
+        items = [query("q1"), query("q2"), query("q3")]
+        found = responses(items)
+        for row, latency in zip(found, [20, 1, 5] * 3):
+            row["latency_ms"] = latency
+        report = score.evaluate(items, found, metadata(languages={"q1": "zh", "q2": "en"}))
+        visual = report["by_mode"]["visual"]
+        self.assertEqual(visual["all"]["latency_ms"]["p50"], 5)
+        self.assertEqual(visual["all"]["latency_ms"]["p95"], 20)
+        self.assertEqual(set(visual["by_language"]), {"zh", "en", "unknown"})
+        self.assertEqual(visual["by_language"]["zh"]["positive_count"], 1)
+        self.assertEqual(visual["by_language"]["en"]["latency_ms"]["p95"], 1)
+        self.assertIsNone(score._stats([])["p95"])
+        self.assertEqual(score._stats([7])["p50"], 7)
+
+    def test_same_index_search_tuning_is_fixed_index_with_changed_conditions(self):
+        items = [query()]
+        before = score.evaluate(items, responses(items), metadata())
+        for updates in ({"search_config": {"limit": 5}}, {"channels": ["visual"]}):
+            with self.subTest(updates=updates):
+                after = score.evaluate(items, responses(items), metadata(**updates))
+                delta = score.compare_reports(before, after)
+                self.assertTrue(delta["fixed_index_regression"])
+                self.assertFalse(delta["identical_retrieval_conditions"])
+        changed_code = score.evaluate(items, responses(items), metadata(code_revision="new"))
+        delta = score.compare_reports(before, changed_code)
+        self.assertTrue(delta["fixed_index_regression"])
+        self.assertTrue(delta["identical_retrieval_conditions"])
+        self.assertIn("code_revision", delta["metadata_changes"])
 
 
 if __name__ == "__main__":
