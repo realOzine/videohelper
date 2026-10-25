@@ -49,6 +49,53 @@ func TestSearchPreservesBusinessQueryAndNormalizesEvidence(t *testing.T) {
 	}
 }
 
+func TestFusedChannelWeightsForwardedWithoutChangingControls(t *testing.T) {
+	weights := map[string]float64{"visual": 0, "speech": 1.5, "audio": 1}
+	for _, mode := range []string{"fused", "visual", "speech"} {
+		r := request{Mode: mode, ChannelWeights: weights}
+		searchOne(context.Background(), fakeSearch{func(_ workspace.Principal, q search.Query) (search.Result, error) {
+			if mode == "fused" {
+				if !reflect.DeepEqual(q.ChannelWeights, weights) || q.OnlyChannels != nil {
+					t.Fatalf("lost fused weights: %+v", q)
+				}
+			} else if q.ChannelWeights != nil || !reflect.DeepEqual(q.OnlyChannels, []string{mode}) {
+				t.Fatalf("weights changed control: %+v", q)
+			}
+			return search.Result{}, nil
+		}}, r)
+	}
+}
+
+func TestChannelWeightValidation(t *testing.T) {
+	channels, err := space.NewChannels(config.ChannelsConfig{
+		"visual": {Doc: "video", Seg: "grid@v1", Weight: 1, Active: []string{"v@1"}},
+		"speech": {Doc: "text", Seg: "sentence@v1", Weight: 2, Active: []string{"v@1"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, weights := range []map[string]float64{nil, {"visual": 0}, {"visual": 0.5, "speech": 2}} {
+		if err := (request{ChannelWeights: weights}).validateWeights(channels); err != nil {
+			t.Fatalf("rejected valid weights %v: %v", weights, err)
+		}
+	}
+	for _, weights := range []map[string]float64{{"unknown": 1}, {"visual": -1}, {"speech": math.NaN()}, {"speech": math.Inf(1)}, {"speech": math.MaxFloat64}, {"visual": 0, "speech": 0}} {
+		if err := (request{ChannelWeights: weights}).validateWeights(channels); err == nil {
+			t.Fatalf("accepted invalid weights %v", weights)
+		}
+	}
+	for _, mode := range []string{"visual", "speech"} {
+		r := request{WorkspaceID: 1, UserID: 2, VideoIDs: []int64{3}, QueryID: "q", Mode: mode, Text: "x", Limit: 10, ChannelWeights: map[string]float64{}}
+		if err := r.validate("search"); err == nil {
+			t.Fatalf("accepted weights for %s control", mode)
+		}
+	}
+	r := request{WorkspaceID: 1, UserID: 2, VideoIDs: []int64{3}, ChannelWeights: map[string]float64{}}
+	if err := r.validate("inspect"); err == nil {
+		t.Fatal("inspect accepted channel_weights")
+	}
+}
+
 func TestSearchErrorsKeepSkippedAndLaterQueryRuns(t *testing.T) {
 	calls := 0
 	f := fakeSearch{func(workspace.Principal, search.Query) (search.Result, error) {

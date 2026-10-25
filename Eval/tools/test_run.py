@@ -11,6 +11,13 @@ import run
 
 
 class RunnerBoundaries(unittest.TestCase):
+    def test_retrieve_cli_passes_fused_channel_multipliers(self):
+        with patch.object(sys, "argv", ["run.py", "retrieve", "--snapshot", "s", "--run-id", "r",
+                                      "--speech-weight", "1.5", "--audio-weight", "0"]), \
+                patch.object(run, "retrieve_run", return_value=True) as retrieve:
+            self.assertEqual(run.main(), 0)
+        self.assertEqual(retrieve.call_args.args[4], {"visual": 1, "speech": 1.5, "audio": 0})
+
     def test_binary_provenance_requires_matching_build_hash(self):
         with tempfile.TemporaryDirectory() as folder, patch.object(run, "ROOT", Path(folder)):
             binary = Path(folder) / "bin/evalbridge"
@@ -114,7 +121,7 @@ class RetrievalOrchestration(unittest.TestCase):
         with tempfile.TemporaryDirectory() as folder, ExitStack() as stack:
             root = Path(folder)
             channels = root / "channels.json"
-            channels.write_text(json.dumps({"channels": {"visual": {}, "speech": {}, "audio": {}}}))
+            channels.write_text(json.dumps({"channels": {"visual": {"weight": 1}, "speech": {"weight": 2}, "audio": {"weight": 1}}}))
             query = {"id": "q1", "query": "查询 unchanged", "answerable": True, "category": "visual",
                      "targets": [{"media_id": "media", "start_ms": 0, "end_ms": 10,
                                   "acceptable_jump_ms": [0, 10]}]}
@@ -156,10 +163,58 @@ for line in sys.stdin:
             metadata = run.read_json(root / "runs/test/metadata.json")
             self.assertEqual(metadata["search_config"], {"k": 4, "rrf_k": 20.5, "merge_gap_cells": 0})
             self.assertEqual(metadata["channels"]["fused"], ["audio", "speech", "visual"])
+            self.assertEqual(metadata["fused_channel_weights"], {
+                "multipliers": {"visual": 1, "speech": 1, "audio": 1},
+                "effective": {"visual": 1, "speech": 2, "audio": 1}})
             self.assertEqual(metadata["bridge_build_provenance"]["build_revision"], "built")
             self.assertEqual(metadata["runtime"], {
                 "run_id": "original", "db_name": "vh_eval_original", "bucket": "vh-eval-original"})
             self.assertEqual(launched.call_args.args[0][-7:], ["-k", "4", "-rrf-k", "20.5", "-merge-gap", "0", "search"])
+
+    def test_weights_only_change_fused_requests_and_record_effective_routes(self):
+        script = """import json, sys
+for line in sys.stdin:
+    request = json.loads(line)
+    if request['mode'] == 'fused':
+        assert request['channel_weights'] == dict(visual=1.0, speech=1.5, audio=0)
+    else:
+        assert 'channel_weights' not in request
+    print(json.dumps(dict(query_id=request['query_id'], mode=request['mode'], latency_ms=1,
+                          moments=[dict(video_id=3,start_ms=0,end_ms=10,jump_ms=0,score=1)])), flush=True)
+"""
+        with self.fixture(script) as (root, _):
+            self.assertTrue(run.retrieve_run("snapshot", "weights", fused_weights={"speech": 1.5, "audio": 0}))
+            metadata = run.read_json(root / "runs/weights/metadata.json")
+            self.assertEqual(metadata["fused_channel_weights"], {
+                "multipliers": {"visual": 1, "speech": 1.5, "audio": 0},
+                "effective": {"visual": 1, "speech": 3, "audio": 0}})
+            self.assertEqual(metadata["channels"]["fused"], ["speech", "visual"])
+            self.assertEqual(metadata["channel_config"]["speech"]["weight"], 2)
+            self.assertEqual(metadata["channels"]["visual"], ["visual"])
+            self.assertEqual(metadata["channels"]["speech"], ["speech"])
+
+    def test_invalid_fused_weights_rejected_before_resource_access(self):
+        for weights in ([1], {"unknown": 1}, {"audio": True}, {"speech": "1"},
+                        {"visual": -1}, {"audio": float("nan")}, {"speech": float("inf")},
+                        {"visual": 0, "speech": 0, "audio": 0}):
+            with self.subTest(weights=weights), patch.object(run, "corpus") as corpus:
+                with self.assertRaises(ValueError):
+                    run.retrieve_run("snapshot", "invalid", fused_weights=weights)
+                corpus.assert_not_called()
+        with self.fixture("") as (root, launched):
+            with self.assertRaises(ValueError):
+                run.retrieve_run("snapshot", "overflow", fused_weights={"speech": 1e308})
+            run.environment.verify_models.assert_not_called()
+            run.inspect.assert_not_called()
+            launched.assert_not_called()
+            self.assertFalse((root / "runs/overflow").exists())
+        with self.fixture("") as (root, launched):
+            (root / "channels.json").write_text(json.dumps({"channels": {"visual": {"weight": 1}}}))
+            with self.assertRaises(ValueError):
+                run.retrieve_run("snapshot", "disabled", fused_weights={"visual": 0})
+            run.environment.verify_models.assert_not_called()
+            run.inspect.assert_not_called()
+            launched.assert_not_called()
 
     def test_restored_runtime_provenance_matches_selected_state(self):
         script = """import json, sys

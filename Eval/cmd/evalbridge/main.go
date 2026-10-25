@@ -31,13 +31,14 @@ import (
 )
 
 type request struct {
-	WorkspaceID int64   `json:"workspace_id"`
-	UserID      int64   `json:"user_id"`
-	VideoIDs    []int64 `json:"video_ids"`
-	QueryID     string  `json:"query_id,omitempty"`
-	Mode        string  `json:"mode,omitempty"`
-	Text        string  `json:"text,omitempty"`
-	Limit       int     `json:"limit,omitempty"`
+	WorkspaceID    int64              `json:"workspace_id"`
+	UserID         int64              `json:"user_id"`
+	VideoIDs       []int64            `json:"video_ids"`
+	QueryID        string             `json:"query_id,omitempty"`
+	Mode           string             `json:"mode,omitempty"`
+	Text           string             `json:"text,omitempty"`
+	Limit          int                `json:"limit,omitempty"`
+	ChannelWeights map[string]float64 `json:"channel_weights,omitempty"`
 }
 
 func (r *request) validate(command string) error {
@@ -57,10 +58,32 @@ func (r *request) validate(command string) error {
 		if r.Mode != "visual" && r.Mode != "speech" && r.Mode != "fused" {
 			return fmt.Errorf("unknown search mode %q", r.Mode)
 		}
-	} else if r.QueryID != "" || r.Mode != "" || r.Text != "" || r.Limit != 0 {
+		if r.Mode != "fused" && r.ChannelWeights != nil {
+			return fmt.Errorf("channel_weights requires fused search")
+		}
+	} else if r.QueryID != "" || r.Mode != "" || r.Text != "" || r.Limit != 0 || r.ChannelWeights != nil {
 		return fmt.Errorf("inspect accepts only scope fields")
 	}
 	return nil
+}
+
+func (r request) validateWeights(channels *space.Channels) error {
+	for name, weight := range r.ChannelWeights {
+		channel, ok := channels.Get(name)
+		if !ok || weight < 0 || math.IsNaN(weight) || math.IsInf(weight, 0) || math.IsInf(weight*channel.Weight, 0) {
+			return fmt.Errorf("invalid channel weight %q", name)
+		}
+	}
+	for _, channel := range channels.List() {
+		weight := channel.Weight
+		if multiplier, ok := r.ChannelWeights[channel.Name]; ok {
+			weight *= multiplier
+		}
+		if weight > 0 {
+			return nil
+		}
+	}
+	return fmt.Errorf("at least one effective channel weight must be positive")
 }
 
 type channelHit struct {
@@ -95,7 +118,9 @@ type searcher interface {
 func searchOne(ctx context.Context, service searcher, r request) searchResponse {
 	start := time.Now()
 	q := search.Query{Text: r.Text, Scope: library.Scope{VideoIDs: r.VideoIDs}, Limit: r.Limit}
-	if r.Mode != "fused" {
+	if r.Mode == "fused" {
+		q.ChannelWeights = r.ChannelWeights
+	} else {
 		q.OnlyChannels = []string{r.Mode}
 	}
 	result, err := service.Search(ctx, workspace.Principal{UserID: r.UserID, WorkspaceID: r.WorkspaceID}, q)
@@ -201,6 +226,9 @@ func run(ctx context.Context, args []string, input io.Reader, output io.Writer) 
 			return fmt.Errorf("line %d: expected one JSON object", count)
 		}
 		if err := r.validate(command); err != nil {
+			return fmt.Errorf("line %d: %w", count, err)
+		}
+		if err := r.validateWeights(channels); err != nil {
 			return fmt.Errorf("line %d: %w", count, err)
 		}
 		if pool == nil {
