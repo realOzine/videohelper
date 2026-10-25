@@ -14,6 +14,7 @@ import (
 
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/ozine/videohelper/internal/config"
+	"github.com/ozine/videohelper/internal/index"
 	"github.com/ozine/videohelper/internal/mlclient"
 	"github.com/ozine/videohelper/internal/platform/db"
 	"github.com/ozine/videohelper/migrations"
@@ -93,6 +94,21 @@ func TestRegistryIntegration(t *testing.T) {
 	model, _, ok := registry.Transcriber()
 	if !ok || model.ID != "paraformer-zh@r1" {
 		t.Fatal("missing ASR")
+	}
+	channels, err := NewChannels(config.ChannelsConfig{"visual": {Doc: "video", Seg: "grid@v1", Weight: 1, Active: []string{info.ID}}, "speech": {Doc: "text", Seg: "sentence@v1", Weight: 1, Active: []string{info.ID}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := channels.Validate(ctx, registry); err == nil {
+		t.Fatal("missing HNSW indexes accepted")
+	}
+	for _, channel := range channels.List() {
+		if err := index.EnsureVectorIndex(ctx, pool, channel.Name, index.VectorSpace{ID: info.ID, Dim: info.Dim, Metric: info.Metric}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := channels.Validate(ctx, registry); err != nil {
+		t.Fatal(err)
 	}
 	changed := fixtureMetadata()
 	changed.Spaces[0].Fingerprint = "sha256:" + strings.Repeat("d", 64)
