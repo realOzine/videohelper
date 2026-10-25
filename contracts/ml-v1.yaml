@@ -413,7 +413,7 @@ paths:
         required: false
         schema:
           type: string
-      description: 仅识别 [start_ms,end_ms)，end_ms 截到媒体结尾。返回完整媒体 duration_ms；句子和词为整个媒体的绝对时间，位于请求窗口内，句子有序且互不重叠。无语音返回空数组。
+      description: 仅识别 [start_ms,end_ms)，end_ms 截到媒体结尾。返回完整媒体 duration_ms；句子和词为整个媒体的绝对时间，保留识别顺序，句子及跨句词序的起点非递减，允许区间重叠、包含和相同起点，结束时间不必递增。每个区间有正时长并位于请求窗口内，词在所属句子内；句子范围取所含词的最早起点和最晚终点。不为消除重叠移动时间或丢词。无语音返回空数组。
 components:
   schemas:
     EmbedInput:

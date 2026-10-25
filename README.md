@@ -42,6 +42,8 @@ bin/videohelper local-search 'a dog barking'
 
 声音通道采用 edit-mind 同款 CLAP HTSAT unfused 的 Python 原版权重。查询文字原样传入，英文转换后续再做。启用新通道后重启 api/worker；已有视频在 worker 启动及定期对账时补建缺失的声音索引，保留原有 ASR/画面索引和 `ready` 状态；切片版本变更的重建另行处理。声音召回参与现有三通道融合，尚未针对声音查询调整权重。
 
+ASR 允许起点有序的词、句时间重叠，合并范围取最早起点和最晚终点，保留原文。真实清单的 `adapter_version: 2` 会改变 ASR fingerprint；部署时同步更新并重启 Go 与 ML 服务。已有已完成索引仍可查询，旧计划和断点不会自动迁移到新 fingerprint，普通 retry 也不会改写它们；验证新行为请使用新上传或新的隔离 Eval run，保留旧基线。
+
 `local-*` 命令使用数据库管理凭据和固定本地身份，直接调用业务服务。上传按预签名分片地址流式发送；失败时保留上传会话，错误包含视频 ID。`local-video` 只依赖数据库。搜索输出是诊断 JSON，字段为 Go 的 `Moments`、`Skipped` 等名称，视频 ID 为整数；对外 HTTP 接口使用独立的 snake_case、字符串 ID 契约。
 
 HTTP 服务通过 `bin/videohelper -config /path/to/config.yaml api` 启动，配置必须包含有效的 `auth.issuer`、`auth.audience`、`auth.jwks_url`。`/v1/*` 始终校验 JWT；`/healthz`、`/readyz` 无需登录。`local-*` 的固定身份不会用于 HTTP 请求。全局 `-config` 参数放在子命令之前。
