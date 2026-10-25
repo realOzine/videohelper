@@ -1,0 +1,183 @@
+{
+  "repeats": [
+    {
+      "before": "abl01-default",
+      "repeat": "abl03-default-repeat",
+      "response_count": 105,
+      "equal_excluding_latency": true,
+      "changed_responses": [],
+      "fixed_index_regression": true,
+      "identical_retrieval_conditions": true,
+      "canonical_response_sha256": "4fee95c39268054eb4ccbd5e00fd583d6a01b3b315c6feceb5138703f0a3a4ca",
+      "before_report_sha256": "0e9a1029b7a9768dab3fe3e154eb324d226443a603cae3a69b7f63d850de3097",
+      "repeat_report_sha256": "7a5a55f99be004a3e2828ffcfe45deaeb38ea2627f0ecfdf9bb8249db9b94ca6"
+    },
+    {
+      "before": "abl02-combo06",
+      "repeat": "abl03-selected-repeat",
+      "response_count": 105,
+      "equal_excluding_latency": true,
+      "changed_responses": [],
+      "fixed_index_regression": true,
+      "identical_retrieval_conditions": true,
+      "canonical_response_sha256": "2803d5fc643900a2c952a808c9129a1b9cea060fee0222d387a8e587e1df0dde",
+      "before_report_sha256": "ff1e57133781848a9c30b04a3c94d0f2fd8c184097343eacf7ee69bfe908ff79",
+      "repeat_report_sha256": "26c1f53ecec3906602277a75454dfa3032ebc69ae52ec1ebdcf9db928bf897d2"
+    }
+  ],
+  "weight_only_controls": [
+    {
+      "reference": "abl01-default",
+      "candidate": "abl01-audio0",
+      "equal_visual_speech_responses": 70
+    },
+    {
+      "reference": "abl01-default",
+      "candidate": "abl01-audio0p25",
+      "equal_visual_speech_responses": 70
+    },
+    {
+      "reference": "abl01-default",
+      "candidate": "abl01-audio0p5",
+      "equal_visual_speech_responses": 70
+    },
+    {
+      "reference": "abl01-default",
+      "candidate": "abl01-audio2",
+      "equal_visual_speech_responses": 70
+    },
+    {
+      "reference": "abl01-default",
+      "candidate": "abl01-speech0p5",
+      "equal_visual_speech_responses": 70
+    },
+    {
+      "reference": "abl01-default",
+      "candidate": "abl01-speech2",
+      "equal_visual_speech_responses": 70
+    },
+    {
+      "reference": "abl01-default",
+      "candidate": "abl01-visual0p5",
+      "equal_visual_speech_responses": 70
+    },
+    {
+      "reference": "abl01-default",
+      "candidate": "abl01-visual2",
+      "equal_visual_speech_responses": 70
+    },
+    {
+      "reference": "abl01-default",
+      "candidate": "abl01-only-visual",
+      "equal_visual_speech_responses": 70
+    },
+    {
+      "reference": "abl01-default",
+      "candidate": "abl01-only-speech",
+      "equal_visual_speech_responses": 70
+    },
+    {
+      "reference": "abl01-default",
+      "candidate": "abl01-only-audio",
+      "equal_visual_speech_responses": 70
+    },
+    {
+      "reference": "abl01-default",
+      "candidate": "abl01-no-visual",
+      "equal_visual_speech_responses": 70
+    },
+    {
+      "reference": "abl01-default",
+      "candidate": "abl01-no-speech",
+      "equal_visual_speech_responses": 70
+    },
+    {
+      "reference": "abl02-combo01",
+      "candidate": "abl02-combo02",
+      "equal_visual_speech_responses": 70
+    },
+    {
+      "reference": "abl02-combo01",
+      "candidate": "abl02-combo03",
+      "equal_visual_speech_responses": 70
+    },
+    {
+      "reference": "abl02-combo01",
+      "candidate": "abl02-combo04",
+      "equal_visual_speech_responses": 70
+    },
+    {
+      "reference": "abl02-combo01",
+      "candidate": "abl02-combo05",
+      "equal_visual_speech_responses": 70
+    },
+    {
+      "reference": "abl01-k5",
+      "candidate": "abl02-combo06",
+      "equal_visual_speech_responses": 70
+    },
+    {
+      "reference": "abl01-k5",
+      "candidate": "abl02-combo07",
+      "equal_visual_speech_responses": 70
+    },
+    {
+      "reference": "abl01-k5",
+      "candidate": "abl02-combo08",
+      "equal_visual_speech_responses": 70
+    },
+    {
+      "reference": "abl01-k5",
+      "candidate": "abl02-combo09",
+      "equal_visual_speech_responses": 70
+    },
+    {
+      "reference": "abl01-k5",
+      "candidate": "abl02-combo10",
+      "equal_visual_speech_responses": 70
+    },
+    {
+      "reference": "abl01-gap0",
+      "candidate": "abl02-combo11",
+      "equal_visual_speech_responses": 70
+    },
+    {
+      "reference": "abl01-gap0",
+      "candidate": "abl02-combo12",
+      "equal_visual_speech_responses": 70
+    },
+    {
+      "reference": "abl01-gap0",
+      "candidate": "abl02-combo13",
+      "equal_visual_speech_responses": 70
+    },
+    {
+      "reference": "abl01-gap0",
+      "candidate": "abl02-combo14",
+      "equal_visual_speech_responses": 70
+    },
+    {
+      "reference": "abl01-gap0",
+      "candidate": "abl02-combo15",
+      "equal_visual_speech_responses": 70
+    },
+    {
+      "reference": "abl01-default",
+      "candidate": "abl02-combo16",
+      "equal_visual_speech_responses": 70
+    },
+    {
+      "reference": "abl01-default",
+      "candidate": "abl02-combo17",
+      "equal_visual_speech_responses": 70
+    },
+    {
+      "reference": "abl01-default",
+      "candidate": "abl02-combo18",
+      "equal_visual_speech_responses": 70
+    }
+  ],
+  "total_distinct_configurations": 41,
+  "total_valid_responses_including_repeats": 4515,
+  "bridge_rebuilt_during_sweep": false
+}

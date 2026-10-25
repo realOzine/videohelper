@@ -1,0 +1,6669 @@
+{
+  "scoring": {
+    "version": "videohelper-eval-v1",
+    "modes": [
+      "visual",
+      "speech",
+      "fused"
+    ],
+    "k": [
+      1,
+      5,
+      10
+    ],
+    "intervals": "half-open integer milliseconds",
+    "positive_denominator": "all answerable queries, including failures",
+    "failure_policy": "missing, duplicate, invalid, error or skipped => zero positive credit",
+    "ranking": "input order; no score sorting or deduplication",
+    "matching": "same media_id; any annotated target",
+    "tiou_thresholds": [
+      0.3,
+      0.5
+    ],
+    "mrr": "reciprocal first same-media overlapping rank across all returned moments",
+    "localization": "rank-1 only when correct media; target maximizing tIoU, then minimum boundary error",
+    "best_tiou": "maximum across all returned same-media moments, failures and misses zero",
+    "negative_denominator": "valid responses only; failures separately counted, never empty successes",
+    "percentiles": "nearest rank: sorted values[ceil(p*n)-1]"
+  },
+  "metadata": {
+    "dataset_id": "videohelper-synthetic-v1",
+    "dataset_sha256": "a554a93ad073c19d48f6b2d6024d2b30726b7f06b715c218e3b1f61da92f9956",
+    "labels_sha256": "ae5ea40899a795679e0eb848fff3286a333243c346dd94155811f4ed3496caa5",
+    "snapshot_id": "ablation-v2",
+    "index_sha256": "3e82f81d34918567385f2ede34560dd0cd3dc27895310b4ae4d79a473f8007c2",
+    "model_fingerprints": {
+      "wemm-2b@r1": "sha256:10930e4bb624c52978574c4e88d998cd663b7a67455ed33dd34cef2e5f6731c0",
+      "clap-htsat-unfused@r1": "sha256:ed71d672a7feac1f1ded9e5934ae787f8af1716bc101015d5a2b5566c5f35da3",
+      "paraformer-zh@r1": "sha256:8b5293fa83545a547f846c5878a83546b103de2601f844b026bf23d325a95e8f"
+    },
+    "models_config_sha256": "6039b22c73f754d1a2e2fa571c0ba6a851dc6e7daa36594960d446467aee4225",
+    "run_id": "abl02-combo06",
+    "code_revision": "a4bbf3fee0e2bb6b09733cc342fa08eb3c959da5",
+    "model_mode": "real",
+    "search_config": {
+      "k": 5,
+      "rrf_k": 60,
+      "merge_gap_cells": 1,
+      "max_limit": 50
+    },
+    "runtime": {
+      "run_id": "ablation-v2",
+      "db_name": "vh_eval_ablation_v2",
+      "bucket": "vh-eval-ablation-v2"
+    },
+    "channels": {
+      "visual": [
+        "visual"
+      ],
+      "speech": [
+        "speech"
+      ],
+      "fused": [
+        "speech",
+        "visual"
+      ]
+    },
+    "fused_channel_weights": {
+      "multipliers": {
+        "visual": 1,
+        "speech": 1,
+        "audio": 0
+      },
+      "effective": {
+        "visual": 1.0,
+        "speech": 1.0,
+        "audio": 0.0
+      }
+    },
+    "channel_config": {
+      "visual": {
+        "doc": "video",
+        "seg": "grid@v1",
+        "weight": 1.0,
+        "active": [
+          "wemm-2b@r1"
+        ],
+        "shadow": []
+      },
+      "speech": {
+        "doc": "text",
+        "seg": "sentence@v1",
+        "weight": 1.0,
+        "active": [
+          "wemm-2b@r1"
+        ],
+        "shadow": []
+      },
+      "audio": {
+        "doc": "audio",
+        "seg": "grid@v1",
+        "weight": 1.0,
+        "active": [
+          "clap-htsat-unfused@r1"
+        ],
+        "shadow": []
+      }
+    },
+    "index_unchanged": true,
+    "bridge_exit_code": 0,
+    "bridge_errors": [],
+    "bridge_build_provenance": {
+      "sha256": "51ec7ff0070c341cfd3a695bb12acb7171110c331c9bd9246473362794e4588a",
+      "build_revision": "4d2dce9f7fe9b22891b73ab3c78003b4a147acc3"
+    },
+    "languages": {
+      "q001": "zh",
+      "q002": "zh",
+      "q003": "zh",
+      "q004": "zh",
+      "q005": "zh",
+      "q006": "zh",
+      "q007": "zh",
+      "q008": "zh",
+      "q009": "zh",
+      "q010": "en",
+      "q011": "zh",
+      "q012": "zh",
+      "q013": "en",
+      "q014": "en",
+      "q015": "en",
+      "q016": "en",
+      "q017": "en",
+      "q018": "en",
+      "q019": "zh",
+      "q020": "zh",
+      "q021": "zh",
+      "q022": "zh",
+      "q023": "zh",
+      "q024": "zh",
+      "q025": "en",
+      "q026": "en",
+      "q027": "en",
+      "q028": "en",
+      "q029": "zh",
+      "q030": "en",
+      "q031": "zh",
+      "q032": "en",
+      "q033": "zh",
+      "q034": "en",
+      "q035": "zh"
+    },
+    "timing": "sequential queries, model service preloaded; not a cold-start or load test",
+    "media_languages": {
+      "study_zh": "zh",
+      "blockchain_mix": "zh-en",
+      "story_en": "en",
+      "vlog_zh": "zh",
+      "landscape_en": "en"
+    }
+  },
+  "limitations": [
+    "Labels are synthetic script/timeline derived and have not been independently human reviewed.",
+    "Fused uses active channels including audio; this corpus has no independent sound-channel gold labels.",
+    "Negative nonempty rates describe returned candidates, not calibrated refusal quality. RRF scores are not probabilities.",
+    "Fake model runs establish process behavior only, not real-model retrieval quality."
+  ],
+  "passed": true,
+  "by_mode": {
+    "visual": {
+      "all": {
+        "query_count": 35,
+        "positive_count": 30,
+        "negative_count": 5,
+        "status_counts": {
+          "ok": 35
+        },
+        "positive_metrics": {
+          "video_recall@1": {
+            "numerator": 29,
+            "denominator": 30,
+            "value": 0.9666666666666667
+          },
+          "video_recall@5": {
+            "numerator": 29,
+            "denominator": 30,
+            "value": 0.9666666666666667
+          },
+          "video_recall@10": {
+            "numerator": 29,
+            "denominator": 30,
+            "value": 0.9666666666666667
+          },
+          "overlap_recall@1": {
+            "numerator": 24,
+            "denominator": 30,
+            "value": 0.8
+          },
+          "overlap_recall@5": {
+            "numerator": 25,
+            "denominator": 30,
+            "value": 0.8333333333333334
+          },
+          "overlap_recall@10": {
+            "numerator": 25,
+            "denominator": 30,
+            "value": 0.8333333333333334
+          },
+          "tiou_0.3_recall@1": {
+            "numerator": 21,
+            "denominator": 30,
+            "value": 0.7
+          },
+          "tiou_0.3_recall@5": {
+            "numerator": 22,
+            "denominator": 30,
+            "value": 0.7333333333333333
+          },
+          "tiou_0.3_recall@10": {
+            "numerator": 22,
+            "denominator": 30,
+            "value": 0.7333333333333333
+          },
+          "tiou_0.5_recall@1": {
+            "numerator": 13,
+            "denominator": 30,
+            "value": 0.43333333333333335
+          },
+          "tiou_0.5_recall@5": {
+            "numerator": 13,
+            "denominator": 30,
+            "value": 0.43333333333333335
+          },
+          "tiou_0.5_recall@10": {
+            "numerator": 13,
+            "denominator": 30,
+            "value": 0.43333333333333335
+          },
+          "jump_hit@1": {
+            "numerator": 13,
+            "denominator": 30,
+            "value": 0.43333333333333335
+          },
+          "jump_hit@5": {
+            "numerator": 16,
+            "denominator": 30,
+            "value": 0.5333333333333333
+          },
+          "jump_hit@10": {
+            "numerator": 16,
+            "denominator": 30,
+            "value": 0.5333333333333333
+          },
+          "overlap_mrr": {
+            "numerator": 24.5,
+            "denominator": 30,
+            "value": 0.8166666666666667
+          },
+          "best_tiou": {
+            "numerator": 13.427762036040685,
+            "denominator": 30,
+            "value": 0.4475920678680228
+          }
+        },
+        "top1_correct_video_localization": {
+          "start_absolute_error_ms": {
+            "n": 29,
+            "mean": 8586.206896551725,
+            "min": 0,
+            "max": 81500,
+            "p50": 2000,
+            "p95": 49000
+          },
+          "end_absolute_error_ms": {
+            "n": 29,
+            "mean": 9280.689655172413,
+            "min": 0,
+            "max": 81695,
+            "p50": 5708,
+            "p95": 42260
+          },
+          "tiou": {
+            "n": 29,
+            "mean": 0.4489214275380337,
+            "min": 0.0,
+            "max": 1.0,
+            "p50": 0.4678,
+            "p95": 0.9722222222222222
+          }
+        },
+        "negative": {
+          "failed_count": 0,
+          "nonempty_rate": {
+            "numerator": 5,
+            "denominator": 5,
+            "value": 1.0
+          },
+          "top1_scores": {
+            "n": 5,
+            "mean": 0.01639344262295082,
+            "min": 0.01639344262295082,
+            "max": 0.01639344262295082,
+            "p50": 0.01639344262295082,
+            "p95": 0.01639344262295082
+          }
+        },
+        "latency_ms": {
+          "n": 35,
+          "mean": 147.59842857142857,
+          "min": 124.998,
+          "max": 392.924,
+          "p50": 138.258,
+          "p95": 169.561
+        }
+      },
+      "by_category": {
+        "mixed": {
+          "query_count": 10,
+          "positive_count": 10,
+          "negative_count": 0,
+          "status_counts": {
+            "ok": 10
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "video_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "video_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 8,
+              "denominator": 10,
+              "value": 0.8
+            },
+            "overlap_recall@5": {
+              "numerator": 8,
+              "denominator": 10,
+              "value": 0.8
+            },
+            "overlap_recall@10": {
+              "numerator": 8,
+              "denominator": 10,
+              "value": 0.8
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 8,
+              "denominator": 10,
+              "value": 0.8
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 8,
+              "denominator": 10,
+              "value": 0.8
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 8,
+              "denominator": 10,
+              "value": 0.8
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "jump_hit@1": {
+              "numerator": 6,
+              "denominator": 10,
+              "value": 0.6
+            },
+            "jump_hit@5": {
+              "numerator": 7,
+              "denominator": 10,
+              "value": 0.7
+            },
+            "jump_hit@10": {
+              "numerator": 7,
+              "denominator": 10,
+              "value": 0.7
+            },
+            "overlap_mrr": {
+              "numerator": 8.0,
+              "denominator": 10,
+              "value": 0.8
+            },
+            "best_tiou": {
+              "numerator": 3.9325085440874914,
+              "denominator": 10,
+              "value": 0.39325085440874913
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 10,
+              "mean": 2800.0,
+              "min": 500,
+              "max": 8000,
+              "p50": 1500,
+              "p95": 8000
+            },
+            "end_absolute_error_ms": {
+              "n": 10,
+              "mean": 6240.7,
+              "min": 3082,
+              "max": 9077,
+              "p50": 5983,
+              "p95": 9077
+            },
+            "tiou": {
+              "n": 10,
+              "mean": 0.39325085440874913,
+              "min": 0.0,
+              "max": 0.6727142857142857,
+              "p50": 0.45693333333333336,
+              "p95": 0.6727142857142857
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "top1_scores": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "latency_ms": {
+            "n": 10,
+            "mean": 140.2414,
+            "min": 133,
+            "max": 155.351,
+            "p50": 136.877,
+            "p95": 155.351
+          }
+        },
+        "negative": {
+          "query_count": 5,
+          "positive_count": 0,
+          "negative_count": 5,
+          "status_counts": {
+            "ok": 5
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "video_recall@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "video_recall@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "overlap_recall@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "overlap_recall@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "overlap_recall@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "jump_hit@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "jump_hit@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "jump_hit@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "overlap_mrr": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "best_tiou": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            },
+            "end_absolute_error_ms": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            },
+            "tiou": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 5,
+              "denominator": 5,
+              "value": 1.0
+            },
+            "top1_scores": {
+              "n": 5,
+              "mean": 0.01639344262295082,
+              "min": 0.01639344262295082,
+              "max": 0.01639344262295082,
+              "p50": 0.01639344262295082,
+              "p95": 0.01639344262295082
+            }
+          },
+          "latency_ms": {
+            "n": 5,
+            "mean": 137.0362,
+            "min": 124.998,
+            "max": 158.696,
+            "p50": 132.24,
+            "p95": 158.696
+          }
+        },
+        "speech": {
+          "query_count": 10,
+          "positive_count": 10,
+          "negative_count": 0,
+          "status_counts": {
+            "ok": 10
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 9,
+              "denominator": 10,
+              "value": 0.9
+            },
+            "video_recall@5": {
+              "numerator": 9,
+              "denominator": 10,
+              "value": 0.9
+            },
+            "video_recall@10": {
+              "numerator": 9,
+              "denominator": 10,
+              "value": 0.9
+            },
+            "overlap_recall@1": {
+              "numerator": 6,
+              "denominator": 10,
+              "value": 0.6
+            },
+            "overlap_recall@5": {
+              "numerator": 7,
+              "denominator": 10,
+              "value": 0.7
+            },
+            "overlap_recall@10": {
+              "numerator": 7,
+              "denominator": 10,
+              "value": 0.7
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 4,
+              "denominator": 10,
+              "value": 0.4
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 4,
+              "denominator": 10,
+              "value": 0.4
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 1,
+              "denominator": 10,
+              "value": 0.1
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 1,
+              "denominator": 10,
+              "value": 0.1
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 1,
+              "denominator": 10,
+              "value": 0.1
+            },
+            "jump_hit@1": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "jump_hit@5": {
+              "numerator": 4,
+              "denominator": 10,
+              "value": 0.4
+            },
+            "jump_hit@10": {
+              "numerator": 4,
+              "denominator": 10,
+              "value": 0.4
+            },
+            "overlap_mrr": {
+              "numerator": 6.5,
+              "denominator": 10,
+              "value": 0.65
+            },
+            "best_tiou": {
+              "numerator": 2.128598281547982,
+              "denominator": 10,
+              "value": 0.2128598281547982
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 9,
+              "mean": 21055.555555555555,
+              "min": 0,
+              "max": 81500,
+              "p50": 7000,
+              "p95": 81500
+            },
+            "end_absolute_error_ms": {
+              "n": 9,
+              "mean": 21637.0,
+              "min": 971,
+              "max": 81695,
+              "p50": 10723,
+              "p95": 81695
+            },
+            "tiou": {
+              "n": 9,
+              "mean": 0.1910619604566973,
+              "min": 0.0,
+              "max": 0.6279285714285714,
+              "p50": 0.08242105263157895,
+              "p95": 0.6279285714285714
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "top1_scores": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "latency_ms": {
+            "n": 10,
+            "mean": 142.39100000000002,
+            "min": 126.684,
+            "max": 169.561,
+            "p50": 138.237,
+            "p95": 169.561
+          }
+        },
+        "visual": {
+          "query_count": 10,
+          "positive_count": 10,
+          "negative_count": 0,
+          "status_counts": {
+            "ok": 10
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "video_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "video_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 9,
+              "denominator": 10,
+              "value": 0.9
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 9,
+              "denominator": 10,
+              "value": 0.9
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 9,
+              "denominator": 10,
+              "value": 0.9
+            },
+            "jump_hit@1": {
+              "numerator": 4,
+              "denominator": 10,
+              "value": 0.4
+            },
+            "jump_hit@5": {
+              "numerator": 5,
+              "denominator": 10,
+              "value": 0.5
+            },
+            "jump_hit@10": {
+              "numerator": 5,
+              "denominator": 10,
+              "value": 0.5
+            },
+            "overlap_mrr": {
+              "numerator": 10.0,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "best_tiou": {
+              "numerator": 7.36665521040521,
+              "denominator": 10,
+              "value": 0.7366655210405211
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 10,
+              "mean": 3150.0,
+              "min": 0,
+              "max": 9000,
+              "p50": 1500,
+              "p95": 9000
+            },
+            "end_absolute_error_ms": {
+              "n": 10,
+              "mean": 1200.0,
+              "min": 0,
+              "max": 3000,
+              "p50": 500,
+              "p95": 3000
+            },
+            "tiou": {
+              "n": 10,
+              "mean": 0.7366655210405211,
+              "min": 0.35714285714285715,
+              "max": 1.0,
+              "p50": 0.78125,
+              "p95": 1.0
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "top1_scores": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "latency_ms": {
+            "n": 10,
+            "mean": 165.44400000000002,
+            "min": 132.338,
+            "max": 392.924,
+            "p50": 138.267,
+            "p95": 392.924
+          }
+        }
+      },
+      "by_language": {
+        "en": {
+          "query_count": 14,
+          "positive_count": 12,
+          "negative_count": 2,
+          "status_counts": {
+            "ok": 14
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 11,
+              "denominator": 12,
+              "value": 0.9166666666666666
+            },
+            "video_recall@5": {
+              "numerator": 11,
+              "denominator": 12,
+              "value": 0.9166666666666666
+            },
+            "video_recall@10": {
+              "numerator": 11,
+              "denominator": 12,
+              "value": 0.9166666666666666
+            },
+            "overlap_recall@1": {
+              "numerator": 11,
+              "denominator": 12,
+              "value": 0.9166666666666666
+            },
+            "overlap_recall@5": {
+              "numerator": 11,
+              "denominator": 12,
+              "value": 0.9166666666666666
+            },
+            "overlap_recall@10": {
+              "numerator": 11,
+              "denominator": 12,
+              "value": 0.9166666666666666
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 10,
+              "denominator": 12,
+              "value": 0.8333333333333334
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 10,
+              "denominator": 12,
+              "value": 0.8333333333333334
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 10,
+              "denominator": 12,
+              "value": 0.8333333333333334
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 4,
+              "denominator": 12,
+              "value": 0.3333333333333333
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 4,
+              "denominator": 12,
+              "value": 0.3333333333333333
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 4,
+              "denominator": 12,
+              "value": 0.3333333333333333
+            },
+            "jump_hit@1": {
+              "numerator": 8,
+              "denominator": 12,
+              "value": 0.6666666666666666
+            },
+            "jump_hit@5": {
+              "numerator": 8,
+              "denominator": 12,
+              "value": 0.6666666666666666
+            },
+            "jump_hit@10": {
+              "numerator": 8,
+              "denominator": 12,
+              "value": 0.6666666666666666
+            },
+            "overlap_mrr": {
+              "numerator": 11.0,
+              "denominator": 12,
+              "value": 0.9166666666666666
+            },
+            "best_tiou": {
+              "numerator": 6.195914096256201,
+              "denominator": 12,
+              "value": 0.5163261746880168
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 11,
+              "mean": 1409.090909090909,
+              "min": 0,
+              "max": 6500,
+              "p50": 1000,
+              "p95": 6500
+            },
+            "end_absolute_error_ms": {
+              "n": 11,
+              "mean": 5716.272727272727,
+              "min": 0,
+              "max": 11689,
+              "p50": 6526,
+              "p95": 11689
+            },
+            "tiou": {
+              "n": 11,
+              "mean": 0.5632649178414728,
+              "min": 0.04268421052631579,
+              "max": 1.0,
+              "p50": 0.4678,
+              "p95": 1.0
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 2,
+              "denominator": 2,
+              "value": 1.0
+            },
+            "top1_scores": {
+              "n": 2,
+              "mean": 0.01639344262295082,
+              "min": 0.01639344262295082,
+              "max": 0.01639344262295082,
+              "p50": 0.01639344262295082,
+              "p95": 0.01639344262295082
+            }
+          },
+          "latency_ms": {
+            "n": 14,
+            "mean": 154.97014285714286,
+            "min": 126.684,
+            "max": 392.924,
+            "p50": 136.877,
+            "p95": 392.924
+          }
+        },
+        "zh": {
+          "query_count": 21,
+          "positive_count": 18,
+          "negative_count": 3,
+          "status_counts": {
+            "ok": 21
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 18,
+              "denominator": 18,
+              "value": 1.0
+            },
+            "video_recall@5": {
+              "numerator": 18,
+              "denominator": 18,
+              "value": 1.0
+            },
+            "video_recall@10": {
+              "numerator": 18,
+              "denominator": 18,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 13,
+              "denominator": 18,
+              "value": 0.7222222222222222
+            },
+            "overlap_recall@5": {
+              "numerator": 14,
+              "denominator": 18,
+              "value": 0.7777777777777778
+            },
+            "overlap_recall@10": {
+              "numerator": 14,
+              "denominator": 18,
+              "value": 0.7777777777777778
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 11,
+              "denominator": 18,
+              "value": 0.6111111111111112
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 12,
+              "denominator": 18,
+              "value": 0.6666666666666666
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 12,
+              "denominator": 18,
+              "value": 0.6666666666666666
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 9,
+              "denominator": 18,
+              "value": 0.5
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 9,
+              "denominator": 18,
+              "value": 0.5
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 9,
+              "denominator": 18,
+              "value": 0.5
+            },
+            "jump_hit@1": {
+              "numerator": 5,
+              "denominator": 18,
+              "value": 0.2777777777777778
+            },
+            "jump_hit@5": {
+              "numerator": 8,
+              "denominator": 18,
+              "value": 0.4444444444444444
+            },
+            "jump_hit@10": {
+              "numerator": 8,
+              "denominator": 18,
+              "value": 0.4444444444444444
+            },
+            "overlap_mrr": {
+              "numerator": 13.5,
+              "denominator": 18,
+              "value": 0.75
+            },
+            "best_tiou": {
+              "numerator": 7.231847939784482,
+              "denominator": 18,
+              "value": 0.4017693299880268
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 18,
+              "mean": 12972.222222222223,
+              "min": 0,
+              "max": 81500,
+              "p50": 5000,
+              "p95": 81500
+            },
+            "end_absolute_error_ms": {
+              "n": 18,
+              "mean": 11458.944444444445,
+              "min": 0,
+              "max": 81695,
+              "p50": 3082,
+              "p95": 81695
+            },
+            "tiou": {
+              "n": 18,
+              "mean": 0.3790448501303765,
+              "min": 0.0,
+              "max": 0.8787878787878788,
+              "p50": 0.3751578947368421,
+              "p95": 0.8787878787878788
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 3,
+              "denominator": 3,
+              "value": 1.0
+            },
+            "top1_scores": {
+              "n": 3,
+              "mean": 0.01639344262295082,
+              "min": 0.01639344262295082,
+              "max": 0.01639344262295082,
+              "p50": 0.01639344262295082,
+              "p95": 0.01639344262295082
+            }
+          },
+          "latency_ms": {
+            "n": 21,
+            "mean": 142.68395238095238,
+            "min": 124.998,
+            "max": 169.561,
+            "p50": 138.996,
+            "p95": 162.191
+          }
+        }
+      }
+    },
+    "speech": {
+      "all": {
+        "query_count": 35,
+        "positive_count": 30,
+        "negative_count": 5,
+        "status_counts": {
+          "ok": 35
+        },
+        "positive_metrics": {
+          "video_recall@1": {
+            "numerator": 28,
+            "denominator": 30,
+            "value": 0.9333333333333333
+          },
+          "video_recall@5": {
+            "numerator": 30,
+            "denominator": 30,
+            "value": 1.0
+          },
+          "video_recall@10": {
+            "numerator": 30,
+            "denominator": 30,
+            "value": 1.0
+          },
+          "overlap_recall@1": {
+            "numerator": 24,
+            "denominator": 30,
+            "value": 0.8
+          },
+          "overlap_recall@5": {
+            "numerator": 27,
+            "denominator": 30,
+            "value": 0.9
+          },
+          "overlap_recall@10": {
+            "numerator": 27,
+            "denominator": 30,
+            "value": 0.9
+          },
+          "tiou_0.3_recall@1": {
+            "numerator": 19,
+            "denominator": 30,
+            "value": 0.6333333333333333
+          },
+          "tiou_0.3_recall@5": {
+            "numerator": 21,
+            "denominator": 30,
+            "value": 0.7
+          },
+          "tiou_0.3_recall@10": {
+            "numerator": 21,
+            "denominator": 30,
+            "value": 0.7
+          },
+          "tiou_0.5_recall@1": {
+            "numerator": 11,
+            "denominator": 30,
+            "value": 0.36666666666666664
+          },
+          "tiou_0.5_recall@5": {
+            "numerator": 13,
+            "denominator": 30,
+            "value": 0.43333333333333335
+          },
+          "tiou_0.5_recall@10": {
+            "numerator": 13,
+            "denominator": 30,
+            "value": 0.43333333333333335
+          },
+          "jump_hit@1": {
+            "numerator": 8,
+            "denominator": 30,
+            "value": 0.26666666666666666
+          },
+          "jump_hit@5": {
+            "numerator": 8,
+            "denominator": 30,
+            "value": 0.26666666666666666
+          },
+          "jump_hit@10": {
+            "numerator": 8,
+            "denominator": 30,
+            "value": 0.26666666666666666
+          },
+          "overlap_mrr": {
+            "numerator": 25.5,
+            "denominator": 30,
+            "value": 0.85
+          },
+          "best_tiou": {
+            "numerator": 14.049341287502171,
+            "denominator": 30,
+            "value": 0.4683113762500724
+          }
+        },
+        "top1_correct_video_localization": {
+          "start_absolute_error_ms": {
+            "n": 28,
+            "mean": 10410.714285714286,
+            "min": 0,
+            "max": 72000,
+            "p50": 3500,
+            "p95": 51000
+          },
+          "end_absolute_error_ms": {
+            "n": 28,
+            "mean": 10475.75,
+            "min": 240,
+            "max": 64000,
+            "p50": 4248,
+            "p95": 46000
+          },
+          "tiou": {
+            "n": 28,
+            "mean": 0.44862443373732247,
+            "min": 0.0,
+            "max": 0.84528,
+            "p50": 0.4129777777777778,
+            "p95": 0.845
+          }
+        },
+        "negative": {
+          "failed_count": 0,
+          "nonempty_rate": {
+            "numerator": 5,
+            "denominator": 5,
+            "value": 1.0
+          },
+          "top1_scores": {
+            "n": 5,
+            "mean": 0.01639344262295082,
+            "min": 0.01639344262295082,
+            "max": 0.01639344262295082,
+            "p50": 0.01639344262295082,
+            "p95": 0.01639344262295082
+          }
+        },
+        "latency_ms": {
+          "n": 35,
+          "mean": 137.11905714285714,
+          "min": 124.031,
+          "max": 164.574,
+          "p50": 136.702,
+          "p95": 150.16
+        }
+      },
+      "by_category": {
+        "mixed": {
+          "query_count": 10,
+          "positive_count": 10,
+          "negative_count": 0,
+          "status_counts": {
+            "ok": 10
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "video_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "video_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 9,
+              "denominator": 10,
+              "value": 0.9
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 9,
+              "denominator": 10,
+              "value": 0.9
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 9,
+              "denominator": 10,
+              "value": 0.9
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "jump_hit@1": {
+              "numerator": 5,
+              "denominator": 10,
+              "value": 0.5
+            },
+            "jump_hit@5": {
+              "numerator": 5,
+              "denominator": 10,
+              "value": 0.5
+            },
+            "jump_hit@10": {
+              "numerator": 5,
+              "denominator": 10,
+              "value": 0.5
+            },
+            "overlap_mrr": {
+              "numerator": 10.0,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "best_tiou": {
+              "numerator": 4.971996237654064,
+              "denominator": 10,
+              "value": 0.49719962376540644
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 10,
+              "mean": 5550.0,
+              "min": 500,
+              "max": 13500,
+              "p50": 1000,
+              "p95": 13500
+            },
+            "end_absolute_error_ms": {
+              "n": 10,
+              "mean": 5936.1,
+              "min": 240,
+              "max": 29026,
+              "p50": 2979,
+              "p95": 29026
+            },
+            "tiou": {
+              "n": 10,
+              "mean": 0.49719962376540644,
+              "min": 0.14948,
+              "max": 0.845,
+              "p50": 0.4129777777777778,
+              "p95": 0.845
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "top1_scores": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "latency_ms": {
+            "n": 10,
+            "mean": 142.219,
+            "min": 134.34,
+            "max": 164.574,
+            "p50": 139.267,
+            "p95": 164.574
+          }
+        },
+        "negative": {
+          "query_count": 5,
+          "positive_count": 0,
+          "negative_count": 5,
+          "status_counts": {
+            "ok": 5
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "video_recall@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "video_recall@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "overlap_recall@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "overlap_recall@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "overlap_recall@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "jump_hit@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "jump_hit@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "jump_hit@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "overlap_mrr": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "best_tiou": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            },
+            "end_absolute_error_ms": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            },
+            "tiou": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 5,
+              "denominator": 5,
+              "value": 1.0
+            },
+            "top1_scores": {
+              "n": 5,
+              "mean": 0.01639344262295082,
+              "min": 0.01639344262295082,
+              "max": 0.01639344262295082,
+              "p50": 0.01639344262295082,
+              "p95": 0.01639344262295082
+            }
+          },
+          "latency_ms": {
+            "n": 5,
+            "mean": 127.9866,
+            "min": 124.346,
+            "max": 136.588,
+            "p50": 126.285,
+            "p95": 136.588
+          }
+        },
+        "speech": {
+          "query_count": 10,
+          "positive_count": 10,
+          "negative_count": 0,
+          "status_counts": {
+            "ok": 10
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "video_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "video_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 9,
+              "denominator": 10,
+              "value": 0.9
+            },
+            "overlap_recall@5": {
+              "numerator": 9,
+              "denominator": 10,
+              "value": 0.9
+            },
+            "overlap_recall@10": {
+              "numerator": 9,
+              "denominator": 10,
+              "value": 0.9
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 6,
+              "denominator": 10,
+              "value": 0.6
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 6,
+              "denominator": 10,
+              "value": 0.6
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 6,
+              "denominator": 10,
+              "value": 0.6
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 6,
+              "denominator": 10,
+              "value": 0.6
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 6,
+              "denominator": 10,
+              "value": 0.6
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 6,
+              "denominator": 10,
+              "value": 0.6
+            },
+            "jump_hit@1": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "jump_hit@5": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "jump_hit@10": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "overlap_mrr": {
+              "numerator": 9.0,
+              "denominator": 10,
+              "value": 0.9
+            },
+            "best_tiou": {
+              "numerator": 4.915390313408077,
+              "denominator": 10,
+              "value": 0.4915390313408077
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 10,
+              "mean": 6900.0,
+              "min": 0,
+              "max": 28500,
+              "p50": 1000,
+              "p95": 28500
+            },
+            "end_absolute_error_ms": {
+              "n": 10,
+              "mean": 6446.0,
+              "min": 805,
+              "max": 31689,
+              "p50": 1777,
+              "p95": 31689
+            },
+            "tiou": {
+              "n": 10,
+              "mean": 0.4915390313408077,
+              "min": 0.0,
+              "max": 0.84528,
+              "p50": 0.5182666666666667,
+              "p95": 0.84528
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "top1_scores": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "latency_ms": {
+            "n": 10,
+            "mean": 136.8249,
+            "min": 124.031,
+            "max": 149.371,
+            "p50": 138.296,
+            "p95": 149.371
+          }
+        },
+        "visual": {
+          "query_count": 10,
+          "positive_count": 10,
+          "negative_count": 0,
+          "status_counts": {
+            "ok": 10
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 8,
+              "denominator": 10,
+              "value": 0.8
+            },
+            "video_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "video_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 5,
+              "denominator": 10,
+              "value": 0.5
+            },
+            "overlap_recall@5": {
+              "numerator": 8,
+              "denominator": 10,
+              "value": 0.8
+            },
+            "overlap_recall@10": {
+              "numerator": 8,
+              "denominator": 10,
+              "value": 0.8
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 4,
+              "denominator": 10,
+              "value": 0.4
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 6,
+              "denominator": 10,
+              "value": 0.6
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 6,
+              "denominator": 10,
+              "value": 0.6
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 2,
+              "denominator": 10,
+              "value": 0.2
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 4,
+              "denominator": 10,
+              "value": 0.4
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 4,
+              "denominator": 10,
+              "value": 0.4
+            },
+            "jump_hit@1": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "jump_hit@5": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "jump_hit@10": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "overlap_mrr": {
+              "numerator": 6.5,
+              "denominator": 10,
+              "value": 0.65
+            },
+            "best_tiou": {
+              "numerator": 4.1619547364400304,
+              "denominator": 10,
+              "value": 0.41619547364400306
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 8,
+              "mean": 20875.0,
+              "min": 0,
+              "max": 72000,
+              "p50": 10000,
+              "p95": 72000
+            },
+            "end_absolute_error_ms": {
+              "n": 8,
+              "mean": 21187.5,
+              "min": 2000,
+              "max": 64000,
+              "p50": 7500,
+              "p95": 64000
+            },
+            "tiou": {
+              "n": 8,
+              "mean": 0.334262199197861,
+              "min": 0.0,
+              "max": 0.8235294117647058,
+              "p50": 0.18181818181818182,
+              "p95": 0.8235294117647058
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "top1_scores": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "latency_ms": {
+            "n": 10,
+            "mean": 136.8795,
+            "min": 131.772,
+            "max": 143.541,
+            "p50": 135.205,
+            "p95": 143.541
+          }
+        }
+      },
+      "by_language": {
+        "en": {
+          "query_count": 14,
+          "positive_count": 12,
+          "negative_count": 2,
+          "status_counts": {
+            "ok": 14
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 12,
+              "denominator": 12,
+              "value": 1.0
+            },
+            "video_recall@5": {
+              "numerator": 12,
+              "denominator": 12,
+              "value": 1.0
+            },
+            "video_recall@10": {
+              "numerator": 12,
+              "denominator": 12,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 9,
+              "denominator": 12,
+              "value": 0.75
+            },
+            "overlap_recall@5": {
+              "numerator": 10,
+              "denominator": 12,
+              "value": 0.8333333333333334
+            },
+            "overlap_recall@10": {
+              "numerator": 10,
+              "denominator": 12,
+              "value": 0.8333333333333334
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 5,
+              "denominator": 12,
+              "value": 0.4166666666666667
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 5,
+              "denominator": 12,
+              "value": 0.4166666666666667
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 5,
+              "denominator": 12,
+              "value": 0.4166666666666667
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 4,
+              "denominator": 12,
+              "value": 0.3333333333333333
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 4,
+              "denominator": 12,
+              "value": 0.3333333333333333
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 4,
+              "denominator": 12,
+              "value": 0.3333333333333333
+            },
+            "jump_hit@1": {
+              "numerator": 3,
+              "denominator": 12,
+              "value": 0.25
+            },
+            "jump_hit@5": {
+              "numerator": 3,
+              "denominator": 12,
+              "value": 0.25
+            },
+            "jump_hit@10": {
+              "numerator": 3,
+              "denominator": 12,
+              "value": 0.25
+            },
+            "overlap_mrr": {
+              "numerator": 9.5,
+              "denominator": 12,
+              "value": 0.7916666666666666
+            },
+            "best_tiou": {
+              "numerator": 4.183750163121837,
+              "denominator": 12,
+              "value": 0.3486458469268197
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 12,
+              "mean": 15708.333333333334,
+              "min": 1000,
+              "max": 72000,
+              "p50": 10000,
+              "p95": 72000
+            },
+            "end_absolute_error_ms": {
+              "n": 12,
+              "mean": 15376.333333333334,
+              "min": 983,
+              "max": 64000,
+              "p50": 2583,
+              "p95": 64000
+            },
+            "tiou": {
+              "n": 12,
+              "mean": 0.3303125135934864,
+              "min": 0.0,
+              "max": 0.82328,
+              "p50": 0.18181818181818182,
+              "p95": 0.82328
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 2,
+              "denominator": 2,
+              "value": 1.0
+            },
+            "top1_scores": {
+              "n": 2,
+              "mean": 0.01639344262295082,
+              "min": 0.01639344262295082,
+              "max": 0.01639344262295082,
+              "p50": 0.01639344262295082,
+              "p95": 0.01639344262295082
+            }
+          },
+          "latency_ms": {
+            "n": 14,
+            "mean": 134.42764285714287,
+            "min": 124.031,
+            "max": 149.371,
+            "p50": 133.438,
+            "p95": 149.371
+          }
+        },
+        "zh": {
+          "query_count": 21,
+          "positive_count": 18,
+          "negative_count": 3,
+          "status_counts": {
+            "ok": 21
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 16,
+              "denominator": 18,
+              "value": 0.8888888888888888
+            },
+            "video_recall@5": {
+              "numerator": 18,
+              "denominator": 18,
+              "value": 1.0
+            },
+            "video_recall@10": {
+              "numerator": 18,
+              "denominator": 18,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 15,
+              "denominator": 18,
+              "value": 0.8333333333333334
+            },
+            "overlap_recall@5": {
+              "numerator": 17,
+              "denominator": 18,
+              "value": 0.9444444444444444
+            },
+            "overlap_recall@10": {
+              "numerator": 17,
+              "denominator": 18,
+              "value": 0.9444444444444444
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 14,
+              "denominator": 18,
+              "value": 0.7777777777777778
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 16,
+              "denominator": 18,
+              "value": 0.8888888888888888
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 16,
+              "denominator": 18,
+              "value": 0.8888888888888888
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 7,
+              "denominator": 18,
+              "value": 0.3888888888888889
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 9,
+              "denominator": 18,
+              "value": 0.5
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 9,
+              "denominator": 18,
+              "value": 0.5
+            },
+            "jump_hit@1": {
+              "numerator": 5,
+              "denominator": 18,
+              "value": 0.2777777777777778
+            },
+            "jump_hit@5": {
+              "numerator": 5,
+              "denominator": 18,
+              "value": 0.2777777777777778
+            },
+            "jump_hit@10": {
+              "numerator": 5,
+              "denominator": 18,
+              "value": 0.2777777777777778
+            },
+            "overlap_mrr": {
+              "numerator": 16.0,
+              "denominator": 18,
+              "value": 0.8888888888888888
+            },
+            "best_tiou": {
+              "numerator": 9.865591124380334,
+              "denominator": 18,
+              "value": 0.5480883957989074
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 16,
+              "mean": 6437.5,
+              "min": 0,
+              "max": 51000,
+              "p50": 1000,
+              "p95": 51000
+            },
+            "end_absolute_error_ms": {
+              "n": 16,
+              "mean": 6800.3125,
+              "min": 240,
+              "max": 46000,
+              "p50": 4248,
+              "p95": 46000
+            },
+            "tiou": {
+              "n": 16,
+              "mean": 0.5373583738451995,
+              "min": 0.0,
+              "max": 0.84528,
+              "p50": 0.4865916955017301,
+              "p95": 0.84528
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 3,
+              "denominator": 3,
+              "value": 1.0
+            },
+            "top1_scores": {
+              "n": 3,
+              "mean": 0.01639344262295082,
+              "min": 0.01639344262295082,
+              "max": 0.01639344262295082,
+              "p50": 0.01639344262295082,
+              "p95": 0.01639344262295082
+            }
+          },
+          "latency_ms": {
+            "n": 21,
+            "mean": 138.91333333333333,
+            "min": 125.239,
+            "max": 164.574,
+            "p50": 139.582,
+            "p95": 150.16
+          }
+        }
+      }
+    },
+    "fused": {
+      "all": {
+        "query_count": 35,
+        "positive_count": 30,
+        "negative_count": 5,
+        "status_counts": {
+          "ok": 35
+        },
+        "positive_metrics": {
+          "video_recall@1": {
+            "numerator": 29,
+            "denominator": 30,
+            "value": 0.9666666666666667
+          },
+          "video_recall@5": {
+            "numerator": 30,
+            "denominator": 30,
+            "value": 1.0
+          },
+          "video_recall@10": {
+            "numerator": 30,
+            "denominator": 30,
+            "value": 1.0
+          },
+          "overlap_recall@1": {
+            "numerator": 26,
+            "denominator": 30,
+            "value": 0.8666666666666667
+          },
+          "overlap_recall@5": {
+            "numerator": 30,
+            "denominator": 30,
+            "value": 1.0
+          },
+          "overlap_recall@10": {
+            "numerator": 30,
+            "denominator": 30,
+            "value": 1.0
+          },
+          "tiou_0.3_recall@1": {
+            "numerator": 21,
+            "denominator": 30,
+            "value": 0.7
+          },
+          "tiou_0.3_recall@5": {
+            "numerator": 25,
+            "denominator": 30,
+            "value": 0.8333333333333334
+          },
+          "tiou_0.3_recall@10": {
+            "numerator": 25,
+            "denominator": 30,
+            "value": 0.8333333333333334
+          },
+          "tiou_0.5_recall@1": {
+            "numerator": 13,
+            "denominator": 30,
+            "value": 0.43333333333333335
+          },
+          "tiou_0.5_recall@5": {
+            "numerator": 16,
+            "denominator": 30,
+            "value": 0.5333333333333333
+          },
+          "tiou_0.5_recall@10": {
+            "numerator": 16,
+            "denominator": 30,
+            "value": 0.5333333333333333
+          },
+          "jump_hit@1": {
+            "numerator": 5,
+            "denominator": 30,
+            "value": 0.16666666666666666
+          },
+          "jump_hit@5": {
+            "numerator": 8,
+            "denominator": 30,
+            "value": 0.26666666666666666
+          },
+          "jump_hit@10": {
+            "numerator": 8,
+            "denominator": 30,
+            "value": 0.26666666666666666
+          },
+          "overlap_mrr": {
+            "numerator": 28.0,
+            "denominator": 30,
+            "value": 0.9333333333333333
+          },
+          "best_tiou": {
+            "numerator": 16.057779131889514,
+            "denominator": 30,
+            "value": 0.5352593043963172
+          }
+        },
+        "top1_correct_video_localization": {
+          "start_absolute_error_ms": {
+            "n": 29,
+            "mean": 10379.310344827587,
+            "min": 0,
+            "max": 81500,
+            "p50": 4000,
+            "p95": 49000
+          },
+          "end_absolute_error_ms": {
+            "n": 29,
+            "mean": 11399.931034482759,
+            "min": 0,
+            "max": 81695,
+            "p50": 5708,
+            "p95": 42260
+          },
+          "tiou": {
+            "n": 29,
+            "mean": 0.472657553163163,
+            "min": 0.0,
+            "max": 0.9375,
+            "p50": 0.4828571428571429,
+            "p95": 0.9285714285714286
+          }
+        },
+        "negative": {
+          "failed_count": 0,
+          "nonempty_rate": {
+            "numerator": 5,
+            "denominator": 5,
+            "value": 1.0
+          },
+          "top1_scores": {
+            "n": 5,
+            "mean": 0.01946556054997356,
+            "min": 0.01639344262295082,
+            "max": 0.031754032258064516,
+            "p50": 0.01639344262295082,
+            "p95": 0.031754032258064516
+          }
+        },
+        "latency_ms": {
+          "n": 35,
+          "mean": 139.26757142857142,
+          "min": 123.528,
+          "max": 175.05,
+          "p50": 137.283,
+          "p95": 153.698
+        }
+      },
+      "by_category": {
+        "mixed": {
+          "query_count": 10,
+          "positive_count": 10,
+          "negative_count": 0,
+          "status_counts": {
+            "ok": 10
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "video_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "video_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 8,
+              "denominator": 10,
+              "value": 0.8
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 8,
+              "denominator": 10,
+              "value": 0.8
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 8,
+              "denominator": 10,
+              "value": 0.8
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 1,
+              "denominator": 10,
+              "value": 0.1
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 1,
+              "denominator": 10,
+              "value": 0.1
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 1,
+              "denominator": 10,
+              "value": 0.1
+            },
+            "jump_hit@1": {
+              "numerator": 5,
+              "denominator": 10,
+              "value": 0.5
+            },
+            "jump_hit@5": {
+              "numerator": 5,
+              "denominator": 10,
+              "value": 0.5
+            },
+            "jump_hit@10": {
+              "numerator": 5,
+              "denominator": 10,
+              "value": 0.5
+            },
+            "overlap_mrr": {
+              "numerator": 10.0,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "best_tiou": {
+              "numerator": 3.9572291881918735,
+              "denominator": 10,
+              "value": 0.39572291881918736
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 10,
+              "mean": 5550.0,
+              "min": 500,
+              "max": 13500,
+              "p50": 1000,
+              "p95": 13500
+            },
+            "end_absolute_error_ms": {
+              "n": 10,
+              "mean": 9536.5,
+              "min": 2979,
+              "max": 29026,
+              "p50": 6240,
+              "p95": 29026
+            },
+            "tiou": {
+              "n": 10,
+              "mean": 0.39572291881918736,
+              "min": 0.14948,
+              "max": 0.5832,
+              "p50": 0.3970181818181818,
+              "p95": 0.5832
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "top1_scores": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "latency_ms": {
+            "n": 10,
+            "mean": 142.4205,
+            "min": 134.288,
+            "max": 153.698,
+            "p50": 141.661,
+            "p95": 153.698
+          }
+        },
+        "negative": {
+          "query_count": 5,
+          "positive_count": 0,
+          "negative_count": 5,
+          "status_counts": {
+            "ok": 5
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "video_recall@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "video_recall@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "overlap_recall@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "overlap_recall@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "overlap_recall@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "jump_hit@1": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "jump_hit@5": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "jump_hit@10": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "overlap_mrr": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "best_tiou": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            },
+            "end_absolute_error_ms": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            },
+            "tiou": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 5,
+              "denominator": 5,
+              "value": 1.0
+            },
+            "top1_scores": {
+              "n": 5,
+              "mean": 0.01946556054997356,
+              "min": 0.01639344262295082,
+              "max": 0.031754032258064516,
+              "p50": 0.01639344262295082,
+              "p95": 0.031754032258064516
+            }
+          },
+          "latency_ms": {
+            "n": 5,
+            "mean": 129.9008,
+            "min": 123.528,
+            "max": 136.156,
+            "p50": 129.6,
+            "p95": 136.156
+          }
+        },
+        "speech": {
+          "query_count": 10,
+          "positive_count": 10,
+          "negative_count": 0,
+          "status_counts": {
+            "ok": 10
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 9,
+              "denominator": 10,
+              "value": 0.9
+            },
+            "video_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "video_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 6,
+              "denominator": 10,
+              "value": 0.6
+            },
+            "overlap_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 7,
+              "denominator": 10,
+              "value": 0.7
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 7,
+              "denominator": 10,
+              "value": 0.7
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 2,
+              "denominator": 10,
+              "value": 0.2
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 5,
+              "denominator": 10,
+              "value": 0.5
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 5,
+              "denominator": 10,
+              "value": 0.5
+            },
+            "jump_hit@1": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "jump_hit@5": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "jump_hit@10": {
+              "numerator": 3,
+              "denominator": 10,
+              "value": 0.3
+            },
+            "overlap_mrr": {
+              "numerator": 8.0,
+              "denominator": 10,
+              "value": 0.8
+            },
+            "best_tiou": {
+              "numerator": 4.460819336467035,
+              "denominator": 10,
+              "value": 0.44608193364670357
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 9,
+              "mean": 23166.666666666668,
+              "min": 1000,
+              "max": 81500,
+              "p50": 10000,
+              "p95": 81500
+            },
+            "end_absolute_error_ms": {
+              "n": 9,
+              "mean": 24525.88888888889,
+              "min": 971,
+              "max": 81695,
+              "p50": 15934,
+              "p95": 81695
+            },
+            "tiou": {
+              "n": 9,
+              "mean": 0.23445658292324958,
+              "min": 0.0,
+              "max": 0.6860666666666667,
+              "p50": 0.15497777777777777,
+              "p95": 0.6860666666666667
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "top1_scores": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "latency_ms": {
+            "n": 10,
+            "mean": 138.5529,
+            "min": 129.98,
+            "max": 153.195,
+            "p50": 136.962,
+            "p95": 153.195
+          }
+        },
+        "visual": {
+          "query_count": 10,
+          "positive_count": 10,
+          "negative_count": 0,
+          "status_counts": {
+            "ok": 10
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "video_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "video_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "overlap_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 10,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "jump_hit@1": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "jump_hit@5": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "jump_hit@10": {
+              "numerator": 0,
+              "denominator": 10,
+              "value": 0.0
+            },
+            "overlap_mrr": {
+              "numerator": 10.0,
+              "denominator": 10,
+              "value": 1.0
+            },
+            "best_tiou": {
+              "numerator": 7.639730607230607,
+              "denominator": 10,
+              "value": 0.7639730607230607
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 10,
+              "mean": 3700.0,
+              "min": 0,
+              "max": 12500,
+              "p50": 1000,
+              "p95": 12500
+            },
+            "end_absolute_error_ms": {
+              "n": 10,
+              "mean": 1450.0,
+              "min": 0,
+              "max": 5000,
+              "p50": 500,
+              "p95": 5000
+            },
+            "tiou": {
+              "n": 10,
+              "mean": 0.7639730607230607,
+              "min": 0.5,
+              "max": 0.9375,
+              "p50": 0.8,
+              "p95": 0.9375
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 0,
+              "denominator": 0,
+              "value": null
+            },
+            "top1_scores": {
+              "n": 0,
+              "mean": null,
+              "min": null,
+              "max": null,
+              "p50": null,
+              "p95": null
+            }
+          },
+          "latency_ms": {
+            "n": 10,
+            "mean": 141.5127,
+            "min": 130.087,
+            "max": 175.05,
+            "p50": 137.027,
+            "p95": 175.05
+          }
+        }
+      },
+      "by_language": {
+        "en": {
+          "query_count": 14,
+          "positive_count": 12,
+          "negative_count": 2,
+          "status_counts": {
+            "ok": 14
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 11,
+              "denominator": 12,
+              "value": 0.9166666666666666
+            },
+            "video_recall@5": {
+              "numerator": 12,
+              "denominator": 12,
+              "value": 1.0
+            },
+            "video_recall@10": {
+              "numerator": 12,
+              "denominator": 12,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 11,
+              "denominator": 12,
+              "value": 0.9166666666666666
+            },
+            "overlap_recall@5": {
+              "numerator": 12,
+              "denominator": 12,
+              "value": 1.0
+            },
+            "overlap_recall@10": {
+              "numerator": 12,
+              "denominator": 12,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 6,
+              "denominator": 12,
+              "value": 0.5
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 7,
+              "denominator": 12,
+              "value": 0.5833333333333334
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 7,
+              "denominator": 12,
+              "value": 0.5833333333333334
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 4,
+              "denominator": 12,
+              "value": 0.3333333333333333
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 5,
+              "denominator": 12,
+              "value": 0.4166666666666667
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 5,
+              "denominator": 12,
+              "value": 0.4166666666666667
+            },
+            "jump_hit@1": {
+              "numerator": 2,
+              "denominator": 12,
+              "value": 0.16666666666666666
+            },
+            "jump_hit@5": {
+              "numerator": 3,
+              "denominator": 12,
+              "value": 0.25
+            },
+            "jump_hit@10": {
+              "numerator": 3,
+              "denominator": 12,
+              "value": 0.25
+            },
+            "overlap_mrr": {
+              "numerator": 11.5,
+              "denominator": 12,
+              "value": 0.9583333333333334
+            },
+            "best_tiou": {
+              "numerator": 5.066637312558922,
+              "denominator": 12,
+              "value": 0.42221977604657684
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 11,
+              "mean": 8272.727272727272,
+              "min": 500,
+              "max": 28500,
+              "p50": 7000,
+              "p95": 28500
+            },
+            "end_absolute_error_ms": {
+              "n": 11,
+              "mean": 10716.272727272728,
+              "min": 0,
+              "max": 31689,
+              "p50": 9077,
+              "p95": 31689
+            },
+            "tiou": {
+              "n": 11,
+              "mean": 0.4126492362237817,
+              "min": 0.020794871794871796,
+              "max": 0.918918918918919,
+              "p50": 0.4241714285714286,
+              "p95": 0.918918918918919
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 2,
+              "denominator": 2,
+              "value": 1.0
+            },
+            "top1_scores": {
+              "n": 2,
+              "mean": 0.01639344262295082,
+              "min": 0.01639344262295082,
+              "max": 0.01639344262295082,
+              "p50": 0.01639344262295082,
+              "p95": 0.01639344262295082
+            }
+          },
+          "latency_ms": {
+            "n": 14,
+            "mean": 140.27328571428572,
+            "min": 127.675,
+            "max": 175.05,
+            "p50": 136.446,
+            "p95": 175.05
+          }
+        },
+        "zh": {
+          "query_count": 21,
+          "positive_count": 18,
+          "negative_count": 3,
+          "status_counts": {
+            "ok": 21
+          },
+          "positive_metrics": {
+            "video_recall@1": {
+              "numerator": 18,
+              "denominator": 18,
+              "value": 1.0
+            },
+            "video_recall@5": {
+              "numerator": 18,
+              "denominator": 18,
+              "value": 1.0
+            },
+            "video_recall@10": {
+              "numerator": 18,
+              "denominator": 18,
+              "value": 1.0
+            },
+            "overlap_recall@1": {
+              "numerator": 15,
+              "denominator": 18,
+              "value": 0.8333333333333334
+            },
+            "overlap_recall@5": {
+              "numerator": 18,
+              "denominator": 18,
+              "value": 1.0
+            },
+            "overlap_recall@10": {
+              "numerator": 18,
+              "denominator": 18,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@1": {
+              "numerator": 15,
+              "denominator": 18,
+              "value": 0.8333333333333334
+            },
+            "tiou_0.3_recall@5": {
+              "numerator": 18,
+              "denominator": 18,
+              "value": 1.0
+            },
+            "tiou_0.3_recall@10": {
+              "numerator": 18,
+              "denominator": 18,
+              "value": 1.0
+            },
+            "tiou_0.5_recall@1": {
+              "numerator": 9,
+              "denominator": 18,
+              "value": 0.5
+            },
+            "tiou_0.5_recall@5": {
+              "numerator": 11,
+              "denominator": 18,
+              "value": 0.6111111111111112
+            },
+            "tiou_0.5_recall@10": {
+              "numerator": 11,
+              "denominator": 18,
+              "value": 0.6111111111111112
+            },
+            "jump_hit@1": {
+              "numerator": 3,
+              "denominator": 18,
+              "value": 0.16666666666666666
+            },
+            "jump_hit@5": {
+              "numerator": 5,
+              "denominator": 18,
+              "value": 0.2777777777777778
+            },
+            "jump_hit@10": {
+              "numerator": 5,
+              "denominator": 18,
+              "value": 0.2777777777777778
+            },
+            "overlap_mrr": {
+              "numerator": 16.5,
+              "denominator": 18,
+              "value": 0.9166666666666666
+            },
+            "best_tiou": {
+              "numerator": 10.991141819330595,
+              "denominator": 18,
+              "value": 0.6106189899628108
+            }
+          },
+          "top1_correct_video_localization": {
+            "start_absolute_error_ms": {
+              "n": 18,
+              "mean": 11666.666666666666,
+              "min": 0,
+              "max": 81500,
+              "p50": 1000,
+              "p95": 81500
+            },
+            "end_absolute_error_ms": {
+              "n": 18,
+              "mean": 11817.722222222223,
+              "min": 0,
+              "max": 81695,
+              "p50": 3082,
+              "p95": 81695
+            },
+            "tiou": {
+              "n": 18,
+              "mean": 0.5093293024038961,
+              "min": 0.0,
+              "max": 0.9375,
+              "p50": 0.4945777777777778,
+              "p95": 0.9375
+            }
+          },
+          "negative": {
+            "failed_count": 0,
+            "nonempty_rate": {
+              "numerator": 3,
+              "denominator": 3,
+              "value": 1.0
+            },
+            "top1_scores": {
+              "n": 3,
+              "mean": 0.021513639167988718,
+              "min": 0.01639344262295082,
+              "max": 0.031754032258064516,
+              "p50": 0.01639344262295082,
+              "p95": 0.031754032258064516
+            }
+          },
+          "latency_ms": {
+            "n": 21,
+            "mean": 138.59709523809522,
+            "min": 123.528,
+            "max": 153.195,
+            "p50": 138.417,
+            "p95": 148.358
+          }
+        }
+      }
+    }
+  },
+  "per_query": [
+    {
+      "query_id": "q001",
+      "mode": "visual",
+      "category": "speech",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 4,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 157.834,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 0,
+        "overlap_recall@5": 0,
+        "overlap_recall@10": 0,
+        "tiou_0.3_recall@1": 0,
+        "tiou_0.3_recall@5": 0,
+        "tiou_0.3_recall@10": 0,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 0,
+        "best_tiou": 0.0
+      },
+      "localization": {
+        "start_absolute_error_ms": 34000,
+        "end_absolute_error_ms": 28226,
+        "tiou": 0.0
+      }
+    },
+    {
+      "query_id": "q002",
+      "mode": "visual",
+      "category": "visual",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 1,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 136.294,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 1,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.5
+      },
+      "localization": {
+        "start_absolute_error_ms": 4000,
+        "end_absolute_error_ms": 3000,
+        "tiou": 0.5
+      }
+    },
+    {
+      "query_id": "q003",
+      "mode": "visual",
+      "category": "mixed",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 1,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 136.022,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 0,
+        "overlap_recall@5": 0,
+        "overlap_recall@10": 0,
+        "tiou_0.3_recall@1": 0,
+        "tiou_0.3_recall@5": 0,
+        "tiou_0.3_recall@10": 0,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 0,
+        "best_tiou": 0.0
+      },
+      "localization": {
+        "start_absolute_error_ms": 7000,
+        "end_absolute_error_ms": 6240,
+        "tiou": 0.0
+      }
+    },
+    {
+      "query_id": "q004",
+      "mode": "visual",
+      "category": "speech",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 2,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 141.654,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 0,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.3736455349358575
+      },
+      "localization": {
+        "start_absolute_error_ms": 7000,
+        "end_absolute_error_ms": 971,
+        "tiou": 0.11433333333333333
+      }
+    },
+    {
+      "query_id": "q005",
+      "mode": "visual",
+      "category": "visual",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 1,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 132.363,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.35714285714285715
+      },
+      "localization": {
+        "start_absolute_error_ms": 9000,
+        "end_absolute_error_ms": 0,
+        "tiou": 0.35714285714285715
+      }
+    },
+    {
+      "query_id": "q006",
+      "mode": "visual",
+      "category": "mixed",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 2,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 146.603,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 0,
+        "overlap_recall@5": 0,
+        "overlap_recall@10": 0,
+        "tiou_0.3_recall@1": 0,
+        "tiou_0.3_recall@5": 0,
+        "tiou_0.3_recall@10": 0,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 0,
+        "jump_hit@5": 1,
+        "jump_hit@10": 1,
+        "overlap_mrr": 0,
+        "best_tiou": 0.0
+      },
+      "localization": {
+        "start_absolute_error_ms": 8000,
+        "end_absolute_error_ms": 5021,
+        "tiou": 0.0
+      }
+    },
+    {
+      "query_id": "q007",
+      "mode": "visual",
+      "category": "speech",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 2,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 169.561,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 0,
+        "tiou_0.3_recall@5": 0,
+        "tiou_0.3_recall@10": 0,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 0,
+        "jump_hit@5": 1,
+        "jump_hit@10": 1,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.12969047207331835
+      },
+      "localization": {
+        "start_absolute_error_ms": 9000,
+        "end_absolute_error_ms": 8434,
+        "tiou": 0.08242105263157895
+      }
+    },
+    {
+      "query_id": "q008",
+      "mode": "visual",
+      "category": "visual",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 2,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 162.191,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 1,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 0,
+        "jump_hit@5": 1,
+        "jump_hit@10": 1,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.5
+      },
+      "localization": {
+        "start_absolute_error_ms": 7500,
+        "end_absolute_error_ms": 2500,
+        "tiou": 0.5
+      }
+    },
+    {
+      "query_id": "q009",
+      "mode": "visual",
+      "category": "mixed",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 1,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 149.346,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.3751578947368421
+      },
+      "localization": {
+        "start_absolute_error_ms": 4000,
+        "end_absolute_error_ms": 7872,
+        "tiou": 0.3751578947368421
+      }
+    },
+    {
+      "query_id": "q010",
+      "mode": "visual",
+      "category": "speech",
+      "language": "en",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 1,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 138.237,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 1,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 1,
+        "jump_hit@5": 1,
+        "jump_hit@10": 1,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.6279285714285714
+      },
+      "localization": {
+        "start_absolute_error_ms": 1500,
+        "end_absolute_error_ms": 3709,
+        "tiou": 0.6279285714285714
+      }
+    },
+    {
+      "query_id": "q011",
+      "mode": "visual",
+      "category": "visual",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 1,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 146.638,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 1,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.625
+      },
+      "localization": {
+        "start_absolute_error_ms": 5000,
+        "end_absolute_error_ms": 2500,
+        "tiou": 0.625
+      }
+    },
+    {
+      "query_id": "q012",
+      "mode": "visual",
+      "category": "mixed",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 1,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 155.351,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 1,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 1,
+        "jump_hit@5": 1,
+        "jump_hit@10": 1,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.6727142857142857
+      },
+      "localization": {
+        "start_absolute_error_ms": 1500,
+        "end_absolute_error_ms": 3082,
+        "tiou": 0.6727142857142857
+      }
+    },
+    {
+      "query_id": "q013",
+      "mode": "visual",
+      "category": "speech",
+      "language": "en",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 1,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 126.684,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 0,
+        "tiou_0.3_recall@5": 0,
+        "tiou_0.3_recall@10": 0,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.04268421052631579
+      },
+      "localization": {
+        "start_absolute_error_ms": 6500,
+        "end_absolute_error_ms": 11689,
+        "tiou": 0.04268421052631579
+      }
+    },
+    {
+      "query_id": "q014",
+      "mode": "visual",
+      "category": "visual",
+      "language": "en",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 1,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 392.924,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 1,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.918918918918919
+      },
+      "localization": {
+        "start_absolute_error_ms": 500,
+        "end_absolute_error_ms": 1000,
+        "tiou": 0.918918918918919
+      }
+    },
+    {
+      "query_id": "q015",
+      "mode": "visual",
+      "category": "mixed",
+      "language": "en",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 1,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 136.877,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.4678
+      },
+      "localization": {
+        "start_absolute_error_ms": 2000,
+        "end_absolute_error_ms": 5983,
+        "tiou": 0.4678
+      }
+    },
+    {
+      "query_id": "q016",
+      "mode": "visual",
+      "category": "speech",
+      "language": "en",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 1,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 135.097,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 1,
+        "jump_hit@5": 1,
+        "jump_hit@10": 1,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.38725714285714286
+      },
+      "localization": {
+        "start_absolute_error_ms": 0,
+        "end_absolute_error_ms": 10723,
+        "tiou": 0.38725714285714286
+      }
+    },
+    {
+      "query_id": "q017",
+      "mode": "visual",
+      "category": "visual",
+      "language": "en",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 1,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 141.244,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 1,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 1,
+        "jump_hit@5": 1,
+        "jump_hit@10": 1,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.9722222222222222
+      },
+      "localization": {
+        "start_absolute_error_ms": 500,
+        "end_absolute_error_ms": 0,
+        "tiou": 0.9722222222222222
+      }
+    },
+    {
+      "query_id": "q018",
+      "mode": "visual",
+      "category": "mixed",
+      "language": "en",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 1,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 133.795,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 1,
+        "jump_hit@5": 1,
+        "jump_hit@10": 1,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.358969696969697
+      },
+      "localization": {
+        "start_absolute_error_ms": 1500,
+        "end_absolute_error_ms": 9077,
+        "tiou": 0.358969696969697
+      }
+    },
+    {
+      "query_id": "q019",
+      "mode": "visual",
+      "category": "speech",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 2,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 140.375,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 0,
+        "overlap_recall@5": 0,
+        "overlap_recall@10": 0,
+        "tiou_0.3_recall@1": 0,
+        "tiou_0.3_recall@5": 0,
+        "tiou_0.3_recall@10": 0,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 0,
+        "best_tiou": 0.0
+      },
+      "localization": {
+        "start_absolute_error_ms": 81500,
+        "end_absolute_error_ms": 81695,
+        "tiou": 0.0
+      }
+    },
+    {
+      "query_id": "q020",
+      "mode": "visual",
+      "category": "visual",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 1,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 132.338,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 1,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 1,
+        "jump_hit@5": 1,
+        "jump_hit@10": 1,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.8787878787878788
+      },
+      "localization": {
+        "start_absolute_error_ms": 1500,
+        "end_absolute_error_ms": 500,
+        "tiou": 0.8787878787878788
+      }
+    },
+    {
+      "query_id": "q021",
+      "mode": "visual",
+      "category": "mixed",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 1,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 138.258,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 1,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 1,
+        "jump_hit@5": 1,
+        "jump_hit@10": 1,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.5832
+      },
+      "localization": {
+        "start_absolute_error_ms": 500,
+        "end_absolute_error_ms": 5752,
+        "tiou": 0.5832
+      }
+    },
+    {
+      "query_id": "q022",
+      "mode": "visual",
+      "category": "speech",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 2,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 132.541,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 0,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 0,
+        "tiou_0.3_recall@5": 0,
+        "tiou_0.3_recall@10": 0,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 0.5,
+        "best_tiou": 0.10245901639344263
+      },
+      "localization": {
+        "start_absolute_error_ms": 49000,
+        "end_absolute_error_ms": 42260,
+        "tiou": 0.0
+      }
+    },
+    {
+      "query_id": "q023",
+      "mode": "visual",
+      "category": "visual",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 1,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 133.185,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 1,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.78125
+      },
+      "localization": {
+        "start_absolute_error_ms": 3500,
+        "end_absolute_error_ms": 0,
+        "tiou": 0.78125
+      }
+    },
+    {
+      "query_id": "q024",
+      "mode": "visual",
+      "category": "mixed",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 1,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 133.985,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 1,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 1,
+        "jump_hit@5": 1,
+        "jump_hit@10": 1,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.5194666666666666
+      },
+      "localization": {
+        "start_absolute_error_ms": 1500,
+        "end_absolute_error_ms": 5708,
+        "tiou": 0.5194666666666666
+      }
+    },
+    {
+      "query_id": "q025",
+      "mode": "visual",
+      "category": "speech",
+      "language": "en",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 1,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 136.73,
+      "metrics": {
+        "video_recall@1": 0,
+        "video_recall@5": 0,
+        "video_recall@10": 0,
+        "overlap_recall@1": 0,
+        "overlap_recall@5": 0,
+        "overlap_recall@10": 0,
+        "tiou_0.3_recall@1": 0,
+        "tiou_0.3_recall@5": 0,
+        "tiou_0.3_recall@10": 0,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 0,
+        "best_tiou": 0
+      },
+      "localization": null
+    },
+    {
+      "query_id": "q026",
+      "mode": "visual",
+      "category": "visual",
+      "language": "en",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 1,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 138.267,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 1,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 1,
+        "jump_hit@5": 1,
+        "jump_hit@10": 1,
+        "overlap_mrr": 1.0,
+        "best_tiou": 1.0
+      },
+      "localization": {
+        "start_absolute_error_ms": 0,
+        "end_absolute_error_ms": 0,
+        "tiou": 1.0
+      }
+    },
+    {
+      "query_id": "q027",
+      "mode": "visual",
+      "category": "mixed",
+      "language": "en",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 1,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 133,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 1,
+        "jump_hit@5": 1,
+        "jump_hit@10": 1,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.4982666666666667
+      },
+      "localization": {
+        "start_absolute_error_ms": 1000,
+        "end_absolute_error_ms": 6526,
+        "tiou": 0.4982666666666667
+      }
+    },
+    {
+      "query_id": "q028",
+      "mode": "visual",
+      "category": "speech",
+      "language": "en",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 1,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 145.197,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 1,
+        "jump_hit@5": 1,
+        "jump_hit@10": 1,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.4649333333333333
+      },
+      "localization": {
+        "start_absolute_error_ms": 1000,
+        "end_absolute_error_ms": 7026,
+        "tiou": 0.4649333333333333
+      }
+    },
+    {
+      "query_id": "q029",
+      "mode": "visual",
+      "category": "visual",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 1,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 138.996,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 1,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 1,
+        "jump_hit@5": 1,
+        "jump_hit@10": 1,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.8333333333333334
+      },
+      "localization": {
+        "start_absolute_error_ms": 0,
+        "end_absolute_error_ms": 2500,
+        "tiou": 0.8333333333333334
+      }
+    },
+    {
+      "query_id": "q030",
+      "mode": "visual",
+      "category": "mixed",
+      "language": "en",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 1,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 139.177,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 1,
+        "jump_hit@5": 1,
+        "jump_hit@10": 1,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.45693333333333336
+      },
+      "localization": {
+        "start_absolute_error_ms": 1000,
+        "end_absolute_error_ms": 7146,
+        "tiou": 0.45693333333333336
+      }
+    },
+    {
+      "query_id": "q031",
+      "mode": "visual",
+      "category": "negative",
+      "language": "zh",
+      "answerable": false,
+      "status": "ok",
+      "issues": [],
+      "result_count": 1,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 129.134,
+      "metrics": {},
+      "localization": null
+    },
+    {
+      "query_id": "q032",
+      "mode": "visual",
+      "category": "negative",
+      "language": "en",
+      "answerable": false,
+      "status": "ok",
+      "issues": [],
+      "result_count": 1,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 132.24,
+      "metrics": {},
+      "localization": null
+    },
+    {
+      "query_id": "q033",
+      "mode": "visual",
+      "category": "negative",
+      "language": "zh",
+      "answerable": false,
+      "status": "ok",
+      "issues": [],
+      "result_count": 1,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 124.998,
+      "metrics": {},
+      "localization": null
+    },
+    {
+      "query_id": "q034",
+      "mode": "visual",
+      "category": "negative",
+      "language": "en",
+      "answerable": false,
+      "status": "ok",
+      "issues": [],
+      "result_count": 3,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 140.113,
+      "metrics": {},
+      "localization": null
+    },
+    {
+      "query_id": "q035",
+      "mode": "visual",
+      "category": "negative",
+      "language": "zh",
+      "answerable": false,
+      "status": "ok",
+      "issues": [],
+      "result_count": 2,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 158.696,
+      "metrics": {},
+      "localization": null
+    },
+    {
+      "query_id": "q001",
+      "mode": "speech",
+      "category": "speech",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 3,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 138.296,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 1,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 1,
+        "jump_hit@5": 1,
+        "jump_hit@10": 1,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.5182666666666667
+      },
+      "localization": {
+        "start_absolute_error_ms": 0,
+        "end_absolute_error_ms": 7226,
+        "tiou": 0.5182666666666667
+      }
+    },
+    {
+      "query_id": "q002",
+      "mode": "speech",
+      "category": "visual",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 5,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 139.888,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 0,
+        "overlap_recall@5": 0,
+        "overlap_recall@10": 0,
+        "tiou_0.3_recall@1": 0,
+        "tiou_0.3_recall@5": 0,
+        "tiou_0.3_recall@10": 0,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 0,
+        "best_tiou": 0.0
+      },
+      "localization": {
+        "start_absolute_error_ms": 51000,
+        "end_absolute_error_ms": 46000,
+        "tiou": 0.0
+      }
+    },
+    {
+      "query_id": "q003",
+      "mode": "speech",
+      "category": "mixed",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 3,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 150.16,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 1,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 1,
+        "jump_hit@5": 1,
+        "jump_hit@10": 1,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.845
+      },
+      "localization": {
+        "start_absolute_error_ms": 1000,
+        "end_absolute_error_ms": 240,
+        "tiou": 0.845
+      }
+    },
+    {
+      "query_id": "q004",
+      "mode": "speech",
+      "category": "speech",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 3,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 139.859,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 1,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.6176153846153846
+      },
+      "localization": {
+        "start_absolute_error_ms": 4000,
+        "end_absolute_error_ms": 971,
+        "tiou": 0.6176153846153846
+      }
+    },
+    {
+      "query_id": "q005",
+      "mode": "speech",
+      "category": "visual",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 4,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 135.657,
+      "metrics": {
+        "video_recall@1": 0,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 0,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 0,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 0.5,
+        "best_tiou": 0.6428571428571429
+      },
+      "localization": null
+    },
+    {
+      "query_id": "q006",
+      "mode": "speech",
+      "category": "mixed",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 2,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 139.582,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.3576793762071679
+      },
+      "localization": {
+        "start_absolute_error_ms": 6000,
+        "end_absolute_error_ms": 2979,
+        "tiou": 0.3576793762071679
+      }
+    },
+    {
+      "query_id": "q007",
+      "mode": "speech",
+      "category": "speech",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 3,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 140.94,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 1,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.84528
+      },
+      "localization": {
+        "start_absolute_error_ms": 1000,
+        "end_absolute_error_ms": 934,
+        "tiou": 0.84528
+      }
+    },
+    {
+      "query_id": "q008",
+      "mode": "speech",
+      "category": "visual",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 4,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 141.428,
+      "metrics": {
+        "video_recall@1": 0,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 0,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 0,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 0.5,
+        "best_tiou": 0.625
+      },
+      "localization": null
+    },
+    {
+      "query_id": "q009",
+      "mode": "speech",
+      "category": "mixed",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 3,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 164.574,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 1,
+        "jump_hit@5": 1,
+        "jump_hit@10": 1,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.4945777777777778
+      },
+      "localization": {
+        "start_absolute_error_ms": 1000,
+        "end_absolute_error_ms": 10372,
+        "tiou": 0.4945777777777778
+      }
+    },
+    {
+      "query_id": "q010",
+      "mode": "speech",
+      "category": "speech",
+      "language": "en",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 2,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 149.371,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 1,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.82328
+      },
+      "localization": {
+        "start_absolute_error_ms": 1000,
+        "end_absolute_error_ms": 1209,
+        "tiou": 0.82328
+      }
+    },
+    {
+      "query_id": "q011",
+      "mode": "speech",
+      "category": "visual",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 2,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 141.475,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 1,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.8
+      },
+      "localization": {
+        "start_absolute_error_ms": 0,
+        "end_absolute_error_ms": 5000,
+        "tiou": 0.8
+      }
+    },
+    {
+      "query_id": "q012",
+      "mode": "speech",
+      "category": "mixed",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 2,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 143.723,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.3970181818181818
+      },
+      "localization": {
+        "start_absolute_error_ms": 13500,
+        "end_absolute_error_ms": 3082,
+        "tiou": 0.3970181818181818
+      }
+    },
+    {
+      "query_id": "q013",
+      "mode": "speech",
+      "category": "speech",
+      "language": "en",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 4,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 124.031,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 0,
+        "overlap_recall@5": 0,
+        "overlap_recall@10": 0,
+        "tiou_0.3_recall@1": 0,
+        "tiou_0.3_recall@5": 0,
+        "tiou_0.3_recall@10": 0,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 0,
+        "best_tiou": 0.0
+      },
+      "localization": {
+        "start_absolute_error_ms": 19000,
+        "end_absolute_error_ms": 31689,
+        "tiou": 0.0
+      }
+    },
+    {
+      "query_id": "q014",
+      "mode": "speech",
+      "category": "visual",
+      "language": "en",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 3,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 132.193,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 0,
+        "overlap_recall@5": 0,
+        "overlap_recall@10": 0,
+        "tiou_0.3_recall@1": 0,
+        "tiou_0.3_recall@5": 0,
+        "tiou_0.3_recall@10": 0,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 0,
+        "best_tiou": 0.0
+      },
+      "localization": {
+        "start_absolute_error_ms": 72000,
+        "end_absolute_error_ms": 64000,
+        "tiou": 0.0
+      }
+    },
+    {
+      "query_id": "q015",
+      "mode": "speech",
+      "category": "mixed",
+      "language": "en",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 4,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 140.547,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.4009714285714286
+      },
+      "localization": {
+        "start_absolute_error_ms": 9500,
+        "end_absolute_error_ms": 983,
+        "tiou": 0.4009714285714286
+      }
+    },
+    {
+      "query_id": "q016",
+      "mode": "speech",
+      "category": "speech",
+      "language": "en",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 3,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 132.995,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 0,
+        "tiou_0.3_recall@5": 0,
+        "tiou_0.3_recall@10": 0,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.2980270608571258
+      },
+      "localization": {
+        "start_absolute_error_ms": 10000,
+        "end_absolute_error_ms": 1777,
+        "tiou": 0.2980270608571258
+      }
+    },
+    {
+      "query_id": "q017",
+      "mode": "speech",
+      "category": "visual",
+      "language": "en",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 3,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 134.198,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 0,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 0,
+        "tiou_0.3_recall@5": 0,
+        "tiou_0.3_recall@10": 0,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 0.5,
+        "best_tiou": 0.22
+      },
+      "localization": {
+        "start_absolute_error_ms": 19500,
+        "end_absolute_error_ms": 30000,
+        "tiou": 0.0
+      }
+    },
+    {
+      "query_id": "q018",
+      "mode": "speech",
+      "category": "mixed",
+      "language": "en",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 5,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 139.267,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 1,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 1,
+        "jump_hit@5": 1,
+        "jump_hit@10": 1,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.7423
+      },
+      "localization": {
+        "start_absolute_error_ms": 1000,
+        "end_absolute_error_ms": 1577,
+        "tiou": 0.7423
+      }
+    },
+    {
+      "query_id": "q019",
+      "mode": "speech",
+      "category": "speech",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 4,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 143.709,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 1,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 1,
+        "jump_hit@5": 1,
+        "jump_hit@10": 1,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.8329477093937991
+      },
+      "localization": {
+        "start_absolute_error_ms": 1000,
+        "end_absolute_error_ms": 805,
+        "tiou": 0.8329477093937991
+      }
+    },
+    {
+      "query_id": "q020",
+      "mode": "speech",
+      "category": "visual",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 3,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 135.205,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 1,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.8235294117647058
+      },
+      "localization": {
+        "start_absolute_error_ms": 1000,
+        "end_absolute_error_ms": 2000,
+        "tiou": 0.8235294117647058
+      }
+    },
+    {
+      "query_id": "q021",
+      "mode": "speech",
+      "category": "mixed",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 3,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 135.726,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 1,
+        "jump_hit@5": 1,
+        "jump_hit@10": 1,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.4865916955017301
+      },
+      "localization": {
+        "start_absolute_error_ms": 500,
+        "end_absolute_error_ms": 4248,
+        "tiou": 0.4865916955017301
+      }
+    },
+    {
+      "query_id": "q022",
+      "mode": "speech",
+      "category": "speech",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 3,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 138.306,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 0,
+        "tiou_0.3_recall@5": 0,
+        "tiou_0.3_recall@10": 0,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.2975
+      },
+      "localization": {
+        "start_absolute_error_ms": 3500,
+        "end_absolute_error_ms": 7740,
+        "tiou": 0.2975
+      }
+    },
+    {
+      "query_id": "q023",
+      "mode": "speech",
+      "category": "visual",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 3,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 131.772,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.46875
+      },
+      "localization": {
+        "start_absolute_error_ms": 1000,
+        "end_absolute_error_ms": 7500,
+        "tiou": 0.46875
+      }
+    },
+    {
+      "query_id": "q024",
+      "mode": "speech",
+      "category": "mixed",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 3,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 134.34,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.4129777777777778
+      },
+      "localization": {
+        "start_absolute_error_ms": 8500,
+        "end_absolute_error_ms": 4708,
+        "tiou": 0.4129777777777778
+      }
+    },
+    {
+      "query_id": "q025",
+      "mode": "speech",
+      "category": "speech",
+      "language": "en",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 5,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 129.286,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 1,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 1,
+        "jump_hit@5": 1,
+        "jump_hit@10": 1,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.527495714097323
+      },
+      "localization": {
+        "start_absolute_error_ms": 1000,
+        "end_absolute_error_ms": 2583,
+        "tiou": 0.527495714097323
+      }
+    },
+    {
+      "query_id": "q026",
+      "mode": "speech",
+      "category": "visual",
+      "language": "en",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 5,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 133.438,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 0,
+        "tiou_0.3_recall@5": 0,
+        "tiou_0.3_recall@10": 0,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.18181818181818182
+      },
+      "localization": {
+        "start_absolute_error_ms": 12500,
+        "end_absolute_error_ms": 10000,
+        "tiou": 0.18181818181818182
+      }
+    },
+    {
+      "query_id": "q027",
+      "mode": "speech",
+      "category": "mixed",
+      "language": "en",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 2,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 137.569,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 0,
+        "tiou_0.3_recall@5": 0,
+        "tiou_0.3_recall@10": 0,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.14948
+      },
+      "localization": {
+        "start_absolute_error_ms": 13500,
+        "end_absolute_error_ms": 29026,
+        "tiou": 0.14948
+      }
+    },
+    {
+      "query_id": "q028",
+      "mode": "speech",
+      "category": "speech",
+      "language": "en",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 2,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 131.456,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 0,
+        "tiou_0.3_recall@5": 0,
+        "tiou_0.3_recall@10": 0,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.15497777777777777
+      },
+      "localization": {
+        "start_absolute_error_ms": 28500,
+        "end_absolute_error_ms": 9526,
+        "tiou": 0.15497777777777777
+      }
+    },
+    {
+      "query_id": "q029",
+      "mode": "speech",
+      "category": "visual",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 3,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 143.541,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.4
+      },
+      "localization": {
+        "start_absolute_error_ms": 10000,
+        "end_absolute_error_ms": 5000,
+        "tiou": 0.4
+      }
+    },
+    {
+      "query_id": "q030",
+      "mode": "speech",
+      "category": "mixed",
+      "language": "en",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 3,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 136.702,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 1,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 1,
+        "jump_hit@5": 1,
+        "jump_hit@10": 1,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.6854
+      },
+      "localization": {
+        "start_absolute_error_ms": 1000,
+        "end_absolute_error_ms": 2146,
+        "tiou": 0.6854
+      }
+    },
+    {
+      "query_id": "q031",
+      "mode": "speech",
+      "category": "negative",
+      "language": "zh",
+      "answerable": false,
+      "status": "ok",
+      "issues": [],
+      "result_count": 2,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 126.285,
+      "metrics": {},
+      "localization": null
+    },
+    {
+      "query_id": "q032",
+      "mode": "speech",
+      "category": "negative",
+      "language": "en",
+      "answerable": false,
+      "status": "ok",
+      "issues": [],
+      "result_count": 4,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 136.588,
+      "metrics": {},
+      "localization": null
+    },
+    {
+      "query_id": "q033",
+      "mode": "speech",
+      "category": "negative",
+      "language": "zh",
+      "answerable": false,
+      "status": "ok",
+      "issues": [],
+      "result_count": 5,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 125.239,
+      "metrics": {},
+      "localization": null
+    },
+    {
+      "query_id": "q034",
+      "mode": "speech",
+      "category": "negative",
+      "language": "en",
+      "answerable": false,
+      "status": "ok",
+      "issues": [],
+      "result_count": 5,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 124.346,
+      "metrics": {},
+      "localization": null
+    },
+    {
+      "query_id": "q035",
+      "mode": "speech",
+      "category": "negative",
+      "language": "zh",
+      "answerable": false,
+      "status": "ok",
+      "issues": [],
+      "result_count": 5,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 127.475,
+      "metrics": {},
+      "localization": null
+    },
+    {
+      "query_id": "q001",
+      "mode": "fused",
+      "category": "speech",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 5,
+      "top1_score": 0.031754032258064516,
+      "latency_ms": 153.195,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 0,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 0,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 0,
+        "jump_hit@5": 1,
+        "jump_hit@10": 1,
+        "overlap_mrr": 0.5,
+        "best_tiou": 0.5182666666666667
+      },
+      "localization": {
+        "start_absolute_error_ms": 27000,
+        "end_absolute_error_ms": 24226,
+        "tiou": 0.0
+      }
+    },
+    {
+      "query_id": "q002",
+      "mode": "fused",
+      "category": "visual",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 6,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 148.358,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 1,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.5
+      },
+      "localization": {
+        "start_absolute_error_ms": 4000,
+        "end_absolute_error_ms": 3000,
+        "tiou": 0.5
+      }
+    },
+    {
+      "query_id": "q003",
+      "mode": "fused",
+      "category": "mixed",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 3,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 141.201,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 1,
+        "jump_hit@5": 1,
+        "jump_hit@10": 1,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.4828571428571429
+      },
+      "localization": {
+        "start_absolute_error_ms": 1000,
+        "end_absolute_error_ms": 6240,
+        "tiou": 0.4828571428571429
+      }
+    },
+    {
+      "query_id": "q004",
+      "mode": "fused",
+      "category": "speech",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 3,
+      "top1_score": 0.032266458495966696,
+      "latency_ms": 141.309,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 1,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.6176153846153846
+      },
+      "localization": {
+        "start_absolute_error_ms": 4000,
+        "end_absolute_error_ms": 971,
+        "tiou": 0.6176153846153846
+      }
+    },
+    {
+      "query_id": "q005",
+      "mode": "fused",
+      "category": "visual",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 4,
+      "top1_score": 0.03200204813108039,
+      "latency_ms": 131.433,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 1,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.9285714285714286
+      },
+      "localization": {
+        "start_absolute_error_ms": 1000,
+        "end_absolute_error_ms": 0,
+        "tiou": 0.9285714285714286
+      }
+    },
+    {
+      "query_id": "q006",
+      "mode": "fused",
+      "category": "mixed",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 3,
+      "top1_score": 0.03177805800756621,
+      "latency_ms": 146.311,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.3576793762071679
+      },
+      "localization": {
+        "start_absolute_error_ms": 6000,
+        "end_absolute_error_ms": 2979,
+        "tiou": 0.3576793762071679
+      }
+    },
+    {
+      "query_id": "q007",
+      "mode": "fused",
+      "category": "speech",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 2,
+      "top1_score": 0.03252247488101534,
+      "latency_ms": 129.98,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.3842181818181818
+      },
+      "localization": {
+        "start_absolute_error_ms": 1000,
+        "end_absolute_error_ms": 15934,
+        "tiou": 0.3842181818181818
+      }
+    },
+    {
+      "query_id": "q008",
+      "mode": "fused",
+      "category": "visual",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 4,
+      "top1_score": 0.03225806451612903,
+      "latency_ms": 130.087,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 1,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.875
+      },
+      "localization": {
+        "start_absolute_error_ms": 0,
+        "end_absolute_error_ms": 2500,
+        "tiou": 0.875
+      }
+    },
+    {
+      "query_id": "q009",
+      "mode": "fused",
+      "category": "mixed",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 3,
+      "top1_score": 0.03278688524590164,
+      "latency_ms": 144.521,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 1,
+        "jump_hit@5": 1,
+        "jump_hit@10": 1,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.4945777777777778
+      },
+      "localization": {
+        "start_absolute_error_ms": 1000,
+        "end_absolute_error_ms": 10372,
+        "tiou": 0.4945777777777778
+      }
+    },
+    {
+      "query_id": "q010",
+      "mode": "fused",
+      "category": "speech",
+      "language": "en",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 2,
+      "top1_score": 0.03278688524590164,
+      "latency_ms": 134.915,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 1,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.6860666666666667
+      },
+      "localization": {
+        "start_absolute_error_ms": 1000,
+        "end_absolute_error_ms": 3709,
+        "tiou": 0.6860666666666667
+      }
+    },
+    {
+      "query_id": "q011",
+      "mode": "fused",
+      "category": "visual",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 2,
+      "top1_score": 0.03252247488101534,
+      "latency_ms": 141.298,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 1,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.8
+      },
+      "localization": {
+        "start_absolute_error_ms": 0,
+        "end_absolute_error_ms": 5000,
+        "tiou": 0.8
+      }
+    },
+    {
+      "query_id": "q012",
+      "mode": "fused",
+      "category": "mixed",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 2,
+      "top1_score": 0.03252247488101534,
+      "latency_ms": 147.517,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.3970181818181818
+      },
+      "localization": {
+        "start_absolute_error_ms": 13500,
+        "end_absolute_error_ms": 3082,
+        "tiou": 0.3970181818181818
+      }
+    },
+    {
+      "query_id": "q013",
+      "mode": "fused",
+      "category": "speech",
+      "language": "en",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 4,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 139.373,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 0,
+        "tiou_0.3_recall@5": 0,
+        "tiou_0.3_recall@10": 0,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.020794871794871796
+      },
+      "localization": {
+        "start_absolute_error_ms": 6500,
+        "end_absolute_error_ms": 31689,
+        "tiou": 0.020794871794871796
+      }
+    },
+    {
+      "query_id": "q014",
+      "mode": "fused",
+      "category": "visual",
+      "language": "en",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 4,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 175.05,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 1,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.918918918918919
+      },
+      "localization": {
+        "start_absolute_error_ms": 500,
+        "end_absolute_error_ms": 1000,
+        "tiou": 0.918918918918919
+      }
+    },
+    {
+      "query_id": "q015",
+      "mode": "fused",
+      "category": "mixed",
+      "language": "en",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 3,
+      "top1_score": 0.03278688524590164,
+      "latency_ms": 153.698,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 0,
+        "tiou_0.3_recall@5": 0,
+        "tiou_0.3_recall@10": 0,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.2159076923076923
+      },
+      "localization": {
+        "start_absolute_error_ms": 9500,
+        "end_absolute_error_ms": 15983,
+        "tiou": 0.2159076923076923
+      }
+    },
+    {
+      "query_id": "q016",
+      "mode": "fused",
+      "category": "speech",
+      "language": "en",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 3,
+      "top1_score": 0.03177805800756621,
+      "latency_ms": 138.854,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 0,
+        "tiou_0.3_recall@5": 0,
+        "tiou_0.3_recall@10": 0,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.24643636363636365
+      },
+      "localization": {
+        "start_absolute_error_ms": 10000,
+        "end_absolute_error_ms": 10723,
+        "tiou": 0.24643636363636365
+      }
+    },
+    {
+      "query_id": "q017",
+      "mode": "fused",
+      "category": "visual",
+      "language": "en",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 3,
+      "top1_score": 0.03200204813108039,
+      "latency_ms": 140.8,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 1,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.72
+      },
+      "localization": {
+        "start_absolute_error_ms": 7000,
+        "end_absolute_error_ms": 0,
+        "tiou": 0.72
+      }
+    },
+    {
+      "query_id": "q018",
+      "mode": "fused",
+      "category": "mixed",
+      "language": "en",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 5,
+      "top1_score": 0.03252247488101534,
+      "latency_ms": 142.348,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 1,
+        "jump_hit@5": 1,
+        "jump_hit@10": 1,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.4241714285714286
+      },
+      "localization": {
+        "start_absolute_error_ms": 1000,
+        "end_absolute_error_ms": 9077,
+        "tiou": 0.4241714285714286
+      }
+    },
+    {
+      "query_id": "q019",
+      "mode": "fused",
+      "category": "speech",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 5,
+      "top1_score": 0.03252247488101534,
+      "latency_ms": 141.479,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 0,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 0,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 0,
+        "jump_hit@5": 1,
+        "jump_hit@10": 1,
+        "overlap_mrr": 0.5,
+        "best_tiou": 0.8329477093937991
+      },
+      "localization": {
+        "start_absolute_error_ms": 81500,
+        "end_absolute_error_ms": 81695,
+        "tiou": 0.0
+      }
+    },
+    {
+      "query_id": "q020",
+      "mode": "fused",
+      "category": "visual",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 3,
+      "top1_score": 0.03278688524590164,
+      "latency_ms": 136.211,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 1,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.9142857142857143
+      },
+      "localization": {
+        "start_absolute_error_ms": 1000,
+        "end_absolute_error_ms": 500,
+        "tiou": 0.9142857142857143
+      }
+    },
+    {
+      "query_id": "q021",
+      "mode": "fused",
+      "category": "mixed",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 3,
+      "top1_score": 0.032018442622950824,
+      "latency_ms": 134.288,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 1,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 1,
+        "jump_hit@5": 1,
+        "jump_hit@10": 1,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.5832
+      },
+      "localization": {
+        "start_absolute_error_ms": 500,
+        "end_absolute_error_ms": 5752,
+        "tiou": 0.5832
+      }
+    },
+    {
+      "query_id": "q022",
+      "mode": "fused",
+      "category": "speech",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 4,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 136.962,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 0,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 0,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 0.5,
+        "best_tiou": 0.472
+      },
+      "localization": {
+        "start_absolute_error_ms": 49000,
+        "end_absolute_error_ms": 42260,
+        "tiou": 0.0
+      }
+    },
+    {
+      "query_id": "q023",
+      "mode": "fused",
+      "category": "visual",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 3,
+      "top1_score": 0.032266458495966696,
+      "latency_ms": 137.027,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 1,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.9375
+      },
+      "localization": {
+        "start_absolute_error_ms": 1000,
+        "end_absolute_error_ms": 0,
+        "tiou": 0.9375
+      }
+    },
+    {
+      "query_id": "q024",
+      "mode": "fused",
+      "category": "mixed",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 3,
+      "top1_score": 0.03252247488101534,
+      "latency_ms": 141.661,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.3954042553191489
+      },
+      "localization": {
+        "start_absolute_error_ms": 8500,
+        "end_absolute_error_ms": 5708,
+        "tiou": 0.3954042553191489
+      }
+    },
+    {
+      "query_id": "q025",
+      "mode": "fused",
+      "category": "speech",
+      "language": "en",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 5,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 134.998,
+      "metrics": {
+        "video_recall@1": 0,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 0,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 0,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 0,
+        "jump_hit@5": 1,
+        "jump_hit@10": 1,
+        "overlap_mrr": 0.5,
+        "best_tiou": 0.527495714097323
+      },
+      "localization": null
+    },
+    {
+      "query_id": "q026",
+      "mode": "fused",
+      "category": "visual",
+      "language": "en",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 5,
+      "top1_score": 0.03278688524590164,
+      "latency_ms": 136.446,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 1,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.5454545454545454
+      },
+      "localization": {
+        "start_absolute_error_ms": 12500,
+        "end_absolute_error_ms": 0,
+        "tiou": 0.5454545454545454
+      }
+    },
+    {
+      "query_id": "q027",
+      "mode": "fused",
+      "category": "mixed",
+      "language": "en",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 2,
+      "top1_score": 0.03278688524590164,
+      "latency_ms": 137.283,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 0,
+        "tiou_0.3_recall@5": 0,
+        "tiou_0.3_recall@10": 0,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.14948
+      },
+      "localization": {
+        "start_absolute_error_ms": 13500,
+        "end_absolute_error_ms": 29026,
+        "tiou": 0.14948
+      }
+    },
+    {
+      "query_id": "q028",
+      "mode": "fused",
+      "category": "speech",
+      "language": "en",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 2,
+      "top1_score": 0.03252247488101534,
+      "latency_ms": 134.464,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 0,
+        "tiou_0.3_recall@5": 0,
+        "tiou_0.3_recall@10": 0,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.15497777777777777
+      },
+      "localization": {
+        "start_absolute_error_ms": 28500,
+        "end_absolute_error_ms": 9526,
+        "tiou": 0.15497777777777777
+      }
+    },
+    {
+      "query_id": "q029",
+      "mode": "fused",
+      "category": "visual",
+      "language": "zh",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 3,
+      "top1_score": 0.032018442622950824,
+      "latency_ms": 138.417,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 1,
+        "tiou_0.5_recall@5": 1,
+        "tiou_0.5_recall@10": 1,
+        "jump_hit@1": 0,
+        "jump_hit@5": 0,
+        "jump_hit@10": 0,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.5
+      },
+      "localization": {
+        "start_absolute_error_ms": 10000,
+        "end_absolute_error_ms": 2500,
+        "tiou": 0.5
+      }
+    },
+    {
+      "query_id": "q030",
+      "mode": "fused",
+      "category": "mixed",
+      "language": "en",
+      "answerable": true,
+      "status": "ok",
+      "issues": [],
+      "result_count": 3,
+      "top1_score": 0.03278688524590164,
+      "latency_ms": 135.377,
+      "metrics": {
+        "video_recall@1": 1,
+        "video_recall@5": 1,
+        "video_recall@10": 1,
+        "overlap_recall@1": 1,
+        "overlap_recall@5": 1,
+        "overlap_recall@10": 1,
+        "tiou_0.3_recall@1": 1,
+        "tiou_0.3_recall@5": 1,
+        "tiou_0.3_recall@10": 1,
+        "tiou_0.5_recall@1": 0,
+        "tiou_0.5_recall@5": 0,
+        "tiou_0.5_recall@10": 0,
+        "jump_hit@1": 1,
+        "jump_hit@5": 1,
+        "jump_hit@10": 1,
+        "overlap_mrr": 1.0,
+        "best_tiou": 0.45693333333333336
+      },
+      "localization": {
+        "start_absolute_error_ms": 1000,
+        "end_absolute_error_ms": 7146,
+        "tiou": 0.45693333333333336
+      }
+    },
+    {
+      "query_id": "q031",
+      "mode": "fused",
+      "category": "negative",
+      "language": "zh",
+      "answerable": false,
+      "status": "ok",
+      "issues": [],
+      "result_count": 2,
+      "top1_score": 0.031754032258064516,
+      "latency_ms": 129.6,
+      "metrics": {},
+      "localization": null
+    },
+    {
+      "query_id": "q032",
+      "mode": "fused",
+      "category": "negative",
+      "language": "en",
+      "answerable": false,
+      "status": "ok",
+      "issues": [],
+      "result_count": 5,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 132.545,
+      "metrics": {},
+      "localization": null
+    },
+    {
+      "query_id": "q033",
+      "mode": "fused",
+      "category": "negative",
+      "language": "zh",
+      "answerable": false,
+      "status": "ok",
+      "issues": [],
+      "result_count": 6,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 123.528,
+      "metrics": {},
+      "localization": null
+    },
+    {
+      "query_id": "q034",
+      "mode": "fused",
+      "category": "negative",
+      "language": "en",
+      "answerable": false,
+      "status": "ok",
+      "issues": [],
+      "result_count": 8,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 127.675,
+      "metrics": {},
+      "localization": null
+    },
+    {
+      "query_id": "q035",
+      "mode": "fused",
+      "category": "negative",
+      "language": "zh",
+      "answerable": false,
+      "status": "ok",
+      "issues": [],
+      "result_count": 7,
+      "top1_score": 0.01639344262295082,
+      "latency_ms": 136.156,
+      "metrics": {},
+      "localization": null
+    }
+  ]
+}
