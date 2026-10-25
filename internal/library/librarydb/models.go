@@ -33,3 +33,11 @@ type Video struct {
 	CreatedAt          pgtype.Timestamptz
 	UpdatedAt          pgtype.Timestamptz
 }
+
+type VideoUpload struct {
+	VideoID   int64
+	ObjectKey string
+	UploadID  string
+	SizeBytes int64
+	PartSize  int64
+}
