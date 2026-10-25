@@ -165,7 +165,9 @@ def summarize(plan, reports, verify=False):
             reasons.append("development video recall guardrail failed")
         entries.append({"run_id": run_id, "eligible": not reasons, "exclusion_reasons": reasons,
                         "development": groups, "development_guardrail": gate,
-                        "objective": (metrics["jump_hit@1"] + metrics["tiou_0.5_recall@1"]) / 2,
+                        "objective": sum(groups["fused"]["positive_metrics"][name]["numerator"]
+                                         for name in ("jump_hit@1", "tiou_0.5_recall@1"))
+                                     / (2 * groups["fused"]["positive_count"]),
                         "tie_break": [metrics["tiou_0.3_recall@1"], metrics["best_tiou"],
                                       report["metadata"]["search_config"]["k"]]})
     eligible = [entry for entry in entries if entry["eligible"]]

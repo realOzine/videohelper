@@ -47,6 +47,25 @@ def report(run_id="default", good=(), wrong=(), delayed=()):
 
 
 class AblationSelection(unittest.TestCase):
+    def test_equal_hit_totals_use_tie_break_not_float_rounding(self):
+        settings = plan() | {"development_query_ids": [f"dev{i}" for i in range(15)]}
+        reports = []
+        for run_id, jumps, localized, best_tiou in (("default", 0, 0, 0), ("a", 4, 5, 0.8), ("b", 3, 6, 0.5)):
+            current = report(run_id)
+            rows = [row for row in current["per_query"] if row["query_id"] in ("q3", "n2")]
+            for template in (row for row in current["per_query"] if row["query_id"] == "q1"):
+                for i in range(15):
+                    row = copy.deepcopy(template)
+                    row["query_id"] = f"dev{i}"
+                    row["metrics"].update({"jump_hit@1": int(i < jumps), "tiou_0.5_recall@1": int(i < localized),
+                                           "tiou_0.3_recall@1": 1, "best_tiou": best_tiou})
+                    rows.append(row)
+            current["per_query"] = rows
+            reports.append(current)
+        summary, _ = ablate.summarize(settings, reports)
+        self.assertEqual(summary["cases"][1]["objective"], summary["cases"][2]["objective"])
+        self.assertEqual(summary["selected_run_id"], "a")
+
     def test_verification_cannot_improve_or_reselect_development_winner(self):
         reports = [report(), report("a", good=["q1"], wrong=["q3"]), report("b", good=["q3"])]
         summary, selected = ablate.summarize(plan(), reports)
