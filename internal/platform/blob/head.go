@@ -3,6 +3,7 @@ package blob
 import (
 	"context"
 	"errors"
+	"io"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
@@ -35,4 +36,13 @@ func (s *Store) AbortMultipart(ctx context.Context, key, uploadID string) error 
 		return nil
 	}
 	return err
+}
+
+// Open streams a trusted object key; the caller closes the returned body.
+func (s *Store) Open(ctx context.Context, key string) (io.ReadCloser, error) {
+	out, err := s.client.GetObject(ctx, &s3.GetObjectInput{Bucket: aws.String(s.bucket), Key: aws.String(key)})
+	if err != nil {
+		return nil, err
+	}
+	return out.Body, nil
 }

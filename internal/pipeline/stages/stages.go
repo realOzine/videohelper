@@ -30,5 +30,5 @@ func New(pool *pgxpool.Pool, objects *blob.Store, ml *mlclient.Client, registry 
 }
 
 func (h *Handlers) Runs() map[string]pipeline.RunFunc {
-	return map[string]pipeline.RunFunc{"probe": h.Probe, "prepare_media": h.PrepareMedia, "finalize": h.Finalize}
+	return map[string]pipeline.RunFunc{"probe": h.Probe, "prepare_media": h.PrepareMedia, "finalize": h.Finalize, "asr": h.ASR, "embed": h.Embed}
 }
