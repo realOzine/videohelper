@@ -394,6 +394,8 @@ func SourceKey(workspaceID, videoID int64, ext string) string
 func NormalizedVideoKey(workspaceID, videoID int64) string      // workspaces/{w}/videos/{v}/normalized_video.mp4
 func SpriteKey(workspaceID, videoID int64, n int) string            // 第 n 张缩略图雪碧图
 func RawKey(workspaceID, videoID int64, name string) string
+// 流水线使用 RunNormalizedVideoKey / RunSpriteKey / RunRawKey：额外传入执行 generation 和 attempt。
+// 展示缩略图使用 SpriteKeyForVideo(normalizedVideoKey, n)，跟随已提交的媒体版本。
 ```
 
 #### platform/queue
@@ -1846,6 +1848,8 @@ sequenceDiagram
 
 ### 6.5 各阶段规格
 
+所有派生文件写入 `workspaces/{workspace}/videos/{video}/runs/{generation}/{attempt}/`。文件名仍为 `normalized_video.mp4`、`sprites/{n}.jpg`、`raw/...`；阶段完成的短事务发布实际 `normalized_video_key`。缩略图地址从该已发布路径取得相邻 `sprites/`，不能重新拼 canonical 路径。这样被取消或删除前启动的旧任务即使完成了 S3 上传，也不能覆盖新任务已发布的文件。`source.*` 保持不变，彻底清除时删除整个视频前缀。
+
 **fetch**
 
 按 `video.source_kind` 分两条路。
@@ -1979,9 +1983,10 @@ Redis 里没有任何不能丢的数据。Redis 清空后，reconciler 会根据
 ├── models/{model_id}/            # 模型权重（提议）：从 HF、ModelScope 同步过来的固定版本，ml 启动时从这里加载
 └── workspaces/{workspace_id}/videos/{video_id}/
     ├── source.{ext}              # 原片：上传或导入的文件
-    ├── normalized_video.mp4      # 标准化视频：最高 720p H.264/AAC，每秒一个关键帧，faststart；供播放和后续音视频处理使用
-    ├── sprites/{n}.jpg           # 缩略图雪碧图：每张 10 × 10 格；第 n 张对应第 100n 到 100n+99 格
-    └── raw/asr-{model}/chunk-{i}.json   # ASR 每段的原始输出：既是断点，改切句规则时也不用重跑模型
+    └── runs/{generation}/{attempt}/
+        ├── normalized_video.mp4      # 标准化视频：最高 720p H.264/AAC，每秒一个关键帧，faststart
+        ├── sprites/{n}.jpg           # 缩略图雪碧图，与已发布的标准化视频属于同一次执行
+        └── raw/asr-{model}/chunk-{i}.json   # ASR 原始输出；断点保存实际对象 key
 ```
 
 | 规则 | 说明 |
