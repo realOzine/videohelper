@@ -1,0 +1,43 @@
+-- name: Stages :many
+SELECT * FROM stage_run WHERE video_id = $1 ORDER BY stage, version FOR UPDATE;
+
+-- name: ReadStage :one
+SELECT s.* FROM stage_run s JOIN video v ON v.id = s.video_id
+WHERE s.video_id = $1 AND s.stage = $2 AND s.version = $3
+  AND v.workspace_id = $4 AND v.deleted_at IS NULL AND v.status IN ('indexing', 'ready');
+
+-- name: LockStage :one
+SELECT * FROM stage_run WHERE video_id = $1 AND stage = $2 AND version = $3 FOR UPDATE;
+
+-- name: InsertStage :exec
+INSERT INTO stage_run (video_id, stage, version, status, required, output)
+VALUES ($1, $2, $3, $4, $5, $6);
+
+-- name: ClaimStage :one
+UPDATE stage_run SET status = 'running', attempt = attempt + 1, updated_at = now()
+WHERE video_id = $1 AND stage = $2 AND version = $3 AND status = 'queued'
+RETURNING attempt;
+
+-- name: UpdateStage :exec
+UPDATE stage_run SET status = $4, error = $5, output = $6, updated_at = now()
+WHERE video_id = $1 AND stage = $2 AND version = $3;
+
+-- name: RetryStage :exec
+UPDATE stage_run SET version = sqlc.arg(new_version), status = sqlc.arg(new_status), error = NULL,
+  attempt = 0, updated_at = now()
+WHERE video_id = $1 AND stage = $2 AND version = $3;
+
+-- name: DeleteStages :exec
+DELETE FROM stage_run WHERE video_id = $1;
+
+-- name: ReconcileStages :many
+SELECT s.*, v.workspace_id FROM stage_run s JOIN video v ON v.id = s.video_id
+WHERE s.status IN ('queued', 'running') AND s.updated_at < sqlc.arg(before_time)
+  AND v.deleted_at IS NULL AND v.status IN ('indexing', 'ready')
+ORDER BY s.updated_at LIMIT 100;
+
+-- name: UnstartedUploads :many
+SELECT v.id FROM video v
+WHERE v.status = 'uploading' AND v.source_kind = 'upload' AND v.source_key IS NOT NULL
+  AND v.deleted_at IS NULL AND NOT EXISTS (SELECT 1 FROM stage_run s WHERE s.video_id = v.id)
+ORDER BY v.id LIMIT 100;
