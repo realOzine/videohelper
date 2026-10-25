@@ -11,7 +11,9 @@
 
 本地处理链路为「视频 → 标准化视频 → WeMM 画面编码 / CLAP 声音编码 / ASR → WeMM 转录文本编码 → 文字检索 → 时间片段与证据」。WeMM-Embedding-2B 统一支持视频、文字、图片编码；图片是编码输入，本轮搜索入口只接受文字。启用 `visual`、`speech` 与 `audio`，保留音轨供 ASR 和 CLAP 使用。声音通道采用 edit-mind 同款 CLAP HTSAT unfused；查询文字原样传入，英文转换后续再做。前端、LLM/Agent、AWS 部署与验收暂缓；下文相关章节保留为后续设计，不构成本轮实现要求。真实模型验证与显式 fake 的协议/流程测试分开。
 
-本轮提供本地上传、阶段状态/重试、项目范围和文字搜索。已就绪视频可自动补建新通道/空间缺失的编码阶段；URL 导入、上传分片续签、SSE 事件、到期 purge、配额计费和离线质量评估仍是后续设计；软删除保留原片和处理文件。当前只记录索引时长。操作入口见 [README](../README.md)。
+本轮提供本地上传、阶段状态/重试、项目范围和文字搜索。已就绪视频可自动补建新通道/空间缺失的编码阶段；URL 导入、上传分片续签、SSE 事件、到期 purge、配额计费仍是后续设计；软删除保留原片和处理文件。当前只记录索引时长。操作入口见 [README](../README.md)。
+
+离线评估已提供独立的 [Eval 工作区](../Eval/README.md)：通过现有业务服务执行真实上传和完整索引，检查实际切片/向量覆盖，再对固定快照运行 visual、speech 和 fused。入口为 `Eval/tools/run.py`，不向应用主命令增加 `videohelper eval` 子命令；具体协议和指标见 [Evaluation 契约](../Eval/CONTRACT.md)。
 
 **写到哪一层**：写到「目录与文件职责、类型与函数签名、表结构、协议字段、处理步骤」。不写函数实现。签名用来说明模块边界，实现时可以调整名字，但边界和职责不变。
 
@@ -65,7 +67,7 @@
 
 ### 1.1 顶层目录
 
-目标结构如下，前端、云部署、导入与评估相关文件仍属后续规划。当前 Go 和 Python 可以独立构建；每个 SQL 包使用自己的 `sqlc.yaml`，由 `make generate` 统一执行。
+目标结构如下，前端、云部署与导入相关文件仍属后续规划；评估的当前入口另见 Eval/，下列 internal/eval 为早期结构提议。当前 Go 和 Python 可以独立构建；每个 SQL 包使用自己的 `sqlc.yaml`，由 `make generate` 统一执行。
 
 ```text
 videohelper/
@@ -85,8 +87,9 @@ videohelper/
 ├── config/
 │   ├── config.example.yaml      # Go 服务配置样例，不含密钥
 │   └── channels.yaml            # 召回通道配置：每个通道用哪些 space
-├── eval/
-│   └── queries.example.jsonl    # 评估集样例（第 11 章）
+├── Eval/
+│   ├── tools/run.py            # 索引验收、快照、检索回归
+│   └── annotations/queries.jsonl # 固定评估集（第 11 章）
 ├── ml/                          # Python 模型服务，独立项目（第 10 章）
 ├── web/                         # 前端（暂缓）
 ├── deploy/
@@ -108,7 +111,7 @@ videohelper/
 | `.md`（`go:embed`） | Agent 的系统指令，编译进二进制 | `internal/agent/instruction.md` |
 | `.py` | Python 源码与测试 | `ml/app/`、`ml/tests/` |
 | `pyproject.toml`、`uv.lock` | Python 依赖与工具配置 | `ml/` |
-| `.jsonl` | 评估集 | `eval/` |
+| `.jsonl` | 评估集 | `Eval/annotations/` |
 | `Dockerfile`、`docker-compose.yml` | 构建与本地运行 | 根目录、`ml/`、`deploy/` |
 
 ### 1.3 三部分之间只通过协议交互
@@ -137,7 +140,7 @@ flowchart LR
 | `videohelper api` | 对外服务 | 已认证 REST、search；SSE/agent 暂缓 | 可多副本，无状态 |
 | `videohelper worker` | 后台处理 | cpu server（cpu、maint 队列）、gpu server（gpu 队列）、scheduler（定时投递 reconcile） | 可多副本 |
 | `videohelper migrate` | 执行数据库迁移 | 迁移完成后退出 | 每次部署跑一次 |
-| `videohelper eval`（暂缓） | 离线评估检索效果 | 读评估集，打印指标 | 手动执行 |
+| `Eval/tools/run.py` | 离线索引验收与检索回归 | 独立快照、逐题评分、结果比较 | 手动执行 |
 | `videohelper space add <channel> <id>` | 为一个通道接入新的向量空间（提议） | 从 ML 端点登记这个空间，为 (channel, space) 建部分 HNSW 索引；用迁移账号执行 | 换模型时手动执行，在写进 channels.yaml 之前 |
 | `videohelper space drop <id>` | 下线一个向量空间 | 分批删除该空间的向量，删除部分索引，标记停用 | 手动执行 |
 
@@ -2472,35 +2475,27 @@ fingerprint = "sha256:" + sha256(JSON，按键排序（{
 
 ## 11. 换模型与评估
 
-### 11.1 评估集格式（`eval/*.jsonl`）
+### 11.1 当前评估集与标签
 
-每行一条，表示「这句描述应该找到这个时间段」：
+固定集在 `Eval/`，包含 5 个合成视频、30 条正例和 5 条负例。`annotations/queries.jsonl` 使用稳定的 `media_id`，运行时另存系统视频 ID 映射；目标区间与跳转窗口均为半开整数毫秒。标签来自合成脚本与实际时间线，独立人工复核尚未完成。
 
-```jsonc
-{"q": "海边有人弹吉他", "workspace_id": 1, "video_id": 42, "start_ms": 750000, "end_ms": 820000}
-{"q": "讲到滚动更新的地方", "workspace_id": 1, "video_id": 7, "start_ms": 401000, "end_ms": 452000}
+所有查询搜索完整视频库。画面、讲解、组合查询分别统计，负例独立记录返回候选情况。原始素材、脚本、标签和视频哈希固定，不能为改善分数而修改同一版本。
+
+### 11.2 当前运行入口
+
+```sh
+ml/.venv/bin/python Eval/tools/run.py build
+ml/.venv/bin/python Eval/tools/run.py index --run-id baseline-v1
+ml/.venv/bin/python Eval/tools/run.py retrieve --snapshot baseline-v1 --run-id baseline-v1-a
+ml/.venv/bin/python Eval/tools/run.py retrieve --snapshot baseline-v1 --run-id baseline-v1-b
+ml/.venv/bin/python Eval/tools/score.py compare --before Eval/runs/baseline-v1-a/report.json --after Eval/runs/baseline-v1-b/report.json --output Eval/runs/baseline-v1-a-vs-b
 ```
 
-### 11.2 `videohelper eval`
+`index` 复用真实分片上传、worker 和业务索引，验收全部必要阶段及实际向量覆盖后冻结数据库/对象快照。`retrieve` 不重新索引，调用现有 `search.Service.Search`，分别执行 visual、speech 和包含当前 active audio 的 fused；检查运行前后索引内容指纹。模型、代码、参数、逐题原始响应和指标均保存到 `Eval/runs/`。
 
-```text
-videohelper eval --set eval/queries.jsonl [--channel visual] [--space visual=wemm-2b@r2] [--k 1,5,10]
-```
+同时报告视频 Recall、时间 overlap Recall、tIoU≥0.3/0.5 Recall、MRR、jump Hit 与定位误差，避免仅靠长片段重叠获得虚高分数。缺失、错误和降级响应保留在分母中并明确失败。负例的非空率不是已校准的拒答效果，RRF 分数不是概率。
 
-- 不带 `--channel` 时评估融合后的整体结果；带上就只评估这一路。
-- `--space` 用指定的空间替代 active，用来评估 shadow 空间。
-- **命中**：返回的片段和标注的时间段有重叠，就算命中。
-
-输出示例：
-
-```text
-channel  space          recall@1  recall@5  recall@10  MRR    coverage
-visual   wemm-2b@r1     0.42      0.71      0.80       0.55   100%
-visual   wemm-2b@r2     0.47      0.76      0.84       0.60   100%
-fused    (active)       0.51      0.80      0.88       0.63   —
-```
-
-`coverage` 是这个空间已经回填的视频占全部 ready 视频的比例。
+当前入口没有实现早期 `videohelper eval --space ...` 提议；shadow/active 更换仍须单独设计验收。详细字段和指标见 [Eval 契约](../Eval/CONTRACT.md)，复跑与恢复命令见 [运行手册](../Eval/RUNBOOK.md)，已执行结果见 [当前基线](../Eval/BASELINE.md)。
 
 ### 11.3 把 shadow 提为 active 的检查清单
 
