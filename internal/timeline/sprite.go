@@ -1,9 +1,11 @@
 package timeline
 
 type SpriteLayout struct {
-	TileW, TileH int
-	Cols, Rows   int
-	Count        int
+	TileW int `json:"tile_w"`
+	TileH int `json:"tile_h"`
+	Cols  int `json:"cols"`
+	Rows  int `json:"rows"`
+	Count int `json:"count"`
 }
 
 // Tile returns zero-based sprite and pixel coordinates, or (-1, -1, -1) if invalid.
