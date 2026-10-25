@@ -2,7 +2,7 @@
 
 本流程将**索引验收**与**固定索引检索回归**分开：上传、worker 和索引推理只在 `index` 执行；`retrieve` 校验已有索引，再调用真实查询编码和业务搜索。命令在仓库根目录执行。本文提供操作步骤，不宣称已有基线通过或给出未运行的质量分数。
 
-`baseline-v1` 是保留的失败运行，不能当作可用快照。ASR 修复已从 `main` 的 `30efaef` 合入 `eval`（`a98cd20`），`baseline-v2` 正在重新索引验收；只有其 `index-run.json` 为 `status: passed` 且完整快照已保存后，才能执行下文检索与恢复命令。已使用的 ID（成功或失败）均不能重跑；后续索引用新的 ID，例如 `baseline-v3`，并同步替换下文快照名与检索 ID。
+`baseline-v1` 是保留的失败运行，不能当作可用快照。ASR 修复已从 `main` 的 `30efaef` 合入 `eval`（`a98cd20`），`baseline-v2` 正在重新索引验收；只有其 [index-run.json](runs/baseline-v2-index/index-run.json) 为 `status: passed` 且完整快照已保存后，才能执行下文检索与恢复命令。已使用的 ID（成功或失败）均不能重跑；后续索引用新的 ID，例如 `baseline-v3`。
 
 ## 前置条件与隔离资源
 
@@ -54,24 +54,31 @@ go vet ./Eval/cmd/evalbridge
 
 ## 2. 单独完成索引验收并保存快照
 
+在后续命令使用的同一终端选定一次快照名和检索 ID 前缀：
+
 ```sh
-ml/.venv/bin/python Eval/tools/run.py index --run-id baseline-v3
+SNAPSHOT=baseline-v3
+RUN=check-01
 ```
 
-这是**下一轮全新索引**的示例；当前 `baseline-v2` 已启动，不要再次执行同名 `index`，也不要在其运行期间启动 `baseline-v3`。以下检查路径和后续命令以当前 `baseline-v2` 为例；若另建新索引，统一换为其 ID。
+新索引使用尚未用过的 `SNAPSHOT`；当前 `baseline-v2` 已启动，不要重跑或并行启动新索引。若要复用已有快照，只有确认 `baseline-v2` 验收通过且归档完整后，才可改设 `SNAPSHOT=baseline-v2` 并**跳过下一条 `index`**。`RUN` 每次流程必须换新值；它会派生 `-a`、`-b`、`-tuned`、`-restored`、`-restored-check`，这些 ID 和输出目录均不可复用。新建索引的 `SNAPSHOT` 最多 34 字符（运行目录附加 `-index`），`RUN` 最多 25 字符，以便最长后缀仍满足 40 字符限制；二者均遵守前述 ID 字符规则。
+
+```sh
+ml/.venv/bin/python Eval/tools/run.py index --run-id "$SNAPSHOT"
+```
 
 默认索引等待上限为 7200 秒，可显式传 `--timeout-seconds 10800`。runner 创建独立数据库/桶，执行迁移和空间初始化，仅上传 5 个固定 MP4，通过真实分片上传及 worker 完成全流程。标注、字幕和参考讲解不导入应用。
 
-检查 `Eval/runs/baseline-v2-index/index-run.json`、`stages.json`、`inspection.json` 和 `worker.log`。索引检查包含视频 ready、必要阶段、归属、非空 ASR、切片覆盖、向量和 HNSW/模型空间身份。worker 停止后保存数据库、对象及稳定的 `index_sha256`；上传源文件还会核对冻结视频哈希，归一化视频核对音视频流与时长。
+检查 `Eval/runs/${SNAPSHOT}-index/` 下的 `index-run.json`、`stages.json`、`inspection.json` 和 `worker.log`。当前 v2 的实际状态见 [index-run.json](runs/baseline-v2-index/index-run.json)。索引检查包含视频 ready、必要阶段、归属、非空 ASR、切片覆盖、向量和 HNSW/模型空间身份。worker 停止后保存数据库、对象及稳定的 `index_sha256`；上传源文件还会核对冻结视频哈希，归一化视频核对音视频流与时长。
 
-成功快照为 `Eval/snapshots/baseline-v2/`。失败则保留阶段、日志、已上传数据和资源，先查明原因；不能将部分成功或 fake 运行记为真实基线。
+只有索引报告为 `status: passed` 后，才使用 `Eval/snapshots/${SNAPSHOT}/` 的完整快照继续。失败则保留阶段、日志、已上传数据和资源，先查明原因；不能将部分成功或 fake 运行记为真实基线。
 
 ## 3. 在同一固定索引运行两次检索并比较
 
 ```sh
-ml/.venv/bin/python Eval/tools/run.py retrieve --snapshot baseline-v2 --run-id baseline-v2-a
-ml/.venv/bin/python Eval/tools/run.py retrieve --snapshot baseline-v2 --run-id baseline-v2-b
-ml/.venv/bin/python Eval/tools/score.py compare --before Eval/runs/baseline-v2-a/report.json --after Eval/runs/baseline-v2-b/report.json --output Eval/runs/baseline-v2-a-vs-b
+ml/.venv/bin/python Eval/tools/run.py retrieve --snapshot "$SNAPSHOT" --run-id "${RUN}-a"
+ml/.venv/bin/python Eval/tools/run.py retrieve --snapshot "$SNAPSHOT" --run-id "${RUN}-b"
+ml/.venv/bin/python Eval/tools/score.py compare --before "Eval/runs/${RUN}-a/report.json" --after "Eval/runs/${RUN}-b/report.json" --output "Eval/runs/${RUN}-a-vs-b"
 ```
 
 每次针对全库 5 个视频执行 35 条查询 × `visual` / `speech` / `fused`，共 105 个响应，每题最多取 10 个 moment。检索前后检查索引指纹与模型身份；不重新上传或启动 worker。查询文字原样传给模型，当前没有英文转换。`fused` 使用当前 active 的全部通道，包含 `audio`；没有独立声音金标，不能据此单独验收 CLAP。
@@ -83,8 +90,8 @@ ml/.venv/bin/python Eval/tools/score.py compare --before Eval/runs/baseline-v2-a
 固定索引上试验召回数、RRF 常数和合并间隙时，使用新 run ID，参数进入报告，不改快照：
 
 ```sh
-ml/.venv/bin/python Eval/tools/run.py retrieve --snapshot baseline-v2 --run-id baseline-v2-tuned --k 100 --rrf-k 30 --merge-gap 0
-ml/.venv/bin/python Eval/tools/score.py compare --before Eval/runs/baseline-v2-a/report.json --after Eval/runs/baseline-v2-tuned/report.json --output Eval/runs/baseline-v2-a-vs-tuned
+ml/.venv/bin/python Eval/tools/run.py retrieve --snapshot "$SNAPSHOT" --run-id "${RUN}-tuned" --k 100 --rrf-k 30 --merge-gap 0
+ml/.venv/bin/python Eval/tools/score.py compare --before "Eval/runs/${RUN}-a/report.json" --after "Eval/runs/${RUN}-tuned/report.json" --output "Eval/runs/${RUN}-a-vs-tuned"
 ```
 
 `--k` 是每路召回数，不是评分的 Recall@K，也不改变每题输出上限 10；`--rrf-k` 对应 `search.rrf_k`，`--merge-gap` 对应 `search.merge_gap_cells`。参数比较可以仍是固定索引，但 `identical_retrieval_conditions` 应为 false。不要用同批调参样本宣称最终泛化验收。
@@ -92,12 +99,12 @@ ml/.venv/bin/python Eval/tools/score.py compare --before Eval/runs/baseline-v2-a
 ## 4. 恢复快照，再验证固定索引检索
 
 ```sh
-ml/.venv/bin/python Eval/tools/run.py restore --snapshot baseline-v2 --run-id baseline-v2-restored
-ml/.venv/bin/python Eval/tools/run.py retrieve --snapshot baseline-v2 --run-id baseline-v2-restored-check --state Eval/.runtime/baseline-v2-restored/state.json
-ml/.venv/bin/python Eval/tools/score.py compare --before Eval/runs/baseline-v2-a/report.json --after Eval/runs/baseline-v2-restored-check/report.json --output Eval/runs/baseline-v2-a-vs-restored
+ml/.venv/bin/python Eval/tools/run.py restore --snapshot "$SNAPSHOT" --run-id "${RUN}-restored"
+ml/.venv/bin/python Eval/tools/run.py retrieve --snapshot "$SNAPSHOT" --run-id "${RUN}-restored-check" --state "Eval/.runtime/${RUN}-restored/state.json"
+ml/.venv/bin/python Eval/tools/score.py compare --before "Eval/runs/${RUN}-a/report.json" --after "Eval/runs/${RUN}-restored-check/report.json" --output "Eval/runs/${RUN}-a-vs-restored"
 ```
 
-恢复使用新的 `vh_eval_baseline_v2_restored` 数据库和 `vh-eval-baseline-v2-restored` 桶。先验证归档哈希，再还原数据库、将已归档对象复制到新桶，检查恢复后的 `index_sha256` 与原快照一致；结果在新 runtime 的 `restored-from.json`。对象复制是快照恢复，不执行 `local-upload`、worker、视频重处理或索引模型推理。随后 `retrieve` 仍需真实 ML 服务做查询编码。恢复前必须保留完整 dump 和对象归档；只有 Git 元数据不能恢复数据。
+恢复使用 `${RUN}-restored` 派生的新数据库和桶；例如 `RUN=check-01` 时为 `vh_eval_check_01_restored` 和 `vh-eval-check-01-restored`。先验证归档哈希，再还原数据库、将已归档对象复制到新桶，检查恢复后的 `index_sha256` 与原快照一致；结果在新 runtime 的 `restored-from.json`。对象复制是快照恢复，不执行 `local-upload`、worker、视频重处理或索引模型推理。随后 `retrieve` 仍需真实 ML 服务做查询编码。恢复前必须保留完整 dump 和对象归档；只有 Git 元数据不能恢复数据。
 
 ## 如何判读质量与失败
 
