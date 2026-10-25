@@ -1,0 +1,86 @@
+[
+  {
+    "video_id": 3,
+    "flattened_timestamps_equal_full_raw": true,
+    "boundary_tokens": [
+      {
+        "token_index": 105,
+        "token": "warmly",
+        "vad_segment_index": 12,
+        "vad_segment": [
+          75420,
+          77370
+        ],
+        "segment_length_ms": 1950,
+        "relative_timestamp": [
+          1410,
+          2040
+        ],
+        "absolute_timestamp": [
+          76830,
+          77460
+        ]
+      },
+      {
+        "token_index": 106,
+        "token": "and",
+        "vad_segment_index": 13,
+        "vad_segment": [
+          77370,
+          80360
+        ],
+        "segment_length_ms": 2990,
+        "relative_timestamp": [
+          30,
+          90
+        ],
+        "absolute_timestamp": [
+          77400,
+          77460
+        ]
+      }
+    ]
+  },
+  {
+    "video_id": 4,
+    "flattened_timestamps_equal_full_raw": true,
+    "boundary_tokens": [
+      {
+        "token_index": 224,
+        "token": "的",
+        "vad_segment_index": 10,
+        "vad_segment": [
+          80700,
+          86410
+        ],
+        "segment_length_ms": 5710,
+        "relative_timestamp": [
+          5370,
+          5760
+        ],
+        "absolute_timestamp": [
+          86070,
+          86460
+        ]
+      },
+      {
+        "token_index": 225,
+        "token": "是",
+        "vad_segment_index": 11,
+        "vad_segment": [
+          86410,
+          90680
+        ],
+        "segment_length_ms": 4270,
+        "relative_timestamp": [
+          -90,
+          210
+        ],
+        "absolute_timestamp": [
+          86320,
+          86620
+        ]
+      }
+    ]
+  }
+]

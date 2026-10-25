@@ -1,0 +1,966 @@
+[
+  {
+    "stage": "vad",
+    "results": [
+      {
+        "key": "rand_key_2yW4Acq9GFz6Y",
+        "value": [
+          [
+            660,
+            8430
+          ],
+          [
+            10210,
+            12370
+          ],
+          [
+            16210,
+            26430
+          ],
+          [
+            28210,
+            29600
+          ],
+          [
+            34210,
+            44010
+          ],
+          [
+            46210,
+            48300
+          ],
+          [
+            52210,
+            61780
+          ],
+          [
+            64210,
+            65630
+          ],
+          [
+            65710,
+            66290
+          ],
+          [
+            70210,
+            71700
+          ],
+          [
+            71710,
+            72240
+          ],
+          [
+            72690,
+            75420
+          ],
+          [
+            75420,
+            77370
+          ],
+          [
+            77370,
+            80360
+          ],
+          [
+            82210,
+            83690
+          ],
+          [
+            83710,
+            84320
+          ],
+          [
+            87460,
+            88020
+          ],
+          [
+            88210,
+            89690
+          ],
+          [
+            89710,
+            90340
+          ],
+          [
+            90700,
+            93910
+          ],
+          [
+            93910,
+            98460
+          ],
+          [
+            100210,
+            101700
+          ],
+          [
+            101710,
+            102300
+          ],
+          [
+            105480,
+            106000
+          ],
+          [
+            106210,
+            107180
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "stage": "asr",
+    "results": [
+      {
+        "key": "rand_key_WgNZq6ITZM5jt",
+        "text": "嗯",
+        "timestamp": [
+          [
+            210,
+            600
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "stage": "asr",
+    "results": [
+      {
+        "key": "rand_key_gUe52RvEJgwBu",
+        "text": "嗯",
+        "timestamp": [
+          [
+            210,
+            600
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "stage": "asr",
+    "results": [
+      {
+        "key": "rand_key_NO6n9JEC3HqdZ",
+        "text": "嗯",
+        "timestamp": [
+          [
+            329,
+            600
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "stage": "asr",
+    "results": [
+      {
+        "key": "rand_key_6J6afU1zT0YQO",
+        "text": "嗯",
+        "timestamp": [
+          [
+            270,
+            659
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "stage": "asr",
+    "results": [
+      {
+        "key": "rand_key_aNF03vpUuT3em",
+        "text": "嗯",
+        "timestamp": [
+          [
+            210,
+            659
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "stage": "asr",
+    "results": [
+      {
+        "key": "rand_key_6KopZ9jZICffu",
+        "text": "嗯",
+        "timestamp": [
+          [
+            270,
+            659
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "stage": "asr",
+    "results": [
+      {
+        "key": "rand_key_4G7FgtJsThJv0",
+        "text": "嗯",
+        "timestamp": [
+          [
+            270,
+            720
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "stage": "asr",
+    "results": [
+      {
+        "key": "rand_key_7In9ZMJLsCfMZ",
+        "text": "the",
+        "timestamp": [
+          [
+            570,
+            1020
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "stage": "asr",
+    "results": [
+      {
+        "key": "rand_key_yuKpslm0lcNQq",
+        "text": "the",
+        "timestamp": [
+          [
+            690,
+            1440
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "stage": "asr",
+    "results": [
+      {
+        "key": "rand_key_EefRWi4j7c1f5",
+        "text": "",
+        "timestamp": []
+      }
+    ]
+  },
+  {
+    "stage": "asr",
+    "results": [
+      {
+        "key": "rand_key_S71IRz1THrHZp",
+        "text": "",
+        "timestamp": []
+      }
+    ]
+  },
+  {
+    "stage": "asr",
+    "results": [
+      {
+        "key": "rand_key_2n5RL08ALrCFQ",
+        "text": "",
+        "timestamp": []
+      }
+    ]
+  },
+  {
+    "stage": "asr",
+    "results": [
+      {
+        "key": "rand_key_PS6YwfuNhFLOv",
+        "text": "",
+        "timestamp": []
+      }
+    ]
+  },
+  {
+    "stage": "asr",
+    "results": [
+      {
+        "key": "rand_key_2mpbUrhToxYkv",
+        "text": "",
+        "timestamp": []
+      }
+    ]
+  },
+  {
+    "stage": "asr",
+    "results": [
+      {
+        "key": "rand_key_B0dgYj2Soc0KO",
+        "text": "it's round window globe warmly",
+        "timestamp": [
+          [
+            150,
+            329
+          ],
+          [
+            329,
+            630
+          ],
+          [
+            630,
+            990
+          ],
+          [
+            990,
+            1410
+          ],
+          [
+            1410,
+            2040
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "stage": "asr",
+    "results": [
+      {
+        "key": "rand_key_67IMRebhOmM1K",
+        "text": "the",
+        "timestamp": [
+          [
+            1109,
+            1829
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "stage": "asr",
+    "results": [
+      {
+        "key": "rand_key_hzfx1hcMbm9lT",
+        "text": "the",
+        "timestamp": [
+          [
+            1109,
+            1829
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "stage": "asr",
+    "results": [
+      {
+        "key": "rand_key_hEnUZd7RbIBNg",
+        "text": "a small cottage waited beyond the trees",
+        "timestamp": [
+          [
+            329,
+            449
+          ],
+          [
+            449,
+            570
+          ],
+          [
+            570,
+            1050
+          ],
+          [
+            1050,
+            1290
+          ],
+          [
+            1290,
+            1950
+          ],
+          [
+            1950,
+            2250
+          ],
+          [
+            2250,
+            2820
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "stage": "asr",
+    "results": [
+      {
+        "key": "rand_key_1qeoePtwBldGD",
+        "text": "and the two friends finally had a safe place to rest",
+        "timestamp": [
+          [
+            30,
+            90
+          ],
+          [
+            90,
+            150
+          ],
+          [
+            150,
+            270
+          ],
+          [
+            270,
+            690
+          ],
+          [
+            690,
+            1050
+          ],
+          [
+            1050,
+            1349
+          ],
+          [
+            1349,
+            1410
+          ],
+          [
+            1410,
+            1829
+          ],
+          [
+            1829,
+            2250
+          ],
+          [
+            2250,
+            2310
+          ],
+          [
+            2310,
+            3060
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "stage": "asr",
+    "results": [
+      {
+        "key": "rand_key_cMgSzmqw5UE15",
+        "text": "by sunrise the lantern was no longer needed",
+        "timestamp": [
+          [
+            329,
+            870
+          ],
+          [
+            870,
+            1829
+          ],
+          [
+            1829,
+            1950
+          ],
+          [
+            1950,
+            2310
+          ],
+          [
+            2310,
+            2429
+          ],
+          [
+            2429,
+            2550
+          ],
+          [
+            2550,
+            2909
+          ],
+          [
+            2909,
+            3300
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "stage": "asr",
+    "results": [
+      {
+        "key": "rand_key_6KkSRn9XdYRk2",
+        "text": "sitting on the hill milaler understood that helping a friend had made the journey bririter",
+        "timestamp": [
+          [
+            150,
+            570
+          ],
+          [
+            570,
+            1170
+          ],
+          [
+            1170,
+            1290
+          ],
+          [
+            1290,
+            1589
+          ],
+          [
+            1589,
+            1890
+          ],
+          [
+            1890,
+            2310
+          ],
+          [
+            2310,
+            2429
+          ],
+          [
+            2429,
+            2790
+          ],
+          [
+            2790,
+            2850
+          ],
+          [
+            2850,
+            3090
+          ],
+          [
+            3090,
+            3270
+          ],
+          [
+            3270,
+            3389
+          ],
+          [
+            3389,
+            3510
+          ],
+          [
+            3510,
+            3929
+          ],
+          [
+            3929,
+            4620
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "stage": "asr",
+    "results": [
+      {
+        "key": "rand_key_kvHqhM6CQlaER",
+        "text": "at dusk myo found a little lantern on an old trees stm he decided to carry its warm light along the forest path",
+        "timestamp": [
+          [
+            570,
+            809
+          ],
+          [
+            809,
+            1349
+          ],
+          [
+            1349,
+            1890
+          ],
+          [
+            1890,
+            2070
+          ],
+          [
+            2070,
+            2250
+          ],
+          [
+            2250,
+            2370
+          ],
+          [
+            2370,
+            3270
+          ],
+          [
+            3270,
+            3630
+          ],
+          [
+            3630,
+            3869
+          ],
+          [
+            3869,
+            4109
+          ],
+          [
+            4109,
+            4410
+          ],
+          [
+            4410,
+            4830
+          ],
+          [
+            4830,
+            5010
+          ],
+          [
+            5010,
+            5370
+          ],
+          [
+            5370,
+            5490
+          ],
+          [
+            5490,
+            5850
+          ],
+          [
+            5850,
+            5970
+          ],
+          [
+            5970,
+            6330
+          ],
+          [
+            6330,
+            6510
+          ],
+          [
+            6510,
+            6810
+          ],
+          [
+            6810,
+            7050
+          ],
+          [
+            7050,
+            7350
+          ],
+          [
+            7350,
+            7859
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "stage": "asr",
+    "results": [
+      {
+        "key": "rand_key_A5K3G6tPwy1Qq",
+        "text": "at the wooden bridge the rabbit was afraid of the dark water myo held the lantern low so they could see each careful step",
+        "timestamp": [
+          [
+            90,
+            270
+          ],
+          [
+            270,
+            449
+          ],
+          [
+            449,
+            990
+          ],
+          [
+            990,
+            1410
+          ],
+          [
+            1410,
+            1589
+          ],
+          [
+            1589,
+            2310
+          ],
+          [
+            2310,
+            2489
+          ],
+          [
+            2489,
+            3270
+          ],
+          [
+            3270,
+            3570
+          ],
+          [
+            3570,
+            4050
+          ],
+          [
+            4050,
+            4770
+          ],
+          [
+            4770,
+            5130
+          ],
+          [
+            5130,
+            6210
+          ],
+          [
+            6210,
+            6510
+          ],
+          [
+            6510,
+            6689
+          ],
+          [
+            6689,
+            7229
+          ],
+          [
+            7229,
+            7590
+          ],
+          [
+            7590,
+            7770
+          ],
+          [
+            7770,
+            7949
+          ],
+          [
+            7949,
+            8129
+          ],
+          [
+            8129,
+            8370
+          ],
+          [
+            8370,
+            8549
+          ],
+          [
+            8549,
+            9150
+          ],
+          [
+            9150,
+            9660
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "stage": "asr",
+    "results": [
+      {
+        "key": "rand_key_jJSaDVfvVcIri",
+        "text": "malo decided that kindness matttered more than speed he shared a broad leaf with a frightened rabid until the rain grew software",
+        "timestamp": [
+          [
+            90,
+            750
+          ],
+          [
+            750,
+            1170
+          ],
+          [
+            1170,
+            1349
+          ],
+          [
+            1349,
+            2190
+          ],
+          [
+            2190,
+            3270
+          ],
+          [
+            3270,
+            3389
+          ],
+          [
+            3389,
+            3630
+          ],
+          [
+            3630,
+            3929
+          ],
+          [
+            3929,
+            4109
+          ],
+          [
+            4109,
+            4470
+          ],
+          [
+            4470,
+            4590
+          ],
+          [
+            4590,
+            4950
+          ],
+          [
+            4950,
+            5430
+          ],
+          [
+            5430,
+            5670
+          ],
+          [
+            5670,
+            5910
+          ],
+          [
+            5910,
+            6810
+          ],
+          [
+            6810,
+            7229
+          ],
+          [
+            7229,
+            7770
+          ],
+          [
+            7770,
+            7890
+          ],
+          [
+            7890,
+            8310
+          ],
+          [
+            8310,
+            8790
+          ],
+          [
+            8790,
+            9840
+          ]
+        ]
+      }
+    ]
+  },
+  {
+    "stage": "asr",
+    "results": [
+      {
+        "key": "rand_key_pW9EwNsRwL85O",
+        "text": "two wooden arrows pointed in different directions myo paston listened because a quiet sound was coming from the darker path",
+        "timestamp": [
+          [
+            90,
+            329
+          ],
+          [
+            329,
+            1050
+          ],
+          [
+            1050,
+            1710
+          ],
+          [
+            1710,
+            2429
+          ],
+          [
+            2429,
+            2790
+          ],
+          [
+            2790,
+            3090
+          ],
+          [
+            3090,
+            4170
+          ],
+          [
+            4170,
+            5790
+          ],
+          [
+            5790,
+            6390
+          ],
+          [
+            6390,
+            6930
+          ],
+          [
+            6930,
+            7170
+          ],
+          [
+            7170,
+            7290
+          ],
+          [
+            7290,
+            7710
+          ],
+          [
+            7710,
+            8070
+          ],
+          [
+            8070,
+            8250
+          ],
+          [
+            8250,
+            8610
+          ],
+          [
+            8610,
+            8850
+          ],
+          [
+            8850,
+            8969
+          ],
+          [
+            8969,
+            9690
+          ],
+          [
+            9690,
+            10260
+          ]
+        ]
+      }
+    ]
+  }
+]
