@@ -1,11 +1,13 @@
 package stages
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"reflect"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -31,6 +33,7 @@ func TestASRAndEmbeddingCheckpointsIntegration(t *testing.T) {
 	var mu sync.Mutex
 	asrCalls := map[int]int{}
 	embedCalls := 0
+	var speechInputs []mlclient.EmbedInput
 	failASR := true
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -56,7 +59,10 @@ func TestASRAndEmbeddingCheckpointsIntegration(t *testing.T) {
 			}
 			sentences := []mlclient.Sentence{{StartMs: 1700, EndMs: 2300, Text: "跨窗口的中文句子。", Words: []mlclient.Word{{W: "原文", S: 1700, E: 2300}}}}
 			if request.StartMs == 1500 {
-				sentences = append(sentences, mlclient.Sentence{StartMs: 2500, EndMs: 3200, Text: "保留原句。", Words: []mlclient.Word{{W: "原句", S: 2500, E: 3200}}})
+				sentences = append(sentences, mlclient.Sentence{StartMs: 2100, EndMs: 3200, Text: "保留原句。", Words: []mlclient.Word{{W: "原句", S: 2500, E: 3200}}})
+			} else {
+				sentences[0].Words = append(sentences[0].Words, mlclient.Word{W: "尾词", S: 2200, E: 2300})
+				sentences = append([]mlclient.Sentence{{StartMs: 1000, EndMs: 1900, Text: "今天下雨", Words: []mlclient.Word{{W: "今天", S: 1000, E: 1500}, {W: "下雨", S: 1450, E: 1900}}}}, sentences...)
 			}
 			json.NewEncoder(w).Encode(mlclient.TranscribeResponse{Model: request.Model, Fingerprint: asrFingerprint, Language: "zh", DurationMs: 4000, Sentences: sentences})
 		case "/v1/embed":
@@ -68,6 +74,9 @@ func TestASRAndEmbeddingCheckpointsIntegration(t *testing.T) {
 			}
 			mu.Lock()
 			embedCalls++
+			if len(request.Inputs) > 0 && request.Inputs[0].Text != "" {
+				speechInputs = append(speechInputs, request.Inputs...)
+			}
 			mu.Unlock()
 			vectors := make([][]float32, len(request.Inputs))
 			for i := range vectors {
@@ -136,8 +145,53 @@ func TestASRAndEmbeddingCheckpointsIntegration(t *testing.T) {
 		t.Fatalf("ASR resumed wrong windows: first=%d second=%d", first, second)
 	}
 	sentences, err := index.SpeechSentences(ctx, pool, videoID)
-	if err != nil || len(sentences) != 2 || sentences[0].Text != "跨窗口的中文句子。" || sentences[1].Text != "保留原句。" || sentences[0].Words[0].W != "原文" {
+	if err != nil || len(sentences) != 3 || sentences[0].Text != "今天下雨" || sentences[1].Text != "跨窗口的中文句子。" || sentences[2].Text != "保留原句。" ||
+		!reflect.DeepEqual(sentences[0].Words, []index.Word{{W: "今天", S: 1000, E: 1500}, {W: "下雨", S: 1450, E: 1900}}) || sentences[1].Span.EndMs <= sentences[2].Span.StartMs {
 		t.Fatalf("ASR lost or duplicated original evidence: %+v %v", sentences, err)
+	}
+	var progress asrProgress
+	if err := json.Unmarshal(sc.Progress, &progress); err != nil {
+		t.Fatal(err)
+	}
+	for _, tt := range []struct {
+		name, code string
+		chunk      int
+		change     func(*mlclient.TranscribeResponse)
+	}{
+		{"backwards checkpoint words", "", 0, func(r *mlclient.TranscribeResponse) {
+			r.Sentences[0].Words[0], r.Sentences[0].Words[1] = r.Sentences[0].Words[1], r.Sentences[0].Words[0]
+		}},
+		{"checkpoint beyond window", "", 0, func(r *mlclient.TranscribeResponse) { r.Sentences[0].EndMs = 2600 }},
+		{"backwards cross-chunk words", "asr_overlap", 1, func(r *mlclient.TranscribeResponse) { r.Sentences[1].Words[0].S = 2100 }},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			var response mlclient.TranscribeResponse
+			key := progress.Keys[tt.chunk]
+			if err := h.readTranscript(ctx, key, &response); err != nil {
+				t.Fatal(err)
+			}
+			original, err := json.Marshal(response)
+			if err != nil {
+				t.Fatal(err)
+			}
+			tt.change(&response)
+			changed, err := json.Marshal(response)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := objects.Put(ctx, key, bytes.NewReader(changed), "application/json"); err != nil {
+				t.Fatal(err)
+			}
+			commit, err := h.ASR(ctx, sc)
+			var classified *apperr.Error
+			if commit != nil || (tt.code == "" && !errors.Is(err, mlclient.ErrContract)) ||
+				(tt.code != "" && (!errors.As(err, &classified) || classified.Code != tt.code)) {
+				t.Errorf("unsafe checkpoint replay accepted: commit=%v err=%v", commit, err)
+			}
+			if err := objects.Put(ctx, key, bytes.NewReader(original), "application/json"); err != nil {
+				t.Fatal(err)
+			}
+		})
 	}
 	info, _ := registry.Get("wemm-2b@r1")
 	sc.Def.Options = pipeline.StageOptions{Channel: "visual", Seg: "grid@v1", Space: info}
@@ -175,6 +229,16 @@ func TestASRAndEmbeddingCheckpointsIntegration(t *testing.T) {
 	}
 	if err := pool.QueryRow(ctx, "SELECT count(*) FROM embedding WHERE video_id=$1 AND channel='speech'", videoID).Scan(&count); err != nil || count == 0 {
 		t.Fatalf("speech not embedded: count=%d err=%v", count, err)
+	}
+	mu.Lock()
+	gotSpeech := append([]mlclient.EmbedInput(nil), speechInputs...)
+	mu.Unlock()
+	if !reflect.DeepEqual(gotSpeech, []mlclient.EmbedInput{{Text: "今天下雨跨窗口的中文句子。保留原句。"}}) {
+		t.Fatalf("speech embedding lost original text order: %+v", gotSpeech)
+	}
+	var start, end int
+	if err := pool.QueryRow(ctx, "SELECT start_ms,end_ms FROM embedding WHERE video_id=$1 AND channel='speech'", videoID).Scan(&start, &end); err != nil || start != 1000 || end != 3200 {
+		t.Fatalf("speech union lost source interval: [%d,%d) %v", start, end, err)
 	}
 	sc.Def.Options.Space.Fingerprint = "sha256:" + strings.Repeat("c", 64)
 	if _, err := h.Embed(ctx, sc); err == nil {

@@ -252,7 +252,24 @@ func TestTranscribeAbsoluteTimeContract(t *testing.T) {
 		{"model", func(r *TranscribeResponse) { r.Model = "different" }, true},
 		{"relative timestamp", func(r *TranscribeResponse) { r.Sentences[0].StartMs = 0 }, true},
 		{"past clipped end", func(r *TranscribeResponse) { r.Sentences[1].EndMs = 2600 }, true},
-		{"overlap", func(r *TranscribeResponse) { r.Sentences[1].StartMs = 1400 }, true},
+		{"ordered sentence overlap", func(r *TranscribeResponse) { r.Sentences[1].StartMs = 1400 }, false},
+		{"equal sentence starts and contained end", func(r *TranscribeResponse) {
+			r.Sentences[1].StartMs, r.Sentences[1].EndMs = 1000, 1300
+		}, false},
+		{"backwards sentences", func(r *TranscribeResponse) {
+			r.Sentences[0], r.Sentences[1] = r.Sentences[1], r.Sentences[0]
+		}, true},
+		{"backwards words", func(r *TranscribeResponse) {
+			r.Sentences[0].Words[0], r.Sentences[0].Words[1] = r.Sentences[0].Words[1], r.Sentences[0].Words[0]
+		}, true},
+		{"backwards words across sentences", func(r *TranscribeResponse) {
+			r.Sentences[0].EndMs = 2400
+			r.Sentences[0].Words = []Word{{W: "先", S: 2200, E: 2400}}
+			r.Sentences[1].Words = []Word{{W: "后", S: 2100, E: 2300}}
+		}, true},
+		{"zero word duration", func(r *TranscribeResponse) { r.Sentences[0].Words[0].E = 1000 }, true},
+		{"zero sentence duration", func(r *TranscribeResponse) { r.Sentences[0].EndMs = 1000 }, true},
+		{"missing words", func(r *TranscribeResponse) { r.Sentences[0].Words = nil }, true},
 		{"word outside sentence", func(r *TranscribeResponse) { r.Sentences[0].Words[0].S = 999 }, true},
 		{"missing sentences", func(r *TranscribeResponse) { r.Sentences = nil }, true},
 	} {
@@ -276,6 +293,28 @@ func TestTranscribeAbsoluteTimeContract(t *testing.T) {
 				t.Fatalf("Transcribe: %v, contract error wanted=%v", err, tt.wantError)
 			}
 		})
+	}
+}
+
+func TestTranscriptPreservesOrderedWordOverlap(t *testing.T) {
+	for _, sentences := range [][]Sentence{
+		{{StartMs: 1000, EndMs: 1900, Text: "今天下雨", Words: []Word{{W: "今天", S: 1000, E: 1500}, {W: "下雨", S: 1450, E: 1900}}}},
+		{{StartMs: 76830, EndMs: 77460, Text: "warmly", Words: []Word{{W: "warmly", S: 76830, E: 77460}}},
+			{StartMs: 77400, EndMs: 77460, Text: "and", Words: []Word{{W: "and", S: 77400, E: 77460}}}},
+		{{StartMs: 1000, EndMs: 1900, Text: "包含", Words: []Word{{W: "包", S: 1000, E: 1900}, {W: "含", S: 1000, E: 1500}}}},
+	} {
+		response := TranscribeResponse{Model: testModel, Fingerprint: testFingerprint, Language: "zh", DurationMs: 78000, Sentences: sentences}
+		before, err := json.Marshal(response)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := ValidateTranscript(TranscribeRequest{StartMs: 1000, EndMs: 78000}, response, testMetadata().Transcribers[0]); err != nil {
+			t.Fatalf("ordered overlap rejected: %+v: %v", sentences, err)
+		}
+		after, err := json.Marshal(response)
+		if err != nil || string(after) != string(before) {
+			t.Fatalf("validation changed original evidence: %s => %s: %v", before, after, err)
+		}
 	}
 }
 
