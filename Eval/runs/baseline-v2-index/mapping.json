@@ -1,0 +1,40 @@
+{
+  "principal": {
+    "user_id": 1,
+    "workspace_id": 1
+  },
+  "mapping": {
+    "study_zh": 1,
+    "blockchain_mix": 2,
+    "story_en": 3,
+    "vlog_zh": 4,
+    "landscape_en": 5
+  },
+  "uploads": [
+    {
+      "media_id": "study_zh",
+      "video_id": 1,
+      "elapsed_ms": 155.13
+    },
+    {
+      "media_id": "blockchain_mix",
+      "video_id": 2,
+      "elapsed_ms": 104.31
+    },
+    {
+      "media_id": "story_en",
+      "video_id": 3,
+      "elapsed_ms": 149.5
+    },
+    {
+      "media_id": "vlog_zh",
+      "video_id": 4,
+      "elapsed_ms": 135.07
+    },
+    {
+      "media_id": "landscape_en",
+      "video_id": 5,
+      "elapsed_ms": 139.78
+    }
+  ]
+}

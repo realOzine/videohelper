@@ -1,0 +1,417 @@
+[
+  {
+    "video": {
+      "id": "1",
+      "workspace_id": "1",
+      "title": "study_zh.mp4",
+      "status": "ready",
+      "source_kind": "upload",
+      "duration_ms": 84000,
+      "has_video": true,
+      "has_audio": true,
+      "thumbs": {
+        "tile_w": 320,
+        "tile_h": 180,
+        "cols": 10,
+        "rows": 10,
+        "count": 84
+      },
+      "created_at": "2026-10-25T22:51:39.36483+08:00",
+      "updated_at": "2026-10-25T22:55:17.287566+08:00"
+    },
+    "stages": [
+      {
+        "stage": "asr",
+        "version": "v1",
+        "status": "done",
+        "attempt": 1,
+        "required": true,
+        "progress": 1,
+        "updated_at": "2026-10-25T22:54:07.11813+08:00"
+      },
+      {
+        "stage": "embed:audio:clap-htsat-unfused@r1",
+        "version": "v1",
+        "status": "done",
+        "attempt": 1,
+        "required": true,
+        "progress": 1,
+        "updated_at": "2026-10-25T22:55:16.562857+08:00"
+      },
+      {
+        "stage": "embed:speech:wemm-2b@r1",
+        "version": "v1",
+        "status": "done",
+        "attempt": 1,
+        "required": true,
+        "progress": 1,
+        "updated_at": "2026-10-25T22:54:11.141318+08:00"
+      },
+      {
+        "stage": "embed:visual:wemm-2b@r1",
+        "version": "v1",
+        "status": "done",
+        "attempt": 1,
+        "required": true,
+        "progress": 1,
+        "updated_at": "2026-10-25T22:55:02.075928+08:00"
+      },
+      {
+        "stage": "finalize",
+        "version": "v1",
+        "status": "done",
+        "attempt": 1,
+        "required": true,
+        "updated_at": "2026-10-25T22:55:17.287566+08:00"
+      },
+      {
+        "stage": "prepare_media",
+        "version": "v1",
+        "status": "done",
+        "attempt": 1,
+        "required": true,
+        "updated_at": "2026-10-25T22:52:01.160339+08:00"
+      },
+      {
+        "stage": "probe",
+        "version": "v1",
+        "status": "done",
+        "attempt": 1,
+        "required": true,
+        "updated_at": "2026-10-25T22:51:40.249997+08:00"
+      }
+    ]
+  },
+  {
+    "video": {
+      "id": "2",
+      "workspace_id": "1",
+      "title": "blockchain_mix.mp4",
+      "status": "ready",
+      "source_kind": "upload",
+      "duration_ms": 120000,
+      "has_video": true,
+      "has_audio": true,
+      "thumbs": {
+        "tile_w": 320,
+        "tile_h": 180,
+        "cols": 10,
+        "rows": 10,
+        "count": 48
+      },
+      "created_at": "2026-10-25T22:51:39.518556+08:00",
+      "updated_at": "2026-10-25T22:53:58.8731+08:00"
+    },
+    "stages": [
+      {
+        "stage": "asr",
+        "version": "v1",
+        "status": "done",
+        "attempt": 1,
+        "required": true,
+        "progress": 1,
+        "updated_at": "2026-10-25T22:52:06.378293+08:00"
+      },
+      {
+        "stage": "embed:audio:clap-htsat-unfused@r1",
+        "version": "v1",
+        "status": "done",
+        "attempt": 1,
+        "required": true,
+        "progress": 1,
+        "updated_at": "2026-10-25T22:53:58.42634+08:00"
+      },
+      {
+        "stage": "embed:speech:wemm-2b@r1",
+        "version": "v1",
+        "status": "done",
+        "attempt": 1,
+        "required": true,
+        "progress": 1,
+        "updated_at": "2026-10-25T22:52:26.380764+08:00"
+      },
+      {
+        "stage": "embed:visual:wemm-2b@r1",
+        "version": "v1",
+        "status": "done",
+        "attempt": 1,
+        "required": true,
+        "progress": 1,
+        "updated_at": "2026-10-25T22:53:00.319808+08:00"
+      },
+      {
+        "stage": "finalize",
+        "version": "v1",
+        "status": "done",
+        "attempt": 1,
+        "required": true,
+        "updated_at": "2026-10-25T22:53:58.8731+08:00"
+      },
+      {
+        "stage": "prepare_media",
+        "version": "v1",
+        "status": "done",
+        "attempt": 1,
+        "required": true,
+        "updated_at": "2026-10-25T22:51:57.897524+08:00"
+      },
+      {
+        "stage": "probe",
+        "version": "v1",
+        "status": "done",
+        "attempt": 1,
+        "required": true,
+        "updated_at": "2026-10-25T22:51:40.235933+08:00"
+      }
+    ]
+  },
+  {
+    "video": {
+      "id": "3",
+      "workspace_id": "1",
+      "title": "story_en.mp4",
+      "status": "ready",
+      "source_kind": "upload",
+      "duration_ms": 108000,
+      "has_video": true,
+      "has_audio": true,
+      "thumbs": {
+        "tile_w": 320,
+        "tile_h": 180,
+        "cols": 10,
+        "rows": 10,
+        "count": 44
+      },
+      "created_at": "2026-10-25T22:51:39.623654+08:00",
+      "updated_at": "2026-10-25T22:55:49.629697+08:00"
+    },
+    "stages": [
+      {
+        "stage": "asr",
+        "version": "v1",
+        "status": "done",
+        "attempt": 1,
+        "required": true,
+        "progress": 1,
+        "updated_at": "2026-10-25T22:55:45.377371+08:00"
+      },
+      {
+        "stage": "embed:audio:clap-htsat-unfused@r1",
+        "version": "v1",
+        "status": "done",
+        "attempt": 1,
+        "required": true,
+        "progress": 1,
+        "updated_at": "2026-10-25T22:54:18.774627+08:00"
+      },
+      {
+        "stage": "embed:speech:wemm-2b@r1",
+        "version": "v1",
+        "status": "done",
+        "attempt": 1,
+        "required": true,
+        "progress": 1,
+        "updated_at": "2026-10-25T22:55:49.554942+08:00"
+      },
+      {
+        "stage": "embed:visual:wemm-2b@r1",
+        "version": "v1",
+        "status": "done",
+        "attempt": 1,
+        "required": true,
+        "progress": 1,
+        "updated_at": "2026-10-25T22:53:29.167499+08:00"
+      },
+      {
+        "stage": "finalize",
+        "version": "v1",
+        "status": "done",
+        "attempt": 1,
+        "required": true,
+        "updated_at": "2026-10-25T22:55:49.629697+08:00"
+      },
+      {
+        "stage": "prepare_media",
+        "version": "v1",
+        "status": "done",
+        "attempt": 1,
+        "required": true,
+        "updated_at": "2026-10-25T22:52:01.563341+08:00"
+      },
+      {
+        "stage": "probe",
+        "version": "v1",
+        "status": "done",
+        "attempt": 1,
+        "required": true,
+        "updated_at": "2026-10-25T22:51:40.250033+08:00"
+      }
+    ]
+  },
+  {
+    "video": {
+      "id": "4",
+      "workspace_id": "1",
+      "title": "vlog_zh.mp4",
+      "status": "ready",
+      "source_kind": "upload",
+      "duration_ms": 96000,
+      "has_video": true,
+      "has_audio": true,
+      "thumbs": {
+        "tile_w": 320,
+        "tile_h": 180,
+        "cols": 10,
+        "rows": 10,
+        "count": 39
+      },
+      "created_at": "2026-10-25T22:51:39.776132+08:00",
+      "updated_at": "2026-10-25T22:57:00.078273+08:00"
+    },
+    "stages": [
+      {
+        "stage": "asr",
+        "version": "v1",
+        "status": "done",
+        "attempt": 1,
+        "required": true,
+        "progress": 1,
+        "updated_at": "2026-10-25T22:56:22.955488+08:00"
+      },
+      {
+        "stage": "embed:audio:clap-htsat-unfused@r1",
+        "version": "v1",
+        "status": "done",
+        "attempt": 1,
+        "required": true,
+        "progress": 1,
+        "updated_at": "2026-10-25T22:56:59.009198+08:00"
+      },
+      {
+        "stage": "embed:speech:wemm-2b@r1",
+        "version": "v1",
+        "status": "done",
+        "attempt": 1,
+        "required": true,
+        "progress": 1,
+        "updated_at": "2026-10-25T22:56:26.759377+08:00"
+      },
+      {
+        "stage": "embed:visual:wemm-2b@r1",
+        "version": "v1",
+        "status": "done",
+        "attempt": 1,
+        "required": true,
+        "progress": 1,
+        "updated_at": "2026-10-25T22:53:55.179151+08:00"
+      },
+      {
+        "stage": "finalize",
+        "version": "v1",
+        "status": "done",
+        "attempt": 1,
+        "required": true,
+        "updated_at": "2026-10-25T22:57:00.078273+08:00"
+      },
+      {
+        "stage": "prepare_media",
+        "version": "v1",
+        "status": "done",
+        "attempt": 1,
+        "required": true,
+        "updated_at": "2026-10-25T22:51:59.399276+08:00"
+      },
+      {
+        "stage": "probe",
+        "version": "v1",
+        "status": "done",
+        "attempt": 1,
+        "required": true,
+        "updated_at": "2026-10-25T22:51:40.243587+08:00"
+      }
+    ]
+  },
+  {
+    "video": {
+      "id": "5",
+      "workspace_id": "1",
+      "title": "landscape_en.mp4",
+      "status": "ready",
+      "source_kind": "upload",
+      "duration_ms": 90000,
+      "has_video": true,
+      "has_audio": true,
+      "thumbs": {
+        "tile_w": 320,
+        "tile_h": 180,
+        "cols": 10,
+        "rows": 10,
+        "count": 36
+      },
+      "created_at": "2026-10-25T22:51:39.912105+08:00",
+      "updated_at": "2026-10-25T22:56:49.796992+08:00"
+    },
+    "stages": [
+      {
+        "stage": "asr",
+        "version": "v1",
+        "status": "done",
+        "attempt": 1,
+        "required": true,
+        "progress": 1,
+        "updated_at": "2026-10-25T22:55:58.86654+08:00"
+      },
+      {
+        "stage": "embed:audio:clap-htsat-unfused@r1",
+        "version": "v1",
+        "status": "done",
+        "attempt": 1,
+        "required": true,
+        "progress": 1,
+        "updated_at": "2026-10-25T22:55:33.177453+08:00"
+      },
+      {
+        "stage": "embed:speech:wemm-2b@r1",
+        "version": "v1",
+        "status": "done",
+        "attempt": 1,
+        "required": true,
+        "progress": 1,
+        "updated_at": "2026-10-25T22:56:02.436315+08:00"
+      },
+      {
+        "stage": "embed:visual:wemm-2b@r1",
+        "version": "v1",
+        "status": "done",
+        "attempt": 1,
+        "required": true,
+        "progress": 1,
+        "updated_at": "2026-10-25T22:56:48.485104+08:00"
+      },
+      {
+        "stage": "finalize",
+        "version": "v1",
+        "status": "done",
+        "attempt": 1,
+        "required": true,
+        "updated_at": "2026-10-25T22:56:49.796992+08:00"
+      },
+      {
+        "stage": "prepare_media",
+        "version": "v1",
+        "status": "done",
+        "attempt": 1,
+        "required": true,
+        "updated_at": "2026-10-25T22:51:59.206152+08:00"
+      },
+      {
+        "stage": "probe",
+        "version": "v1",
+        "status": "done",
+        "attempt": 1,
+        "required": true,
+        "updated_at": "2026-10-25T22:51:40.247502+08:00"
+      }
+    ]
+  }
+]

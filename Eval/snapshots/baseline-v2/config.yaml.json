@@ -1,0 +1,102 @@
+{
+  "server": {
+    "addr": "127.0.0.1:18000",
+    "cors_origins": []
+  },
+  "database": {
+    "url_env": "VH_EVAL_DB_URL",
+    "max_conns": 20
+  },
+  "redis": {
+    "addr_env": "VH_EVAL_REDIS_ADDR"
+  },
+  "s3": {
+    "bucket": "vh-eval-baseline-v2",
+    "region": "us-east-1",
+    "endpoint": "http://127.0.0.1:59000",
+    "presign_ttl": "1h"
+  },
+  "auth": {
+    "issuer": "",
+    "audience": "",
+    "jwks_url": ""
+  },
+  "ml": {
+    "endpoints": [
+      "http://127.0.0.1:18080"
+    ],
+    "token_env": "VH_EVAL_ML_TOKEN",
+    "query_timeout": "30s",
+    "embed_timeout": "5m",
+    "embed_batch": 8,
+    "transcribe_chunk_ms": 600000,
+    "transcribe_overlap_ms": 30000,
+    "transcribe_timeout": "10m"
+  },
+  "worker": {
+    "cpu_concurrency": 8,
+    "gpu_concurrency": 2,
+    "workspace_gpu_limit": 1,
+    "max_retry": 8,
+    "reconcile_every": "5m"
+  },
+  "media": {
+    "normalized_video_max_height": 720,
+    "normalized_video_gop_seconds": 1,
+    "thumb_width": 320,
+    "sprite_cols": 10,
+    "sprite_rows": 10,
+    "tmp_dir": "/Users/ozine/Project/Go/videohelper/Eval/.runtime/baseline-v2/tmp"
+  },
+  "search": {
+    "k": 50,
+    "rrf_k": 60,
+    "merge_gap_cells": 1,
+    "max_limit": 50
+  },
+  "import": {
+    "ytdlp_path": "/usr/local/bin/yt-dlp",
+    "allow_direct": false,
+    "max_height": 1080,
+    "max_duration_ms": 14400000,
+    "max_bytes": 10737418240,
+    "timeout": "2h",
+    "platforms": {
+      "youtube": {
+        "hosts": [
+          "youtube.com",
+          "www.youtube.com",
+          "m.youtube.com",
+          "youtu.be"
+        ],
+        "extractors": [
+          "youtube"
+        ],
+        "max_concurrency": 2
+      },
+      "bilibili": {
+        "hosts": [
+          "bilibili.com",
+          "www.bilibili.com",
+          "m.bilibili.com",
+          "b23.tv"
+        ],
+        "extractors": [
+          "BiliBili"
+        ],
+        "max_concurrency": 2
+      }
+    }
+  },
+  "limits": {
+    "upload_part_bytes": 16777216,
+    "soft_delete_purge_after": "720h",
+    "plans": {
+      "free": {
+        "indexed_ms_month": 36000000,
+        "llm_tokens_day": 200000
+      }
+    }
+  },
+  "channels_file": "/Users/ozine/Project/Go/videohelper/config/channels.yaml"
+}
