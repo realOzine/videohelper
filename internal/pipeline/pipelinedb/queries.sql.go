@@ -11,6 +11,72 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const backfillSpace = `-- name: BackfillSpace :one
+SELECT id FROM embedding_space
+WHERE id=$1 AND NOT disabled AND fingerprint=$2 AND dim=$3 AND metric=$4 FOR SHARE
+`
+
+type BackfillSpaceParams struct {
+	ID          string
+	Fingerprint string
+	Dim         int32
+	Metric      string
+}
+
+func (q *Queries) BackfillSpace(ctx context.Context, arg BackfillSpaceParams) (string, error) {
+	row := q.db.QueryRow(ctx, backfillSpace,
+		arg.ID,
+		arg.Fingerprint,
+		arg.Dim,
+		arg.Metric,
+	)
+	var id string
+	err := row.Scan(&id)
+	return id, err
+}
+
+const backfillVideos = `-- name: BackfillVideos :many
+WITH targets AS (
+  SELECT unnest($1::text[]) AS stage, unnest($2::text[]) AS channel, unnest($3::text[]) AS dep
+)
+SELECT v.id FROM video v
+WHERE v.status='ready' AND v.deleted_at IS NULL
+  AND v.normalized_video_key IS NOT NULL AND v.normalized_video_key<>'' AND v.duration_ms>0
+  AND EXISTS (
+    SELECT 1 FROM targets t
+    WHERE ((t.channel='visual' AND v.has_video) OR (t.channel IN ('audio','speech') AND v.has_audio))
+      AND NOT EXISTS (SELECT 1 FROM stage_run s WHERE s.video_id=v.id AND s.stage=t.stage)
+      AND EXISTS (SELECT 1 FROM stage_run s WHERE s.video_id=v.id AND s.stage=t.dep AND s.status='done')
+  )
+ORDER BY v.id LIMIT 100
+`
+
+type BackfillVideosParams struct {
+	Stages   []string
+	Channels []string
+	Deps     []string
+}
+
+func (q *Queries) BackfillVideos(ctx context.Context, arg BackfillVideosParams) ([]int64, error) {
+	rows, err := q.db.Query(ctx, backfillVideos, arg.Stages, arg.Channels, arg.Deps)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []int64{}
+	for rows.Next() {
+		var id int64
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const claimStage = `-- name: ClaimStage :one
 UPDATE stage_run SET status = 'running', attempt = attempt + 1, updated_at = now()
 WHERE video_id = $1 AND stage = $2 AND version = $3 AND status = 'queued'
