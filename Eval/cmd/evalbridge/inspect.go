@@ -67,12 +67,23 @@ type textEvidence struct {
 	Model       string `json:"model"`
 }
 type inspection struct {
-	Passed      bool            `json:"passed"`
-	Violations  []string        `json:"violations"`
-	IndexSHA256 string          `json:"index_sha256"`
-	Videos      []videoEvidence `json:"videos"`
-	Spaces      []spaceEvidence `json:"spaces"`
-	TextSpans   []textEvidence  `json:"text_spans"`
+	Passed      bool               `json:"passed"`
+	Violations  []string           `json:"violations"`
+	IndexSHA256 string             `json:"index_sha256"`
+	Videos      []videoEvidence    `json:"videos"`
+	Spaces      []spaceEvidence    `json:"spaces"`
+	TextSpans   []textEvidence     `json:"text_spans"`
+	Coverage    []coverageEvidence `json:"coverage"`
+}
+
+type coverageEvidence struct {
+	VideoID       int64  `json:"video_id"`
+	Channel       string `json:"channel"`
+	SpaceID       string `json:"space_id"`
+	Seg           string `json:"seg"`
+	ExpectedCount int    `json:"expected_count"`
+	ActualCount   int    `json:"actual_count"`
+	Matched       bool   `json:"matched"`
 }
 
 func jsonRows(ctx context.Context, tx pgx.Tx, sql string, dst any, args ...any) error {
@@ -84,15 +95,19 @@ func jsonRows(ctx context.Context, tx pgx.Tx, sql string, dst any, args ...any) 
 }
 
 func inspect(ctx context.Context, pool *pgxpool.Pool, client *mlclient.Client, channels *space.Channels, r request) (inspection, error) {
-	out := inspection{Violations: []string{}, Videos: []videoEvidence{}, Spaces: []spaceEvidence{}, TextSpans: []textEvidence{}}
+	out := inspection{Violations: []string{}, Videos: []videoEvidence{}, Spaces: []spaceEvidence{}, TextSpans: []textEvidence{}, Coverage: []coverageEvidence{}}
 	discovery := client.Discover(ctx)
 	for endpoint, err := range discovery.Errors {
 		out.Violations = append(out.Violations, fmt.Sprintf("ML discovery %s: %v", endpoint, err))
 	}
 	models := map[string][]mlclient.SpaceInfo{}
+	transcribers := map[string][]mlclient.TranscriberInfo{}
 	for _, endpoint := range discovery.Endpoints {
 		for _, sp := range endpoint.Spaces {
 			models[sp.ID] = append(models[sp.ID], sp)
+		}
+		for _, model := range endpoint.Transcribers {
+			transcribers[model.ID] = append(transcribers[model.ID], model)
 		}
 	}
 	tx, err := pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.RepeatableRead, AccessMode: pgx.ReadOnly})
@@ -173,7 +188,7 @@ WHERE id=ANY($1) OR id IN (SELECT space_id FROM embedding WHERE video_id=ANY($2)
 			}
 		}
 	}
-	validateVideos(&out, r, channels, spaces)
+	validateVideos(&out, r, channels, spaces, transcribers)
 	digest := sha256.New()
 	if err := hashJSON(digest, struct {
 		WorkspaceID int64
@@ -295,7 +310,7 @@ func hashJSON(h hash.Hash, value any) error {
 	return json.NewEncoder(h).Encode(canonical)
 }
 
-func validateVideos(out *inspection, r request, channels *space.Channels, spaces map[string]*spaceEvidence) {
+func validateVideos(out *inspection, r request, channels *space.Channels, spaces map[string]*spaceEvidence, transcribers map[string][]mlclient.TranscriberInfo) {
 	seen := map[int64]bool{}
 	for _, v := range out.Videos {
 		seen[v.ID] = true
@@ -329,14 +344,34 @@ func validateVideos(out *inspection, r request, channels *space.Channels, spaces
 			if _, ok := required[stage.Stage]; ok && stage.Required && stage.Status == "done" {
 				required[stage.Stage] = true
 			}
-			if strings.HasPrefix(stage.Stage, "embed:") && stage.Required {
+			if (strings.HasPrefix(stage.Stage, "embed:") || stage.Stage == "asr") && stage.Required {
 				var plan pipeline.StageDef
 				if err := json.Unmarshal(stage.Plan, &plan); err != nil {
-					bad("invalid embedding plan: " + stage.Stage)
+					bad("invalid stage plan: " + stage.Stage)
+					continue
+				}
+				if plan.Name != stage.Stage || !validGeneration(plan.Version, stage.Version) {
+					bad("stage generation mismatch: " + stage.Stage)
+				}
+				if stage.Stage == "asr" {
+					models := transcribers[plan.Options.Transcriber]
+					if plan.Options.Transcriber == "" || plan.Options.Fingerprint == "" || len(models) == 0 {
+						bad("ASR model unavailable or identity missing")
+					}
+					for _, model := range models {
+						if model.Fingerprint != plan.Options.Fingerprint {
+							bad("ASR model identity mismatch")
+						}
+					}
+					for _, text := range out.TextSpans {
+						if text.VideoID == v.ID && text.Kind == "speech" && text.Model != plan.Options.Transcriber {
+							bad("ASR text model mismatch")
+						}
+					}
 					continue
 				}
 				sp, ok := spaces[plan.Options.Space.ID]
-				if !ok || plan.Name != stage.Stage || plan.Version != stage.Version || plan.Options.Space.Dim != sp.Dim || plan.Options.Space.Fingerprint != sp.Fingerprint || plan.Options.Space.Metric != sp.Metric {
+				if !ok || plan.Options.Space.Dim != sp.Dim || plan.Options.Space.Fingerprint != sp.Fingerprint || plan.Options.Space.Metric != sp.Metric {
 					bad("stage space identity mismatch: " + stage.Stage)
 				}
 			}
@@ -365,6 +400,11 @@ func validateVideos(out *inspection, r request, channels *space.Channels, spaces
 			out.Violations = append(out.Violations, fmt.Sprintf("missing video %d", id))
 		}
 	}
+}
+
+func validGeneration(planVersion, recordVersion string) bool {
+	prefix := planVersion + "."
+	return planVersion != "" && strings.HasPrefix(recordVersion, prefix) && len(recordVersion) > len(prefix)
 }
 
 func eligible(v videoEvidence, channel string) bool {
@@ -404,13 +444,31 @@ func validateCoverage(out *inspection, channels *space.Channels, actual map[vect
 		}
 	}
 	for key, want := range expected {
-		if !slices.Equal(want, actual[key]) {
+		matched := slices.Equal(want, actual[key])
+		out.Coverage = append(out.Coverage, coverageEvidence{key.VideoID, key.Channel, key.SpaceID, key.Seg, len(want), len(actual[key]), matched})
+		if !matched {
 			out.Violations = append(out.Violations, fmt.Sprintf("vector interval coverage mismatch: %v (want %d, got %d)", key, len(want), len(actual[key])))
 		}
 	}
 	for key := range actual {
 		if _, ok := expected[key]; !ok {
+			out.Coverage = append(out.Coverage, coverageEvidence{key.VideoID, key.Channel, key.SpaceID, key.Seg, 0, len(actual[key]), false})
 			out.Violations = append(out.Violations, fmt.Sprintf("unexpected vector route: %v", key))
 		}
 	}
+	slices.SortFunc(out.Coverage, func(a, b coverageEvidence) int {
+		if a.VideoID < b.VideoID {
+			return -1
+		}
+		if a.VideoID > b.VideoID {
+			return 1
+		}
+		if n := strings.Compare(a.Channel, b.Channel); n != 0 {
+			return n
+		}
+		if n := strings.Compare(a.SpaceID, b.SpaceID); n != 0 {
+			return n
+		}
+		return strings.Compare(a.Seg, b.Seg)
+	})
 }

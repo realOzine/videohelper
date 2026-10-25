@@ -11,6 +11,8 @@ import (
 
 	"github.com/ozine/videohelper/internal/apperr"
 	"github.com/ozine/videohelper/internal/config"
+	"github.com/ozine/videohelper/internal/mlclient"
+	"github.com/ozine/videohelper/internal/pipeline"
 	"github.com/ozine/videohelper/internal/search"
 	"github.com/ozine/videohelper/internal/space"
 	"github.com/ozine/videohelper/internal/timeline"
@@ -97,11 +99,73 @@ func TestCoverageUsesActualMergedASRAndExactCells(t *testing.T) {
 	if len(out.Violations) != 0 {
 		t.Fatalf("valid: %+v", out.Violations)
 	}
+	if len(out.Coverage) != 2 || !out.Coverage[0].Matched || out.Coverage[0].Channel != "speech" || out.Coverage[0].ExpectedCount != 1 || out.Coverage[0].ActualCount != 1 || out.Coverage[1].ExpectedCount != 3 {
+		t.Fatalf("bad coverage evidence: %+v", out.Coverage)
+	}
 	actual[speech] = []timeline.Span{{StartMs: 100, EndMs: 300}, {StartMs: 400, EndMs: 900}}
 	actual[visual] = actual[visual][:2]
+	out.Coverage = nil
 	validateCoverage(&out, channels, actual)
 	if len(out.Violations) != 2 {
 		t.Fatalf("missed bad coverage: %+v", out.Violations)
+	}
+	if len(out.Coverage) != 2 || out.Coverage[0].Matched || out.Coverage[0].ActualCount != 2 || out.Coverage[1].ActualCount != 2 {
+		t.Fatalf("bad mismatch evidence: %+v", out.Coverage)
+	}
+}
+
+func TestStageGenerationAndASRIdentity(t *testing.T) {
+	channels, err := space.NewChannels(config.ChannelsConfig{"speech": {Doc: "text", Seg: "sentence@v1", Weight: 1, Active: []string{"v@1"}}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	duration, yes, no, key := 1000, true, false, "media"
+	sp := &spaceEvidence{ID: "v@1", Dim: 2, Metric: "cosine", Fingerprint: "embed-fp"}
+	spaces := map[string]*spaceEvidence{sp.ID: sp}
+	models := map[string][]mlclient.TranscriberInfo{"asr@1": {{ID: "asr@1", Fingerprint: "asr-fp"}}}
+	stage := func(name string, options pipeline.StageOptions) stageEvidence {
+		plan, err := json.Marshal(pipeline.StageDef{Name: name, Version: "v1", Required: true, Options: options})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return stageEvidence{Stage: name, Version: "v1.a2bcdefghijklmnopqrstuvwxyz", Status: "done", Required: true, Plan: plan}
+	}
+	base := inspection{Videos: []videoEvidence{{ID: 1, WorkspaceID: 2, Status: "ready", SourceKey: &key, NormalizedVideoKey: &key, DurationMs: &duration, HasVideo: &no, HasAudio: &yes, Stages: []stageEvidence{
+		stage("probe", pipeline.StageOptions{}), stage("prepare_media", pipeline.StageOptions{}), stage("finalize", pipeline.StageOptions{}),
+		stage("asr", pipeline.StageOptions{Transcriber: "asr@1", Fingerprint: "asr-fp"}), stage("embed:speech:v@1", pipeline.StageOptions{Space: space.Info{ID: sp.ID, Dim: sp.Dim, Metric: sp.Metric, Fingerprint: sp.Fingerprint}}),
+	}}}, TextSpans: []textEvidence{{VideoID: 1, WorkspaceID: 2, Kind: "speech", StartMs: 100, EndMs: 900, Text: "真实转录文本", Model: "asr@1"}}}
+	scope := request{WorkspaceID: 2, UserID: 3, VideoIDs: []int64{1}}
+	validateVideos(&base, scope, channels, spaces, models)
+	if len(base.Violations) != 0 {
+		t.Fatalf("real generation rejected: %+v", base.Violations)
+	}
+	for _, tc := range []struct {
+		name   string
+		change func(*inspection)
+		want   string
+	}{
+		{"wrong embedding generation", func(out *inspection) { out.Videos[0].Stages[4].Version = "v2.random" }, "stage generation mismatch"},
+		{"missing generation", func(out *inspection) { out.Videos[0].Stages[4].Version = "v1." }, "stage generation mismatch"},
+		{"ASR drift", func(out *inspection) {
+			out.Videos[0].Stages[3] = stage("asr", pipeline.StageOptions{Transcriber: "asr@1", Fingerprint: "old-fp"})
+		}, "ASR model identity mismatch"},
+		{"ASR unknown model", func(out *inspection) {
+			out.Videos[0].Stages[3] = stage("asr", pipeline.StageOptions{Transcriber: "asr@2", Fingerprint: "asr-fp"})
+		}, "ASR model unavailable"},
+		{"ASR transcript model", func(out *inspection) { out.TextSpans[0].Model = "other@1" }, "ASR text model mismatch"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			raw, _ := json.Marshal(base)
+			var out inspection
+			if err := json.Unmarshal(raw, &out); err != nil {
+				t.Fatal(err)
+			}
+			tc.change(&out)
+			validateVideos(&out, scope, channels, spaces, models)
+			if !strings.Contains(strings.Join(out.Violations, "\n"), tc.want) {
+				t.Fatalf("missing %q in %+v", tc.want, out.Violations)
+			}
+		})
 	}
 }
 
