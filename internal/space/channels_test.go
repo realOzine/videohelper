@@ -33,7 +33,11 @@ func TestChannelsValidateConfigurationAndOwnership(t *testing.T) {
 			t.Fatalf("invalid channel accepted: %+v", bad)
 		}
 	}
-	if _, err := NewChannels(config.ChannelsConfig{"audio": valid}); err == nil {
-		t.Fatal("deferred audio channel accepted")
+	if _, err := NewChannels(config.ChannelsConfig{"unknown": valid}); err == nil {
+		t.Fatal("unknown channel accepted")
+	}
+	audio := config.ChannelConfig{Doc: "audio", Seg: "grid@v1", Weight: 1, Active: []string{"clap-htsat-unfused@r1"}}
+	if channels, err := NewChannels(config.ChannelsConfig{"audio": audio}); err != nil || channels.List()[0].Doc != "audio" {
+		t.Fatalf("audio channel rejected: %v", err)
 	}
 }

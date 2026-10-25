@@ -71,6 +71,13 @@ func validateEmbedRequest(req EmbedRequest, info SpaceInfo) error {
 				return invalid("invalid video reference or window")
 			}
 		}
+		if input.Audio != nil {
+			count, kind = count+1, "audio"
+			audio := input.Audio
+			if !validMedia(audio.URI, audio.StartMs, audio.EndMs) || (info.MaxSpanMs != nil && audio.EndMs-audio.StartMs > *info.MaxSpanMs) {
+				return invalid("invalid audio reference or window")
+			}
+		}
 		if input.Image != nil {
 			count, kind = count+1, "image"
 			if !s3URI.MatchString(input.Image.URI) {

@@ -46,7 +46,7 @@ func testChannels(t *testing.T) *space.Channels {
 func TestQueryBoundaryAndEmptyScope(t *testing.T) {
 	s := New(nil, library.New(nil, nil, library.Config{}, nil, nil), nil, testChannels(t), nil, config.SearchConfig{K: 10, RRFK: 60, MaxLimit: 50})
 	p := workspace.Principal{UserID: 1, WorkspaceID: 1}
-	for _, q := range []Query{{Text: " "}, {Text: "正常", Limit: 51}, {Text: "正常", TimeRange: &timeline.Span{StartMs: 1000, EndMs: 1000}}, {Text: "正常", OnlyChannels: []string{"audio"}}, {Text: "正常", ChannelWeights: map[string]float64{"visual": math.NaN()}}, {Text: "正常", ChannelQueries: map[string]string{"speech": " "}}} {
+	for _, q := range []Query{{Text: " "}, {Text: "正常", Limit: 51}, {Text: "正常", TimeRange: &timeline.Span{StartMs: 1000, EndMs: 1000}}, {Text: "正常", OnlyChannels: []string{"unknown"}}, {Text: "正常", ChannelWeights: map[string]float64{"visual": math.NaN()}}, {Text: "正常", ChannelQueries: map[string]string{"speech": " "}}} {
 		if _, err := s.Search(context.Background(), p, q); apperr.KindOf(err) != apperr.Invalid {
 			t.Fatalf("invalid query accepted: %+v %v", q, err)
 		}

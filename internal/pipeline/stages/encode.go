@@ -29,11 +29,16 @@ func (h *Handlers) Embed(ctx context.Context, sc *pipeline.StageCtx) (pipeline.C
 	var inputs []mlclient.EmbedInput
 	var spans []timeline.Span
 	switch opts.Channel {
-	case "visual":
+	case "visual", "audio":
 		spans = timeline.Cells(*sc.Video.DurationMs)
 		uri := h.objects.URI(sc.Video.NormalizedVideoKey)
 		for _, span := range spans {
-			inputs = append(inputs, mlclient.EmbedInput{Video: &mlclient.MediaRef{URI: uri, StartMs: span.StartMs, EndMs: span.EndMs}})
+			ref := &mlclient.MediaRef{URI: uri, StartMs: span.StartMs, EndMs: span.EndMs}
+			input := mlclient.EmbedInput{Video: ref}
+			if opts.Channel == "audio" {
+				input = mlclient.EmbedInput{Audio: ref}
+			}
+			inputs = append(inputs, input)
 		}
 	case "speech":
 		rows, err := index.SpeechSentences(ctx, h.pool, sc.Video.ID)
@@ -49,7 +54,7 @@ func (h *Handlers) Embed(ctx context.Context, sc *pipeline.StageCtx) (pipeline.C
 			inputs = append(inputs, mlclient.EmbedInput{Text: sentence.Text})
 		}
 	default:
-		return nil, apperr.New(apperr.Invalid, "unsupported_channel", "当前只启用画面与转录语义通道")
+		return nil, apperr.New(apperr.Invalid, "unsupported_channel", "不支持的编码通道")
 	}
 	progress := embedProgress{Total: len(inputs)}
 	if len(sc.Progress) > 0 {

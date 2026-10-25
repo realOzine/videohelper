@@ -144,7 +144,7 @@ func run(ctx context.Context, args []string) error {
 		return err
 	}
 	channel, id := args[2], args[3]
-	doc := map[string]string{"visual": "video", "speech": "text"}[channel]
+	doc := map[string]string{"visual": "video", "speech": "text", "audio": "audio"}[channel]
 	if doc == "" {
 		return fmt.Errorf("unsupported channel %q", channel)
 	}

@@ -41,6 +41,7 @@ type ImageRef struct {
 type EmbedInput struct {
 	Text  string    `json:"text,omitempty"`
 	Video *MediaRef `json:"video,omitempty"`
+	Audio *MediaRef `json:"audio,omitempty"`
 	Image *ImageRef `json:"image,omitempty"`
 }
 
