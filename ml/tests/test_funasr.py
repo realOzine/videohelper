@@ -138,8 +138,10 @@ def test_pins_and_fingerprint_include_all_three_models():
 
 
 def test_combined_registry_does_not_fall_back_to_fake(monkeypatch):
+    from app.adapters.clap import CLAPEmbedder
     from app.adapters.wemm import WeMMEmbedder
 
+    monkeypatch.setattr(CLAPEmbedder, "load", lambda self: None)
     monkeypatch.setattr(WeMMEmbedder, "load", lambda self: None)
     monkeypatch.setattr(FunASRTranscriber, "load", lambda self: None)
     registry = Registry(Settings.models_file.with_name("models.local.yaml"), fake=False)

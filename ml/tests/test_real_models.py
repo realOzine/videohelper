@@ -1,5 +1,5 @@
 """Opt in: VH_TEST_REAL_MODELS=1 VH_TEST_S3_ENDPOINT=http://127.0.0.1:59000
-uv run --extra wemm --extra asr pytest tests/test_real_models.py -q
+uv run --extra wemm --extra asr --extra clap pytest tests/test_real_models.py -q
 Uses cached pinned weights, a temporary loopback service, and a self-cleaned MinIO bucket.
 VH_TEST_SPEECH_FILE may point to the authorized synthetic TEXT clip with 3s leading silence.
 """

@@ -87,12 +87,16 @@ class Registry:
                     from app.adapters.wemm import WeMMEmbedder
 
                     adapter = WeMMEmbedder(info, config.model_dump())
+                elif config.adapter == "clap":
+                    from app.adapters.clap import CLAPEmbedder
+
+                    adapter = CLAPEmbedder(info, config.model_dump())
                 else:
                     raise ValueError(f"Real adapter {config.adapter!r} is not installed")
                 adapter.load()
                 self.embedders[config.id] = adapter
                 self.gates[config.id, "document"] = Gate(config.max_concurrency, config.queue_limit)
-                if fake:
+                if fake or config.adapter != "wemm":
                     self.gates[config.id, "query"] = Gate(
                         config.query_concurrency,
                         config.query_queue_limit,
