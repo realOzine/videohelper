@@ -1,0 +1,75 @@
+[
+  {
+    "video_id": 3,
+    "original_token_index": 106,
+    "duration_ms": 108000,
+    "result": {
+      "text": "warmly.and.",
+      "raw_text": "warmly and",
+      "timestamp": [
+        [
+          76830,
+          77460
+        ],
+        [
+          77400,
+          77460
+        ]
+      ],
+      "sentence_info": [
+        {
+          "text": "warmly.",
+          "timestamp": [
+            [
+              76830,
+              77460
+            ]
+          ]
+        },
+        {
+          "text": "and.",
+          "timestamp": [
+            [
+              77400,
+              77460
+            ]
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "video_id": 4,
+    "original_token_index": 225,
+    "duration_ms": 96000,
+    "result": {
+      "text": "的是",
+      "raw_text": "的 是",
+      "timestamp": [
+        [
+          86070,
+          86460
+        ],
+        [
+          86320,
+          86620
+        ]
+      ],
+      "sentence_info": [
+        {
+          "text": "的是",
+          "timestamp": [
+            [
+              86070,
+              86460
+            ],
+            [
+              86320,
+              86620
+            ]
+          ]
+        }
+      ]
+    }
+  }
+]
