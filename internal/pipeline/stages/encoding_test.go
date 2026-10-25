@@ -8,10 +8,12 @@ import (
 	"net/http/httptest"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/ozine/videohelper/internal/apperr"
 	"github.com/ozine/videohelper/internal/config"
 	"github.com/ozine/videohelper/internal/index"
 	"github.com/ozine/videohelper/internal/library"
@@ -177,5 +179,57 @@ func TestASRAndEmbeddingCheckpointsIntegration(t *testing.T) {
 	sc.Def.Options.Space.Fingerprint = "sha256:" + strings.Repeat("c", 64)
 	if _, err := h.Embed(ctx, sc); err == nil {
 		t.Fatal("changed model plan was accepted")
+	}
+}
+
+func TestModelAbsenceAndIdentityDriftIntegration(t *testing.T) {
+	ctx, pool, objects := integration(t)
+	fingerprint := "sha256:" + strings.Repeat("a", 64)
+	span := 30000
+	metadata := mlclient.SpacesResponse{
+		Spaces:       []mlclient.SpaceInfo{{ID: "wemm-2b@r1", Dim: 2, Metric: "cosine", QueryInputs: []string{"text"}, DocInputs: []string{"video", "text"}, MaxSpanMs: &span, MaxBatch: 2, Fingerprint: fingerprint}},
+		Transcribers: []mlclient.TranscriberInfo{{ID: "asr@r1", Languages: []string{"zh"}, MaxWindowMs: 6000, Fingerprint: fingerprint}},
+	}
+	var mode atomic.Int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if mode.Load() == 1 {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		current := metadata
+		if mode.Load() == 2 {
+			current.Spaces = append([]mlclient.SpaceInfo(nil), metadata.Spaces...)
+			current.Transcribers = append([]mlclient.TranscriberInfo(nil), metadata.Transcribers...)
+			current.Spaces[0].Fingerprint = "sha256:" + strings.Repeat("b", 64)
+			current.Transcribers[0].Fingerprint = current.Spaces[0].Fingerprint
+		}
+		json.NewEncoder(w).Encode(current)
+	}))
+	defer server.Close()
+	client := mlclient.New(config.MLConfig{Endpoints: []string{server.URL}, Token: "fixture"}, nil)
+	registry := space.New(pool, client)
+	if err := registry.Sync(ctx); err != nil {
+		t.Fatal(err)
+	}
+	info, _ := registry.Get(metadata.Spaces[0].ID)
+	handlers := New(pool, objects, client, registry, Config{})
+	sc := &pipeline.StageCtx{Def: pipeline.StageDef{Options: pipeline.StageOptions{Space: info, Transcriber: "asr@r1", Fingerprint: fingerprint}}}
+	mode.Store(1)
+	if err := registry.Sync(ctx); err == nil {
+		t.Fatal("endpoint outage was not reported")
+	}
+	for name, run := range map[string]pipeline.RunFunc{"asr": handlers.ASR, "embed": handlers.Embed} {
+		if _, err := run(ctx, sc); apperr.KindOf(err) != apperr.Unavailable {
+			t.Fatalf("%s missing route became permanent: %v", name, err)
+		}
+	}
+	mode.Store(2)
+	if err := registry.Sync(ctx); err != nil {
+		t.Fatal(err)
+	}
+	for name, run := range map[string]pipeline.RunFunc{"asr": handlers.ASR, "embed": handlers.Embed} {
+		if _, err := run(ctx, sc); apperr.KindOf(err) != apperr.Invalid {
+			t.Fatalf("%s frozen model drift remained retryable: %v", name, err)
+		}
 	}
 }

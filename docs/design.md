@@ -17,6 +17,8 @@
 
 先在本地跑通「视频 → 标准化视频 → WeMM 画面编码 + ASR → WeMM 转录文本编码 → 文字检索 → 时间片段与证据」。WeMM-Embedding-2B 统一支持视频、文字、图片编码；图片是编码输入，本轮搜索入口只接受文字。启用 `visual` 与 `speech`，保留音轨供 ASR 使用，不启用声音召回通道 `audio` 或 CLAP。前端、LLM/Agent、AWS 部署与验收暂缓；下文相关章节保留为后续设计，不构成本轮实现要求。真实模型验证与显式 fake 的协议/流程测试分开。
 
+本轮提供本地上传、阶段状态/重试、项目范围和文字搜索。URL 导入、上传分片续签、SSE 事件、存量回填、到期 purge、配额计费和离线质量评估仍是后续设计；软删除保留原片和处理文件。当前只记录索引时长。操作入口见 [README](../README.md)。
+
 ## 目录
 
 1. [产品定位](#1-产品定位)
@@ -713,7 +715,7 @@ erDiagram
 
 ## 10. 部署视图（云端暂缓）
 
-**本地开发**：一个 docker compose 起全套服务：api、worker、ml（可用假模型，不需要 GPU）、postgres、redis、minio。
+**本地开发**：docker compose 启动 postgres、redis、minio；Go api/worker 和 Python ML 在宿主机运行。本地组合使用 MPS 上的 WeMM 与 CPU 上的 ASR；显式 fake 仅用于协议和流程测试。
 
 **AWS**：代码放在私有 GitHub 仓库，用 GitHub Actions 自动部署（已定）。下图的资源形态是提议：
 

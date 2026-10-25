@@ -2,18 +2,32 @@
 
 ## Project Structure & Module Organization
 
-VideoHelper is a video-search backend under implementation. `docs/design.md` describes product and architecture decisions; `docs/spec.md` defines implementation contracts. Go packages live in `internal/`, migrations in `migrations/`, and service configuration in `config/`. Preserve their Chinese prose and distinguish confirmed decisions from proposals and open questions.
+VideoHelper combines a Go backend (`cmd/videohelper/`, `internal/`) with a Python model service (`ml/app/`). Go tests sit beside their packages; Python tests live in `ml/tests/`. Database migrations are in `migrations/`; configuration and the shared ML contract are in `config/` and `contracts/`. Keep the Chinese architecture documents, `docs/design.md` and `docs/spec.md`, aligned with contract changes. Runtime media belongs in object storage; local temporary files use `.local/`.
 
 ## Agent Scope: Ignore `model-test/`
 
-The entire `model-test/` directory is an experimental sandbox for validation, demos, and scratch work. Ignore it by default. Unless the user explicitly requests work within this directory, do not read, list, search, execute, modify, move, delete, or otherwise operate on it or its contents. Exclude it from repository-wide inspection, searches, builds, tests, and refactors. A general repository task does not authorize access to this directory.
+The entire `model-test/` directory is an experimental sandbox for validation, demos, and scratch work. Unless the user explicitly requests work there, do not read, list, search, execute, modify, move, delete, or otherwise operate on it or its contents. Exclude it from searches, builds, tests, and refactors. General repository work does not authorize access.
 
-## Implementation Workflow
+## Build, Test, and Development Commands
 
-Use the assigned isolated Git worktree. Execute small tasks with `gpt-6.1-sol` at high reasoning effort when delegating. Commit each verified unit; the coordinating agent reviews and merges it into `main`, then removes the merged worktree. Do not write development diaries or acceptance-report documents. Keep `docs/design.md` and `docs/spec.md` aligned when contracts change; the coordinator owns shared-contract decisions. Frontend `web/` is deferred.
+- `make deps-up` / `make deps-down`: start/stop local Postgres, Redis, and MinIO; preserve volumes.
+- `make build`: build `bin/videohelper`; see `README.md` for local processing and search.
+- `make test-go` / `make vet`: scoped Go race tests and static checks.
+- `make fmt` / `make generate`: format Go and regenerate package-local sqlc outputs.
+- `cd ml && uv run pytest` / `uv run ruff check .`: Python tests and lint.
 
-Ponytail full applies: reuse existing code and standard-library features, keep each function focused, and avoid speculative abstractions or redundant internal validation. Preserve trust-boundary validation, error handling, cancellation, and data safety. Add a small meaningful test for non-trivial logic, and distinguish module tests, integration tests, and real-model verification.
+## Coding Style & Testing Guidelines
+
+Use `gofmt`, Python four-space indentation, and Ruff. Keep functions focused and reuse existing helpers. SQL uses singular snake_case names; wire fields use snake_case, IDs are strings, and intervals are half-open integer milliseconds. Do not hand-edit `internal/*/*db/` generated code.
+
+Name Go tests `Test...` in `_test.go`, and Python tests `test_...`. Add meaningful checks for non-trivial behavior. Integration tests require explicit `VH_TEST_*` variables and disposable databases. No numerical coverage target is set. Fake-model tests do not establish real-model retrieval quality.
+
+## Commit & Pull Request Guidelines
+
+History uses short imperative messages, sometimes `feat:` or `test:` prefixes. Commit small verified units. PRs should explain behavior, scope, relevant issues, and checks actually run.
+
+Use isolated worktrees for parallel execution with `gpt-6.1-sol` at high effort. The coordinator reviews, merges into `main`, then removes merged worktrees. Avoid development journals. Ponytail full applies: minimal complete changes, preserving validation, cancellation, and data safety.
 
 ## Current Implementation Boundary
 
-Build local core search first. Use WeMM-Embedding-2B for video, text, and image encoding; search input is text only. Keep ASR and the `speech` channel alongside `visual`. Do not enable the `audio` sound-retrieval channel or CLAP. Frontend, LLM/Agent integration, and AWS deployment/acceptance are deferred. Preserve source audio for ASR. Explicit fake tests do not establish real-model retrieval quality.
+Local text search uses WeMM-Embedding-2B video, text, and image encoding, with ASR and `visual`/`speech` retrieval. Preserve source audio for ASR. Frontend, LLM/Agent, AWS acceptance, and the `audio`/CLAP retrieval channel are deferred.

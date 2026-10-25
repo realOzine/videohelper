@@ -22,4 +22,4 @@ build:
 	go build -o bin/videohelper ./cmd/videohelper
 
 generate:
-	@for package in workspace library index space; do sqlc generate -f internal/$$package/sqlc.yaml || exit 1; done
+	@for package in workspace library index space pipeline usage; do sqlc generate -f internal/$$package/sqlc.yaml || exit 1; done

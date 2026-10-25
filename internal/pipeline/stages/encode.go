@@ -20,8 +20,11 @@ type embedProgress struct {
 func (h *Handlers) Embed(ctx context.Context, sc *pipeline.StageCtx) (pipeline.Commit, error) {
 	opts := sc.Def.Options
 	sp, ok := h.registry.Get(opts.Space.ID)
-	if !ok || sp.Disabled || sp.Fingerprint != opts.Space.Fingerprint || sp.Dim != opts.Space.Dim || sp.Metric != opts.Space.Metric {
-		return nil, apperr.New(apperr.Unavailable, "space_changed", "向量空间不可用或版本已改变")
+	if !ok {
+		return nil, apperr.New(apperr.Unavailable, "space_unavailable", "向量空间暂时不可用")
+	}
+	if sp.Disabled || sp.Fingerprint != opts.Space.Fingerprint || sp.Dim != opts.Space.Dim || sp.Metric != opts.Space.Metric {
+		return nil, apperr.New(apperr.Invalid, "space_changed", "向量空间已停用或版本已改变")
 	}
 	var inputs []mlclient.EmbedInput
 	var spans []timeline.Span

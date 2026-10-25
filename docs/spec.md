@@ -11,6 +11,8 @@
 
 先在本地跑通「视频 → 标准化视频 → WeMM 画面编码 + ASR → WeMM 转录文本编码 → 文字检索 → 时间片段与证据」。WeMM-Embedding-2B 统一支持视频、文字、图片编码；图片是编码输入，本轮搜索入口只接受文字。启用 `visual` 与 `speech`，保留音轨供 ASR 使用，不启用声音召回通道 `audio` 或 CLAP。前端、LLM/Agent、AWS 部署与验收暂缓；下文相关章节保留为后续设计，不构成本轮实现要求。真实模型验证与显式 fake 的协议/流程测试分开。
 
+本轮提供本地上传、阶段状态/重试、项目范围和文字搜索。URL 导入、上传分片续签、SSE 事件、存量回填、到期 purge、配额计费和离线质量评估仍是后续设计；软删除保留原片和处理文件。当前只记录索引时长。操作入口见 [README](../README.md)。
+
 **写到哪一层**：写到「目录与文件职责、类型与函数签名、表结构、协议字段、处理步骤」。不写函数实现。签名用来说明模块边界，实现时可以调整名字，但边界和职责不变。
 
 **标注约定**：
@@ -63,13 +65,12 @@
 
 ### 1.1 顶层目录
 
-一个仓库，三个可以独立构建的部分：Go 程序、Python 服务、前端。
+目标结构如下，前端、云部署、导入与评估相关文件仍属后续规划。当前 Go 和 Python 可以独立构建；每个 SQL 包使用自己的 `sqlc.yaml`，由 `make generate` 统一执行。
 
 ```text
 videohelper/
 ├── go.mod                       # Go module：github.com/ozine/videohelper
 ├── go.sum
-├── sqlc.yaml                    # sqlc 配置：各包的 queries.sql → 生成的 Go 代码
 ├── Dockerfile                   # Go 镜像：api / worker / migrate 共用，内含 ffmpeg、固定版本的 yt-dlp
 ├── Makefile                     # 常用命令：build、test、lint、up（可选）
 ├── .github/
@@ -89,7 +90,7 @@ videohelper/
 ├── ml/                          # Python 模型服务，独立项目（第 10 章）
 ├── web/                         # 前端（暂缓）
 ├── deploy/
-│   └── docker-compose.yml       # 本地一键起全套；也是集成测试环境
+│   └── docker-compose.yml       # Postgres、Redis、MinIO；Go/ML 在宿主机运行
 └── docs/
     ├── design.md                # 设计文档
     └── spec.md                  # 本文档
@@ -133,10 +134,10 @@ flowchart LR
 
 | 子命令 | 作用 | 启动的内容 | 副本数 |
 |---|---|---|---|
-| `videohelper api` | 对外服务 | HTTP 服务（REST + SSE）、search、agent | 可多副本，无状态 |
+| `videohelper api` | 对外服务 | 已认证 REST、search；SSE/agent 暂缓 | 可多副本，无状态 |
 | `videohelper worker` | 后台处理 | cpu server（cpu、maint 队列）、gpu server（gpu 队列）、scheduler（定时投递 reconcile） | 可多副本 |
 | `videohelper migrate` | 执行数据库迁移 | 迁移完成后退出 | 每次部署跑一次 |
-| `videohelper eval` | 离线评估检索效果 | 读评估集，打印指标 | 手动执行 |
+| `videohelper eval`（暂缓） | 离线评估检索效果 | 读评估集，打印指标 | 手动执行 |
 | `videohelper space add <channel> <id>` | 为一个通道接入新的向量空间（提议） | 从 ML 端点登记这个空间，为 (channel, space) 建部分 HNSW 索引；用迁移账号执行 | 换模型时手动执行，在写进 channels.yaml 之前 |
 | `videohelper space drop <id>` | 下线一个向量空间 | 分批删除该空间的向量，删除部分索引，标记停用 | 手动执行 |
 
@@ -275,10 +276,11 @@ internal/
 
 | 包 | 允许依赖 |
 |---|---|
-| `httpapi` | workspace、library、pipeline（只用 Retry）、search、agent、usage、platform/authn、platform/blob、platform/events、apperr、config |
+| `httpapi` | workspace、library、pipeline（Retry、ListStages）、search、mlclient（请求关联信息）、timeline（缩略图类型）、platform/authn、platform/blob、apperr |
 | `agent` | search、library、index、media、usage、workspace、platform/blob、apperr、config |
 | `search` | space、index、mlclient、timeline、library（范围与时长）、workspace、apperr、config |
-| `pipeline` | library、space、index、mlclient、media、timeline、usage、platform/*、apperr、config |
+| `pipeline` | library、space、index、mlclient、platform/*、apperr、config |
+| `pipeline/stages` | pipeline、library、space、index、mlclient、media、timeline、usage、platform/*、apperr、config；由 cmd 装配，pipeline 不反向导入 |
 | `eval` | search、space、index、workspace、config |
 | `library` | platform/db、platform/blob、platform/safehttp、workspace、timeline（只用类型）、apperr、config |
 | `space` | mlclient、index、platform/db、apperr、config |
@@ -293,7 +295,7 @@ internal/
 
 两处依赖倒置，用来避免循环：
 
-- `library` 在上传完成、导入、恢复视频时需要启动流水线，软删除时要删掉流水线产生的派生数据。为此在 `library/ports.go` 定义 `Starter`、`DerivedDropper` 两个接口，由 `pipeline` 实现，在 `cmd/videohelper/app.go` 注入。所以 `library` 不依赖 `pipeline`，也不直接写别的包的表。
+- `library` 在上传完成、导入、恢复视频时需要启动流水线，软删除时要删掉流水线产生的派生数据。为此在 `library/ports.go` 定义 `Starter`、`DerivedDropper` 两个接口，由 `pipeline` 实现，在 `cmd/videohelper/runtime.go` 注入。所以 `library` 不依赖 `pipeline`，也不直接写别的包的表。
 - `mlclient` 需要知道某个 space 在哪个端点，但不能依赖 `space`。它接收一个 `Resolver` 函数，由 `space.Registry` 提供。
 
 ### 2.4 逐包说明
@@ -725,30 +727,40 @@ func SpeechSentences(ctx context.Context, q db.Querier, videoID int64) ([]TextSp
 - **不负责**：对外接口；检索。
 
 ```go
+type Commit func(context.Context, pgx.Tx) error
+type RunFunc func(context.Context, *StageCtx) (Commit, error)
+type StageOptions struct {
+    Channel, Seg string
+    Space space.Info                     // 模型身份、维度与能力的计划快照
+    Transcriber, Fingerprint string
+    MaxWindowMs int
+}
 type StageDef struct {
-    Name     string        // probe / prepare_media / asr / embed:visual:wemm-2b@r1 / finalize / fetch
-    Version  string        // 实现版本，初始 "v1"
-    Queue    string        // cpu | gpu | gpu_low
-    Deps     []string
-    Timeout  time.Duration
-    Required bool          // finalize 是否等它；shadow 的 embed 阶段为 false。生成计划时写进 stage_run.required，之后不随配置变化
-    Run      func(ctx context.Context, sc *StageCtx) error
+    Name, Version, Queue string          // Version 是逻辑版本 v1
+    Deps []string
+    Timeout time.Duration
+    Required bool
+    Options StageOptions
 }
 type StageCtx struct {
-    Video        library.Video
-    Payload      queue.StagePayload
-    Progress     json.RawMessage                        // 上次记录的断点，第一次执行为空
-    SaveProgress func(ctx context.Context, v any) error // 写回 stage_run.output
+    Video library.Video
+    Payload queue.StagePayload           // Version 含随机执行代次
+    Def StageDef
+    Attempt int
+    Progress json.RawMessage
+    SaveProgress func(context.Context, any, Commit) error
 }
-
-func InitialPlan(v library.Video) []StageDef                                      // 导入：fetch + probe；上传：probe
-func ExpandPlan(v library.Video, ch []space.Channel, reg *space.Registry) []StageDef // probe 完成后生成其余阶段
-
-func (s *Service) Start(ctx context.Context, videoID int64) error                    // 实现 library.Starter
-func (s *Service) DropDerived(ctx context.Context, q db.Querier, videoID int64) error // 实现 library.DerivedDropper：index.DeleteVideo，再删自己的 stage_run
-func (s *Service) Retry(ctx context.Context, workspaceID, videoID int64) error          // 视频是否属于这个工作区在 SQL 里校验；httpapi 传 Principal.WorkspaceID
-func (s *Service) Register(mux *asynq.ServeMux)                                      // 注册 stage、purge、reconcile 三类 handler
+func InitialPlan(library.Video) []StageDef // 当前上传从 probe 开始
+func ExpandPlan(library.Video, []space.Channel, *space.Registry) ([]StageDef, error)
+func (s *Service) Start(context.Context, int64) error
+func (s *Service) DropDerived(context.Context, db.Querier, int64) error
+func (s *Service) Retry(ctx context.Context, workspaceID, videoID int64) error
+func (s *Service) ListStages(ctx context.Context, workspaceID, videoID int64) ([]StageStatus, error)
+func (s *Service) Register(*asynq.ServeMux) // stage、reconcile；purge 暂缓
+func (s *Service) Reconcile(context.Context) error
 ```
+
+`pipeline/stages.Handlers.Runs()` 提供执行函数，由 cmd 注入 `pipeline.Deps.Runs`。外部 I/O 在事务外执行；返回的 `Commit` 在 runner 的短事务中写入产出。`SaveProgress` 把一批产出与断点一起提交。每次写入先锁视频、再锁阶段，并核验执行代次和 attempt；已删除、已重试或过期的任务不能发布结果。
 
 #### search
 
@@ -809,6 +821,8 @@ func (s *Service) Send(ctx context.Context, p workspace.Principal, sessionID, te
 
 #### usage
 
+本轮只实现 `RecordIndexed(ctx, tx, workspaceID, videoID, durationMs)`，与 finalize 共用事务。以下配额与其他计量接口是后续设计。
+
 ```go
 const (
     KindGPUSeconds = "gpu_seconds"
@@ -834,22 +848,21 @@ func (s *Service) Summary(ctx context.Context, workspaceID int64) (Summary, erro
 - **职责**：协议转换。解析请求、调用服务、写响应，不含业务规则。
 
 ```go
+type Config struct { CORSOrigins []string; PresignTTL time.Duration }
 type Deps struct {
     Workspace *workspace.Service
     Library   *library.Service
     Pipeline  *pipeline.Service
     Search    *search.Service
-    Agent     *agent.Service
-    Usage     *usage.Service
     Blob      *blob.Store
-    Events    *events.Bus
     Authn     *authn.Verifier
-    Cfg       config.Config
+    Config    Config
+    Ready     func(context.Context) error
 }
 func New(d Deps) http.Handler
 ```
 
-中间件顺序：request id → 访问日志 → panic 恢复 → CORS → 鉴权（`/healthz` 和 CORS 预检请求除外）。
+中间件顺序：request id → 访问日志 → panic 恢复 → CORS → 鉴权（`/healthz`、`/readyz` 和允许来源的 CORS 预检请求除外）。
 
 #### eval
 
@@ -1199,20 +1212,20 @@ COMMIT;
 **阶段认领**（runner 第 4 步）：
 
 ```sql
--- 只有 queued 或 running（上次执行中途崩溃）的阶段可以认领；done 的返回 0 行，任务直接结束
+-- 先锁非删除的视频，再锁对应阶段；只有 queued 可认领，running 由 reconciler 回收
 UPDATE stage_run
 SET status = 'running', attempt = attempt + 1, updated_at = now()
-WHERE video_id = $1 AND stage = $2 AND version = $3 AND status IN ('queued', 'running')
+WHERE video_id = $1 AND stage = $2 AND version = $3 AND status = 'queued'
 RETURNING attempt, output;
 ```
 
 **阶段完成与推进下游**（runner 第 7 步，在同一个事务里）：
 
 ```sql
--- 锁住这个视频的全部阶段行，避免并行阶段同时完成时重复推进或漏推进 finalize
+-- 先锁 video 行，再锁阶段，检查 generation、running 状态和 attempt 后写产出
 SELECT stage, version, status FROM stage_run WHERE video_id = $1 FOR UPDATE;
 UPDATE stage_run SET status = 'done', error = NULL, output = $4, updated_at = now()
-WHERE video_id = $1 AND stage = $2 AND version = $3;
+WHERE video_id = $1 AND stage = $2 AND version = $3 AND status = 'running' AND attempt = $5;
 -- Go 根据阶段依赖图，算出「status = pending 且所有依赖都是 done」的阶段（finalize 的依赖是所有 required = true 的阶段），再执行：
 UPDATE stage_run SET status = 'queued', updated_at = now()
 WHERE video_id = $1 AND (stage, version) IN (...);
@@ -1379,11 +1392,9 @@ LIMIT $2;                                      -- 每轮最多回填多少个视
 ```jsonc
 // 200
 {
-  "user": { "id": "3", "email": "a@example.com", "name": "示例用户" },
-  "workspaces": [ { "id": "1", "name": "个人工作区", "role": "owner" } ],
-  "current_workspace_id": "1",
-  "usage": { "indexed_ms_month": 7200000, "llm_tokens_day": 12000 },
-  "limits": { "indexed_ms_month": 36000000, "llm_tokens_day": 200000 }
+  "user_id": "3",
+  "workspace_id": "1",
+  "role": "owner"
 }
 ```
 
@@ -1478,7 +1489,7 @@ LIMIT $2;                                      -- 每轮最多回填多少个视
 
 ```jsonc
 // 200
-{ "video": { /* Video */ }, "stages": [ /* Stage，按依赖顺序排列 */ ] }
+{ "video": { /* Video */ }, "stages": [ /* StageStatus：stage/version/status/attempt/required/progress?/error?/updated_at */ ] }
 ```
 
 #### `DELETE /v1/videos/{id}`
@@ -1495,7 +1506,7 @@ LIMIT $2;                                      -- 每轮最多回填多少个视
 
 #### `POST /v1/videos/{id}/retry`
 
-返回 202。把状态为 failed 的阶段及其下游重置为 pending，依赖已满足的直接投递；视频状态改回 indexing。视频不是 failed 时返回 409。
+返回 202。保留已完成阶段与已提交断点；所有未完成阶段换一个执行代次，依赖已满足的改为 queued 并投递，其余为 pending。清理旧的非 active 队列记录；旧 active 任务被代次检查隔离。视频改回 indexing；视频不是 failed 时返回 409。
 
 #### `GET /v1/videos/{id}/playback`
 
@@ -1794,7 +1805,7 @@ sequenceDiagram
 
 ```jsonc
 // type = "stage"，任务 id = "stage:{video_id}:{stage}:{version}"
-{ "workspace_id": 1, "video_id": 42, "stage": "embed:visual:wemm-2b@r1", "version": "v1" }
+{ "workspace_id": 1, "video_id": 42, "stage": "embed:visual:wemm-2b@r1", "version": "v1.<generation>" }
 
 // type = "purge"，任务 id = "purge:{video_id}"，队列 maint：彻底清除一个软删除到期的视频
 { "workspace_id": 1, "video_id": 42 }
@@ -1831,16 +1842,16 @@ sequenceDiagram
 2. **检查**：只读地查一次这个阶段。查不到（视频已删除）或者已经是 done，直接返回成功（幂等）。
 3. **限流**：gpu 队列的任务申请工作区 GPU 名额，fetch 阶段申请平台下载名额（6.6 节）；gpu_low 的任务不申请。名额不够就返回 `ErrThrottled`，稍后重试，不计失败。这时阶段还是 queued，执行次数也不变。
 4. **认领**：执行 3.4 节的认领 SQL，状态改为 running，执行次数加 1。返回 0 行说明检查之后视频被删除了，或者阶段已经完成：释放名额，直接返回成功。
-5. **发布事件**：`stage running`。
-6. **执行** `StageDef.Run`。耗时长的阶段在执行过程中调用 `SaveProgress` 记录断点。
+5. **状态可见**：详情接口读取持久化状态；事件发布/SSE 暂缓。
+6. **执行** `Deps.Runs` 中对应的 `RunFunc`。耗时阶段调用 `SaveProgress(ctx, progress, commit)`，在同一事务写入一批产出和断点。
 7. **成功时**：
-   1. 开一个事务：锁住这个视频的阶段行 → 写阶段产出 → 状态改为 done → 根据依赖图把就绪的下游改为 queued → 提交。
+   1. 开一个事务：先锁视频、再锁阶段并核验代次与 attempt → 写阶段产出 → 状态改为 done → 根据依赖图把就绪的下游改为 queued → 提交。
    2. 提交之后投递下游任务。任务 id 冲突视为成功。投递失败也不要紧，reconciler 会补投。
-   3. 发布事件，释放工作区名额。
+   3. 释放工作区名额；事件发布暂缓。
 8. **失败时**（执行中遇到 ML 服务 503 返回的 `ErrThrottled` 也走这里，但不计入重试次数）：
    1. 把错误信息写进 `stage_run.error`，状态改回 queued，表示等待重试。
-   2. 如果这是最后一次重试（`asynq.GetRetryCount(ctx) >= asynq.GetMaxRetry(ctx)`）：状态改为 failed；如果是必需阶段，视频也改为 failed，错误原因写给用户看。
-   3. 发布事件，释放名额，把错误返回给 Asynq。
+   2. 达到配置的真实失败重试预算，或错误不可重试时：状态改为 failed；如果是必需阶段，视频也改为 failed，错误原因写给用户看。
+   3. 释放名额，把错误返回给 Asynq。Asynq 额外保留一个非失败节流槽；runner 按 `worker.max_retry` 控制真实失败预算，避免最后一次执行遇到繁忙时被提前归档。
 
 先限流、后认领，是为了让被限流的任务保持 queued。反过来的话，它会显示成执行中，执行次数也会白白增加。
 
@@ -1892,9 +1903,9 @@ sequenceDiagram
 **asr**（分段调用，已定；模型是阿里 FunASR）
 
 1. 把视频按 `ml.transcribe_chunk_ms`（10 分钟）切成若干段，第 i 段负责 `[s_i, e_i)`。
-2. 逐段处理。S3 上已经有 `raw/asr-{model}/chunk-{i}.json` 的段直接跳过，这个文件同时就是断点：
+2. 逐段处理。断点保存分段参数、next/total 和已提交 raw 文件的实际 key；重试读取这些响应，未提交文件不算完成：
    1. 调用 `mlclient.Transcribe`，音频窗口取 `[s_i − 30 秒, e_i + 30 秒)`（`ml.transcribe_overlap_ms`，截到视频范围以内），`language=zh`。
-   2. 把原始响应存到 `raw/asr-{model}/chunk-{i}.json`。
+   2. 把原始响应存到本次执行目录的 `raw/asr-{model}/chunk-{i}.json`，再提交断点。
 3. 合并：第 i 段只保留**起点落在 `[s_i, e_i)` 里**的句子。以分段点 b 为例：
    - 跨过 b 的那句话起点在 b 之前，归前一段。前一段的窗口延伸到 b + 30 秒，所以这句话在前一段里是完整的。
    - 后一段的窗口从 b − 30 秒开始，也会转出这句话（或者它的后半截），但它的起点早于 b，按规则被丢掉。
@@ -1907,16 +1918,15 @@ sequenceDiagram
 **embed:{channel}:{space}**
 
 1. 生成输入列表：
-   - visual / audio：`timeline.Cells(duration)`，每格一个 video 或 audio 输入，URI 指向标准化视频。
+   - visual：`timeline.Cells(duration)`，每格一个 video 输入，URI 指向标准化视频。audio 暂缓，不生成输入。
    - speech：`index.SpeechSentences` → `timeline.MergeSentences`，每句一个 text 输入。
 2. 从断点 `Progress.next`（没有就是 0）开始，每批 `min(ml.embed_batch, max_batch)` 个：
    1. 调用 `mlclient.Embed`，`role=document`。
    2. 校验数量、维度、fingerprint。
-   3. `index.UpsertVectors`，`seg` 取 channels 配置里该通道的值。
-   4. `SaveProgress({"next": i, "total": n})`。
-3. 记录 `usage gpu_seconds`，取所有 Embed 调用的耗时之和。
+   3. `SaveProgress(ctx, {next, total}, commit)`：在同一事务调用 `index.UpsertVectors` 并写入断点，`seg` 与模型身份取持久化计划快照。
+3. GPU 耗时计量暂缓。
 
-断点续跑之所以安全，是因为写入按主键覆盖：就算最后一批写进去了，但进度没来得及记，重跑这一批也只是覆盖同样的数据。
+一批向量和断点要么一起提交，要么一起回滚；代次与 attempt 检查阻止旧任务覆盖新结果。
 
 **finalize**
 
@@ -1952,7 +1962,7 @@ sequenceDiagram
 
 ### 6.7 reconciler
 
-每 5 分钟执行一次。每条规则单独限量，防止一次投递太多。
+每 5 分钟执行一次。当前执行 R1、R2、R4；R3 回填和 R5 purge 暂缓。R2 回收时更换执行代次、保留已提交断点，防止旧任务发布结果。每条规则单独限量，防止一次投递太多。
 
 | 规则 | 找什么 | 怎么处理 |
 |---|---|---|
@@ -2245,9 +2255,9 @@ flowchart TB
 
 ### 10.3 `models.yaml`
 
-当前 `ml/models.yaml` 是显式 fake 清单（仅 `ML_FAKE=1`）；真实 WeMM 使用 `ml/models.wemm.yaml`，以仓库实际清单为准。已固定官方 `tencent/WeMM-Embedding-2B` revision `bbd6cd4bf52cfc6716f752a2df80b2706720bd95`、transformers 5.2.0，检查远程模型代码 SHA256 后加载。全维输出为 2048，当前按官方 MRL 截到 1024 后再次归一化，维度参与 fingerprint。查询只接受文字；文档支持文字、视频和图片。
+当前 `ml/models.yaml` 是显式 fake 清单（仅 `ML_FAKE=1`）；真实本地组合使用 `ml/models.local.yaml`（WeMM + FunASR），WeMM 单独验证使用 `ml/models.wemm.yaml`，以仓库实际清单为准。已固定官方 `tencent/WeMM-Embedding-2B` revision `bbd6cd4bf52cfc6716f752a2df80b2706720bd95`、transformers 5.2.0，检查远程模型代码 SHA256 后加载。全维输出为 2048，当前按官方 MRL 截到 1024 后再次归一化，维度参与 fingerprint。查询只接受文字；文档支持文字、视频和图片。
 
-本地使用 MPS float16、每片段均匀抽 4 帧，按官方 processor 保持宽高比缩放；图片像素范围 65536–262144，视频每帧 4096–262144，输入 token 上限 4096，单批最多 32 项、逐项推理控制内存。运行入口使用 `uv sync --extra wemm`，设置 `ML_FAKE=0 ML_MODELS_FILE=models.wemm.yaml`。下方为整体模型配置形态，真实参数以固定清单为准。
+本地使用 MPS float16、每片段均匀抽 4 帧，按官方 processor 保持宽高比缩放；图片像素范围 65536–262144，视频每帧 4096–262144，输入 token 上限 4096，单批最多 32 项、逐项推理控制内存。运行入口使用 `uv sync --extra wemm --extra asr`，设置 `ML_FAKE=0 ML_MODELS_FILE=models.local.yaml`。ASR 使用 CPU float32、FunASR 1.3.14，Paraformer、VAD、标点模型均固定 revision（见清单）；返回原始转录和绝对毫秒时间戳，不引入 LLM 校对。下方为整体模型配置形态，真实参数以固定清单为准。
 
 ```yaml
 # 本实例加载哪些模型。id 就是契约里的 space id（或转录模型 id）。
@@ -2557,6 +2567,7 @@ MinIO 源码固定为 `v0.0.0-20251015172955-9e49d5e7a648`。本地默认凭证�
 | 目标 | 作用 |
 |---|---|
 | `make deps-up` / `make deps-down` | 启动 / 停止本地基础服务 |
+| `make build` / `make generate` | 构建 Go 二进制 / 按包重新生成 sqlc 代码 |
 | `make test-go` | 已实现 Go 包的 race 测试，排除 `model-test/` |
 | `make vet` / `make fmt` | Go 静态检查 / 格式化 |
 | `cd ml && uv run pytest` | Python 协议与 fake 测试 |
