@@ -1,0 +1,1 @@
+A changed record produces a different hash.

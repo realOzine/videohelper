@@ -1,0 +1,10 @@
+.work/
+__pycache__/
+.venv/
+.DS_Store
+.worktrees/
+.runtime/
+bin/
+snapshots/*/database.dump
+snapshots/*/objects/
+runs/*/*.log

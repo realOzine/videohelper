@@ -1,0 +1,47 @@
+1
+00:00:01,000 --> 00:00:08,357
+区块链中的账本会被多台计算机共同保存。参与者可以检查同一份交易历史。
+
+2
+00:00:08,707 --> 00:00:11,566
+Several computers keep copies of the same ledger.
+
+3
+00:00:21,000 --> 00:00:27,228
+一个区块可以包含多笔交易。后一个区块保存前一个区块的哈希值。
+
+4
+00:00:27,578 --> 00:00:29,828
+Each block links to the previous hash.
+
+5
+00:00:41,000 --> 00:00:49,146
+如果有人修改旧记录，对应的哈希通常也会改变。连接哈希，并不等于已经达成共识。
+
+6
+00:00:49,496 --> 00:00:52,128
+A changed record produces a different hash.
+
+7
+00:01:01,000 --> 00:01:07,699
+Consensus is the process of agreeing which valid history to follow. Different networks use different consensus rules.
+
+8
+00:01:08,049 --> 00:01:11,291
+不同网络采用的共识规则并不相同。
+
+9
+00:01:21,000 --> 00:01:28,863
+私钥用于生成数字签名，证明操作得到了持有者的授权。不要把私钥交给陌生网站。
+
+10
+00:01:29,213 --> 00:01:30,930
+Keep your private key private.
+
+11
+00:01:41,000 --> 00:01:48,739
+链上的记录难以篡改，也不能自动保证录入的信息真实。我们仍然需要检查数据来源。
+
+12
+00:01:49,089 --> 00:01:51,918
+An immutable record is not a guarantee of truth.

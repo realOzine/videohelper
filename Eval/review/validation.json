@@ -1,0 +1,70 @@
+{
+  "dataset_id": "videohelper-synthetic-v1",
+  "status": "passed",
+  "scope": "file hashes, full media decode, audio signal, structural and temporal label checks",
+  "not_verified": [
+    "independent human annotation",
+    "full audio intelligibility review",
+    "real-model retrieval quality",
+    "real action recognition"
+  ],
+  "query_counts": {
+    "speech": 10,
+    "visual": 10,
+    "mixed": 10,
+    "negative": 5
+  },
+  "videos": [
+    {
+      "id": "study_zh",
+      "duration_seconds": 84.0,
+      "frames": 2016,
+      "bytes": 10477364,
+      "full_decode": "passed",
+      "sha256": "matched",
+      "audio_peak": 0.6314,
+      "audio_rms": 0.0808
+    },
+    {
+      "id": "blockchain_mix",
+      "duration_seconds": 120.0,
+      "frames": 2880,
+      "bytes": 5432603,
+      "full_decode": "passed",
+      "sha256": "matched",
+      "audio_peak": 0.6364,
+      "audio_rms": 0.0842
+    },
+    {
+      "id": "story_en",
+      "duration_seconds": 108.0,
+      "frames": 2592,
+      "bytes": 24143340,
+      "full_decode": "passed",
+      "sha256": "matched",
+      "audio_peak": 0.6373,
+      "audio_rms": 0.08
+    },
+    {
+      "id": "vlog_zh",
+      "duration_seconds": 96.0,
+      "frames": 2304,
+      "bytes": 17343840,
+      "full_decode": "passed",
+      "sha256": "matched",
+      "audio_peak": 0.6284,
+      "audio_rms": 0.0835
+    },
+    {
+      "id": "landscape_en",
+      "duration_seconds": 90.0,
+      "frames": 2160,
+      "bytes": 18995642,
+      "full_decode": "passed",
+      "sha256": "matched",
+      "audio_peak": 0.6279,
+      "audio_rms": 0.0864
+    }
+  ],
+  "total_duration_seconds": 498.0
+}

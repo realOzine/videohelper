@@ -1,0 +1,1 @@
+Each block links to the previous hash.

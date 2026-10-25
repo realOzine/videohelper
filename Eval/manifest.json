@@ -1,0 +1,608 @@
+{
+  "dataset_id": "videohelper-synthetic-v1",
+  "version": 1,
+  "kind": "synthetic_bootstrap",
+  "fps": 24,
+  "resolution": [
+    1280,
+    720
+  ],
+  "label_status": "script-derived; assistant frame review; independent human review pending",
+  "build_platform": "macOS-27.0.1-arm64-arm-64bit",
+  "blueprint_sha256": "2010741cd648217a0a5d480fd8c42a2afc6d36349e47487a18019da4279cd35c",
+  "generator_sha256": "b066e8574ed809bdabaf91a438e0060cbe1fb480db7b91f94de45dade597def8",
+  "videos": [
+    {
+      "id": "study_zh",
+      "title": "把学习变成六个小步骤",
+      "genre": "学习讲解",
+      "language": "zh",
+      "path": "videos/study_zh.mp4",
+      "duration_ms": 84000,
+      "sha256": "875ac1b20f8fae03ab9dc5db2261ac57d86c081e19e77a9389f188f4995766ab",
+      "bytes": 10477364,
+      "voice_path": "assets/voice/study_zh.wav",
+      "music_path": "assets/music/study_zh.wav",
+      "scenes": [
+        {
+          "id": "study_zh_s1",
+          "start_ms": 0,
+          "end_ms": 14000,
+          "visual": "木桌上有合上的蓝色笔记本、黄色铅笔、小绿植和红色厨房计时器。",
+          "utterances": [
+            {
+              "lang": "zh",
+              "text": "学习之前，我会把今天要解决的问题写下来。先确定一个小目标，再开始计时。",
+              "start_ms": 1000,
+              "end_ms": 8774,
+              "source": "assets/voice/study_zh/s1_1.wav"
+            }
+          ],
+          "visual_asset": "assets/images/study-sheet.png"
+        },
+        {
+          "id": "study_zh_s2",
+          "start_ms": 14000,
+          "end_ms": 28000,
+          "visual": "窗边的双手在打开的笔记本里书写，旁边是一只白色陶瓷杯。",
+          "utterances": [
+            {
+              "lang": "zh",
+              "text": "遇到新概念，先用自己的话解释。只抄定义，往往会掩盖真正没懂的地方。",
+              "start_ms": 15000,
+              "end_ms": 21866,
+              "source": "assets/voice/study_zh/s2_1.wav"
+            }
+          ],
+          "visual_asset": "assets/images/study-sheet.png"
+        },
+        {
+          "id": "study_zh_s3",
+          "start_ms": 28000,
+          "end_ms": 42000,
+          "visual": "红色计时器旁边是一叠黄、红、绿、蓝色书籍。",
+          "utterances": [
+            {
+              "lang": "zh",
+              "text": "把任务分成二十五分钟的专注时间。铃声响起后，离开屏幕休息五分钟。",
+              "start_ms": 29000,
+              "end_ms": 35760,
+              "source": "assets/voice/study_zh/s3_1.wav"
+            }
+          ],
+          "visual_asset": "assets/images/study-sheet.png"
+        },
+        {
+          "id": "study_zh_s4",
+          "start_ms": 42000,
+          "end_ms": 56000,
+          "visual": "打开的笔记本电脑显示代码状文字，旁边有白色杯子和绿植。",
+          "utterances": [
+            {
+              "lang": "zh",
+              "text": "读完代码以后，合上资料，自己写一个最小例子。运行结果能帮助我们发现理解中的漏洞。",
+              "start_ms": 43000,
+              "end_ms": 51029,
+              "source": "assets/voice/study_zh/s4_1.wav"
+            }
+          ],
+          "visual_asset": "assets/images/study-sheet.png"
+        },
+        {
+          "id": "study_zh_s5",
+          "start_ms": 56000,
+          "end_ms": 70000,
+          "visual": "一个背对镜头的人站在明亮窗边，双臂向上伸展。",
+          "utterances": [
+            {
+              "lang": "zh",
+              "text": "连续坐得太久，就站起来活动一下。让眼睛看看远处，身体也需要休息。",
+              "start_ms": 57000,
+              "end_ms": 63995,
+              "source": "assets/voice/study_zh/s5_1.wav"
+            }
+          ],
+          "visual_asset": "assets/images/study-sheet.png"
+        },
+        {
+          "id": "study_zh_s6",
+          "start_ms": 70000,
+          "end_ms": 84000,
+          "visual": "暖色台灯照着打开的笔记本，桌上放着黑色耳机。",
+          "utterances": [
+            {
+              "lang": "zh",
+              "text": "睡觉之前，写下一个还没有解决的问题。第二天从这个问题开始，就不容易迷失方向。",
+              "start_ms": 71000,
+              "end_ms": 78979,
+              "source": "assets/voice/study_zh/s6_1.wav"
+            }
+          ],
+          "visual_asset": "assets/images/study-sheet.png"
+        }
+      ]
+    },
+    {
+      "id": "blockchain_mix",
+      "title": "理解区块链：从副本到信任边界",
+      "genre": "区块链教程",
+      "language": "zh-en",
+      "path": "videos/blockchain_mix.mp4",
+      "duration_ms": 120000,
+      "sha256": "62aaf16e2c7332bfa784ee8673bde7642ff7223a0c413042fe3b885041ac1124",
+      "bytes": 5432603,
+      "voice_path": "assets/voice/blockchain_mix.wav",
+      "music_path": "assets/music/blockchain_mix.wav",
+      "scenes": [
+        {
+          "id": "blockchain_mix_s1",
+          "start_ms": 0,
+          "end_ms": 20000,
+          "visual": "六台蓝色电脑围成一圈，通过金色线条连接，中心是一份账本。",
+          "utterances": [
+            {
+              "lang": "zh",
+              "text": "区块链中的账本会被多台计算机共同保存。参与者可以检查同一份交易历史。",
+              "start_ms": 1000,
+              "end_ms": 8357,
+              "source": "assets/voice/blockchain_mix/s1_1.wav"
+            },
+            {
+              "lang": "en",
+              "text": "Several computers keep copies of the same ledger.",
+              "start_ms": 8707,
+              "end_ms": 11566,
+              "source": "assets/voice/blockchain_mix/s1_2.wav"
+            }
+          ],
+          "visual_asset": "assets/images/blockchain-1.png"
+        },
+        {
+          "id": "blockchain_mix_s2",
+          "start_ms": 20000,
+          "end_ms": 40000,
+          "visual": "三个蓝色区块从左到右排列，用黄色箭头连接。",
+          "utterances": [
+            {
+              "lang": "zh",
+              "text": "一个区块可以包含多笔交易。后一个区块保存前一个区块的哈希值。",
+              "start_ms": 21000,
+              "end_ms": 27228,
+              "source": "assets/voice/blockchain_mix/s2_1.wav"
+            },
+            {
+              "lang": "en",
+              "text": "Each block links to the previous hash.",
+              "start_ms": 27578,
+              "end_ms": 29828,
+              "source": "assets/voice/blockchain_mix/s2_2.wav"
+            }
+          ],
+          "visual_asset": "assets/images/blockchain-2.png"
+        },
+        {
+          "id": "blockchain_mix_s3",
+          "start_ms": 40000,
+          "end_ms": 60000,
+          "visual": "三个相连区块的中间一个变为橙红色，下面显示不一致的哈希标记。",
+          "utterances": [
+            {
+              "lang": "zh",
+              "text": "如果有人修改旧记录，对应的哈希通常也会改变。连接哈希，并不等于已经达成共识。",
+              "start_ms": 41000,
+              "end_ms": 49146,
+              "source": "assets/voice/blockchain_mix/s3_1.wav"
+            },
+            {
+              "lang": "en",
+              "text": "A changed record produces a different hash.",
+              "start_ms": 49496,
+              "end_ms": 52128,
+              "source": "assets/voice/blockchain_mix/s3_2.wav"
+            }
+          ],
+          "visual_asset": "assets/images/blockchain-3.png"
+        },
+        {
+          "id": "blockchain_mix_s4",
+          "start_ms": 60000,
+          "end_ms": 80000,
+          "visual": "五个节点围绕中心账本，四个绿色对号和一个红色叉号。",
+          "utterances": [
+            {
+              "lang": "en",
+              "text": "Consensus is the process of agreeing which valid history to follow. Different networks use different consensus rules.",
+              "start_ms": 61000,
+              "end_ms": 67699,
+              "source": "assets/voice/blockchain_mix/s4_1.wav"
+            },
+            {
+              "lang": "zh",
+              "text": "不同网络采用的共识规则并不相同。",
+              "start_ms": 68049,
+              "end_ms": 71291,
+              "source": "assets/voice/blockchain_mix/s4_2.wav"
+            }
+          ],
+          "visual_asset": "assets/images/blockchain-4.png"
+        },
+        {
+          "id": "blockchain_mix_s5",
+          "start_ms": 80000,
+          "end_ms": 100000,
+          "visual": "深色背景上，金色钥匙和蓝色挂锁并排出现。",
+          "utterances": [
+            {
+              "lang": "zh",
+              "text": "私钥用于生成数字签名，证明操作得到了持有者的授权。不要把私钥交给陌生网站。",
+              "start_ms": 81000,
+              "end_ms": 88863,
+              "source": "assets/voice/blockchain_mix/s5_1.wav"
+            },
+            {
+              "lang": "en",
+              "text": "Keep your private key private.",
+              "start_ms": 89213,
+              "end_ms": 90930,
+              "source": "assets/voice/blockchain_mix/s5_2.wav"
+            }
+          ],
+          "visual_asset": "assets/images/blockchain-5.png"
+        },
+        {
+          "id": "blockchain_mix_s6",
+          "start_ms": 100000,
+          "end_ms": 120000,
+          "visual": "左右两列账本卡片，中间是问号，底部是放大镜。",
+          "utterances": [
+            {
+              "lang": "zh",
+              "text": "链上的记录难以篡改，也不能自动保证录入的信息真实。我们仍然需要检查数据来源。",
+              "start_ms": 101000,
+              "end_ms": 108739,
+              "source": "assets/voice/blockchain_mix/s6_1.wav"
+            },
+            {
+              "lang": "en",
+              "text": "An immutable record is not a guarantee of truth.",
+              "start_ms": 109089,
+              "end_ms": 111918,
+              "source": "assets/voice/blockchain_mix/s6_2.wav"
+            }
+          ],
+          "visual_asset": "assets/images/blockchain-6.png"
+        }
+      ]
+    },
+    {
+      "id": "story_en",
+      "title": "Milo and the Little Lantern",
+      "genre": "英文绘本故事",
+      "language": "en",
+      "path": "videos/story_en.mp4",
+      "duration_ms": 108000,
+      "sha256": "1c033ac9dec38cd90e5ffb27224c3143e56c2acb785a140919bceeefda17e52f",
+      "bytes": 24143340,
+      "voice_path": "assets/voice/story_en.wav",
+      "music_path": "assets/music/story_en.wav",
+      "scenes": [
+        {
+          "id": "story_en_s1",
+          "start_ms": 0,
+          "end_ms": 18000,
+          "visual": "系蓝色围巾的橙色狐狸在黄昏树林里，树桩上放着发光的黄色提灯。",
+          "utterances": [
+            {
+              "lang": "en",
+              "text": "At dusk, Milo found a little lantern on an old tree stump. He decided to carry its warm light along the forest path.",
+              "start_ms": 1000,
+              "end_ms": 8311,
+              "source": "assets/voice/story_en/s1_1.wav"
+            }
+          ],
+          "visual_asset": "assets/images/story-sheet.png"
+        },
+        {
+          "id": "story_en_s2",
+          "start_ms": 18000,
+          "end_ms": 36000,
+          "visual": "狐狸提着灯站在木制路标旁，路标有两个没有字的箭头。",
+          "utterances": [
+            {
+              "lang": "en",
+              "text": "Two wooden arrows pointed in different directions. Milo paused and listened, because a quiet sound was coming from the darker path.",
+              "start_ms": 19000,
+              "end_ms": 26303,
+              "source": "assets/voice/story_en/s2_1.wav"
+            }
+          ],
+          "visual_asset": "assets/images/story-sheet.png"
+        },
+        {
+          "id": "story_en_s3",
+          "start_ms": 36000,
+          "end_ms": 54000,
+          "visual": "狐狸和灰色兔子躲在宽大的绿叶下面避雨，地上放着提灯。",
+          "utterances": [
+            {
+              "lang": "en",
+              "text": "Milo decided that kindness mattered more than speed. He shared a broad leaf with a frightened rabbit until the rain grew softer.",
+              "start_ms": 37000,
+              "end_ms": 44017,
+              "source": "assets/voice/story_en/s3_1.wav"
+            }
+          ],
+          "visual_asset": "assets/images/story-sheet.png"
+        },
+        {
+          "id": "story_en_s4",
+          "start_ms": 54000,
+          "end_ms": 72000,
+          "visual": "狐狸和兔子在溪流上的木桥上，狐狸提着发光的灯。",
+          "utterances": [
+            {
+              "lang": "en",
+              "text": "At the wooden bridge, the rabbit was afraid of the dark water. Milo held the lantern low so they could see each careful step.",
+              "start_ms": 55000,
+              "end_ms": 61777,
+              "source": "assets/voice/story_en/s4_1.wav"
+            }
+          ],
+          "visual_asset": "assets/images/story-sheet.png"
+        },
+        {
+          "id": "story_en_s5",
+          "start_ms": 72000,
+          "end_ms": 90000,
+          "visual": "夜晚狐狸和兔子坐在小屋外，圆形窗户透出黄色灯光。",
+          "utterances": [
+            {
+              "lang": "en",
+              "text": "A small cottage waited beyond the trees. Its round window glowed warmly, and the two friends finally had a safe place to rest.",
+              "start_ms": 73000,
+              "end_ms": 80392,
+              "source": "assets/voice/story_en/s5_1.wav"
+            }
+          ],
+          "visual_asset": "assets/images/story-sheet.png"
+        },
+        {
+          "id": "story_en_s6",
+          "start_ms": 90000,
+          "end_ms": 108000,
+          "visual": "日出时狐狸和兔子并肩坐在山坡上，提灯放在一旁。",
+          "utterances": [
+            {
+              "lang": "en",
+              "text": "By sunrise, the lantern was no longer needed. Sitting on the hill, Milo understood that helping a friend had made the journey brighter.",
+              "start_ms": 91000,
+              "end_ms": 98423,
+              "source": "assets/voice/story_en/s6_1.wav"
+            }
+          ],
+          "visual_asset": "assets/images/story-sheet.png"
+        }
+      ]
+    },
+    {
+      "id": "vlog_zh",
+      "title": "海边小城的一天",
+      "genre": "中文旅行 vlog",
+      "language": "zh",
+      "path": "videos/vlog_zh.mp4",
+      "duration_ms": 96000,
+      "sha256": "2bfaa819a1d8c170dafbd0ee0d9cf8a9456473238ba41767c711a8cdd020e4ce",
+      "bytes": 17343840,
+      "voice_path": "assets/voice/vlog_zh.wav",
+      "music_path": "assets/music/vlog_zh.wav",
+      "scenes": [
+        {
+          "id": "vlog_zh_s1",
+          "start_ms": 0,
+          "end_ms": 16000,
+          "visual": "窗边木桌上的白色咖啡杯和牛角面包，远处能看到蓝色海湾。",
+          "utterances": [
+            {
+              "lang": "zh",
+              "text": "今天不赶景点，我决定在海边小城慢慢走。早餐之后，先把手机收起来，给自己一段没有通知的时间。",
+              "start_ms": 1000,
+              "end_ms": 10805,
+              "source": "assets/voice/vlog_zh/s1_1.wav"
+            }
+          ],
+          "visual_asset": "assets/images/vlog-sheet.png"
+        },
+        {
+          "id": "vlog_zh_s2",
+          "start_ms": 16000,
+          "end_ms": 32000,
+          "visual": "黄色自行车靠着白墙，后面是蓝色百叶窗和粉色花朵。",
+          "utterances": [
+            {
+              "lang": "zh",
+              "text": "沿着安静的小街往前走，墙上的颜色比想象中更明亮。旅行不一定要走得很远，也可以留意身边的细节。",
+              "start_ms": 17000,
+              "end_ms": 26595,
+              "source": "assets/voice/vlog_zh/s2_1.wav"
+            }
+          ],
+          "visual_asset": "assets/images/vlog-sheet.png"
+        },
+        {
+          "id": "vlog_zh_s3",
+          "start_ms": 32000,
+          "end_ms": 48000,
+          "visual": "双手举着纸质地图，前方是石头巷道和蓝色海面。",
+          "utterances": [
+            {
+              "lang": "zh",
+              "text": "我没有打开导航，而是试着用纸质地图寻找海边的小路。偶尔走错方向，也会遇到意外的风景。",
+              "start_ms": 33000,
+              "end_ms": 41748,
+              "source": "assets/voice/vlog_zh/s3_1.wav"
+            }
+          ],
+          "visual_asset": "assets/images/vlog-sheet.png"
+        },
+        {
+          "id": "vlog_zh_s4",
+          "start_ms": 48000,
+          "end_ms": 64000,
+          "visual": "户外餐桌上放着整条烤鱼、柠檬、绿色沙拉和水杯。",
+          "utterances": [
+            {
+              "lang": "zh",
+              "text": "午餐我选了一家街边小店。比起安排满满的行程，我更愿意把时间留给一顿慢慢吃完的饭。",
+              "start_ms": 49000,
+              "end_ms": 57260,
+              "source": "assets/voice/vlog_zh/s4_1.wav"
+            }
+          ],
+          "visual_asset": "assets/images/vlog-sheet.png"
+        },
+        {
+          "id": "vlog_zh_s5",
+          "start_ms": 64000,
+          "end_ms": 80000,
+          "visual": "红色背包放在长椅上，后方海港里停着许多白色帆船。",
+          "utterances": [
+            {
+              "lang": "zh",
+              "text": "下午在港口坐了一会儿，看船停在平静的水面上。背包里没有太多东西，心里也轻松了很多。",
+              "start_ms": 65000,
+              "end_ms": 73665,
+              "source": "assets/voice/vlog_zh/s5_1.wav"
+            }
+          ],
+          "visual_asset": "assets/images/vlog-sheet.png"
+        },
+        {
+          "id": "vlog_zh_s6",
+          "start_ms": 80000,
+          "end_ms": 96000,
+          "visual": "背对镜头的旅人剪影面对橙色海上日落。",
+          "utterances": [
+            {
+              "lang": "zh",
+              "text": "太阳快落下的时候，我把今天的照片收好。真正想记住的，是海风、光线，还有放慢脚步的感觉。",
+              "start_ms": 81000,
+              "end_ms": 90292,
+              "source": "assets/voice/vlog_zh/s6_1.wav"
+            }
+          ],
+          "visual_asset": "assets/images/vlog-sheet.png"
+        }
+      ]
+    },
+    {
+      "id": "landscape_en",
+      "title": "Six Quiet Landscapes",
+      "genre": "英文旁白配乐风景",
+      "language": "en",
+      "path": "videos/landscape_en.mp4",
+      "duration_ms": 90000,
+      "sha256": "a4a63bd3be04aa2dc1cbd2c14b2d8be0319555dff779da940f1203911c49d7f3",
+      "bytes": 18995642,
+      "voice_path": "assets/voice/landscape_en.wav",
+      "music_path": "assets/music/landscape_en.wav",
+      "scenes": [
+        {
+          "id": "landscape_en_s1",
+          "start_ms": 0,
+          "end_ms": 15000,
+          "visual": "粉色晨空下，雪山倒映在平静的蓝绿色高山湖泊中。",
+          "utterances": [
+            {
+              "lang": "en",
+              "text": "The lake is still before the day begins. A quiet morning gives us room to notice details that disappear when we rush.",
+              "start_ms": 1000,
+              "end_ms": 7583,
+              "source": "assets/voice/landscape_en/s1_1.wav"
+            }
+          ],
+          "visual_asset": "assets/images/landscape-sheet.png"
+        },
+        {
+          "id": "landscape_en_s2",
+          "start_ms": 15000,
+          "end_ms": 30000,
+          "visual": "高大的瀑布从深色岩壁落入绿色水潭，周围是浓密蕨类植物。",
+          "utterances": [
+            {
+              "lang": "en",
+              "text": "Water gathers into a bright curtain and falls into the green pool. The surrounding forest holds the cool shade of the afternoon.",
+              "start_ms": 16000,
+              "end_ms": 22666,
+              "source": "assets/voice/landscape_en/s2_1.wav"
+            }
+          ],
+          "visual_asset": "assets/images/landscape-sheet.png"
+        },
+        {
+          "id": "landscape_en_s3",
+          "start_ms": 30000,
+          "end_ms": 45000,
+          "visual": "晴朗深蓝天空下，金色沙丘带有弯曲的风纹。",
+          "utterances": [
+            {
+              "lang": "en",
+              "text": "Across the dunes, wind leaves curved lines in the sand. These patterns remind us that a landscape can change without anyone being there.",
+              "start_ms": 31000,
+              "end_ms": 38474,
+              "source": "assets/voice/landscape_en/s3_1.wav"
+            }
+          ],
+          "visual_asset": "assets/images/landscape-sheet.png"
+        },
+        {
+          "id": "landscape_en_s4",
+          "start_ms": 45000,
+          "end_ms": 60000,
+          "visual": "薄雾中的高大竹林，一条小路通向柔和阳光。",
+          "utterances": [
+            {
+              "lang": "en",
+              "text": "Along the narrow path, light arrives in small pieces. Slowing down makes the space between the trees feel much larger.",
+              "start_ms": 46000,
+              "end_ms": 52974,
+              "source": "assets/voice/landscape_en/s4_1.wav"
+            }
+          ],
+          "visual_asset": "assets/images/landscape-sheet.png"
+        },
+        {
+          "id": "landscape_en_s5",
+          "start_ms": 60000,
+          "end_ms": 75000,
+          "visual": "紫色薰衣草花田里有一棵独立绿树，天空是暖色晚霞。",
+          "utterances": [
+            {
+              "lang": "en",
+              "text": "Evening spreads warm color across the flowers. A single tree marks the horizon while the last sunlight rests on the field.",
+              "start_ms": 61000,
+              "end_ms": 67823,
+              "source": "assets/voice/landscape_en/s5_1.wav"
+            }
+          ],
+          "visual_asset": "assets/images/landscape-sheet.png"
+        },
+        {
+          "id": "landscape_en_s6",
+          "start_ms": 75000,
+          "end_ms": 90000,
+          "visual": "夜晚岩石海岸上方有绿色极光和星空，海面泛着绿色光。",
+          "utterances": [
+            {
+              "lang": "en",
+              "text": "Green light hangs above the dark coast. Under a sky this wide, the small concerns of the day begin to feel more distant.",
+              "start_ms": 76000,
+              "end_ms": 82854,
+              "source": "assets/voice/landscape_en/s6_1.wav"
+            }
+          ],
+          "visual_asset": "assets/images/landscape-sheet.png"
+        }
+      ]
+    }
+  ]
+}

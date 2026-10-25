@@ -1,0 +1,1 @@
+Consensus is the process of agreeing which valid history to follow. Different networks use different consensus rules.
