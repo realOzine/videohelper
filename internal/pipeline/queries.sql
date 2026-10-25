@@ -49,3 +49,22 @@ ORDER BY v.id LIMIT 100;
 SELECT s.* FROM stage_run s JOIN video v ON v.id = s.video_id
 WHERE s.video_id = $1 AND v.workspace_id = $2 AND v.deleted_at IS NULL
 ORDER BY s.stage;
+
+-- name: BackfillVideos :many
+WITH targets AS (
+  SELECT unnest(@stages::text[]) AS stage, unnest(@channels::text[]) AS channel, unnest(@deps::text[]) AS dep
+)
+SELECT v.id FROM video v
+WHERE v.status='ready' AND v.deleted_at IS NULL
+  AND v.normalized_video_key IS NOT NULL AND v.normalized_video_key<>'' AND v.duration_ms>0
+  AND EXISTS (
+    SELECT 1 FROM targets t
+    WHERE ((t.channel='visual' AND v.has_video) OR (t.channel IN ('audio','speech') AND v.has_audio))
+      AND NOT EXISTS (SELECT 1 FROM stage_run s WHERE s.video_id=v.id AND s.stage=t.stage)
+      AND EXISTS (SELECT 1 FROM stage_run s WHERE s.video_id=v.id AND s.stage=t.dep AND s.status='done')
+  )
+ORDER BY v.id LIMIT 100;
+
+-- name: BackfillSpace :one
+SELECT id FROM embedding_space
+WHERE id=$1 AND NOT disabled AND fingerprint=$2 AND dim=$3 AND metric=$4 FOR SHARE;

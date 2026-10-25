@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"maps"
+	"slices"
 	"strings"
 
 	"github.com/hibiken/asynq"
@@ -82,16 +83,20 @@ func (s *Service) Retry(ctx context.Context, workspaceID, videoID int64) error {
 		if video.WorkspaceID != workspaceID {
 			return apperr.New(apperr.NotFound, "not_found", "视频不存在")
 		}
-		if video.Status != "failed" {
-			return apperr.New(apperr.Conflict, "conflict", "只能重试失败的视频")
+		ready := video.Status == "ready"
+		if video.Status != "failed" && !ready {
+			return apperr.New(apperr.Conflict, "conflict", "当前视频没有可以重试的失败阶段")
 		}
 		q := pipelinedb.New(tx)
 		rows, err := q.Stages(ctx, videoID)
 		if err != nil {
 			return err
 		}
+		if ready && !slices.ContainsFunc(rows, func(row pipelinedb.StageRun) bool { return !row.Required && row.Status == "failed" }) {
+			return apperr.New(apperr.Conflict, "conflict", "没有失败的可选回填阶段")
+		}
 		for _, row := range rows {
-			if row.Status == "done" {
+			if row.Status == "done" || (ready && row.Required) {
 				continue
 			}
 			output, err := decodeOutput(row.Output)
@@ -111,10 +116,15 @@ func (s *Service) Retry(ctx context.Context, workspaceID, videoID int64) error {
 		if len(old) == 0 {
 			return apperr.New(apperr.Conflict, "conflict", "没有可以重试的阶段")
 		}
-		if err := library.SetStatus(ctx, tx, videoID, "indexing", ""); err != nil {
-			return err
+		if !ready {
+			if err := library.SetStatus(ctx, tx, videoID, "indexing", ""); err != nil {
+				return err
+			}
 		}
 		tasks, err = advance(ctx, tx, video)
+		if ready {
+			tasks = slices.DeleteFunc(tasks, func(task stageTask) bool { return task.def.Required })
+		}
 		return err
 	})
 	if err != nil {

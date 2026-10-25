@@ -13,7 +13,7 @@ import (
 	"github.com/ozine/videohelper/internal/platform/queue"
 )
 
-// Reconcile repairs lost deliveries, crashed attempts, and uploads whose Start failed.
+// Reconcile repairs deliveries and uploads, and fills missing embedding stages on ready videos.
 func (s *Service) Reconcile(ctx context.Context) error {
 	now := time.Now()
 	q := pipelinedb.New(s.deps.Pool)
@@ -41,6 +41,9 @@ func (s *Service) Reconcile(ctx context.Context) error {
 		if err := s.Start(ctx, id); err != nil {
 			errs = append(errs, err)
 		}
+	}
+	if err := s.backfill(ctx); err != nil {
+		errs = append(errs, err)
 	}
 	return errors.Join(errs...)
 }
