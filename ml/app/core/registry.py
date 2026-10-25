@@ -101,17 +101,20 @@ class Registry:
                     # WeMM's upstream forward mutates rope_deltas; share one gate across roles.
                     self.gates[config.id, "query"] = self.gates[config.id, "document"]
             else:
-                if not fake:
-                    raise ValueError(
-                        "Real ASR is not installed; use models.wemm.yaml for real WeMM"
-                    )
                 info = TranscriberInfo(
                     id=config.id,
                     languages=config.languages,
                     max_window_ms=config.max_window_ms,
                     fingerprint=digest,
                 )
-                adapter = FakeTranscriber(info, config.preprocess)
+                if fake:
+                    adapter = FakeTranscriber(info, config.preprocess)
+                elif config.adapter == "funasr":
+                    from app.adapters.funasr import FunASRTranscriber
+
+                    adapter = FunASRTranscriber(info, config.model_dump())
+                else:
+                    raise ValueError(f"Real adapter {config.adapter!r} is not installed")
                 adapter.load()
                 self.transcribers[config.id] = adapter
                 self.gates[config.id, "transcribe"] = Gate(

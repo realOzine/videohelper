@@ -235,3 +235,58 @@ func (q *Queries) TextRange(ctx context.Context, arg TextRangeParams) ([]TextSpa
 	}
 	return items, nil
 }
+
+const textRanges = `-- name: TextRanges :many
+WITH ranges AS (
+  SELECT unnest($2::bigint[]) AS video_id, unnest($3::int[]) AS start_ms, unnest($4::int[]) AS end_ms
+)
+SELECT t.video_id, t.workspace_id, t.kind, t.start_ms, t.end_ms, t.text, t.words, t.model FROM text_span t JOIN video v ON v.id=t.video_id AND v.workspace_id=t.workspace_id
+WHERE t.workspace_id = $1 AND t.kind='speech'
+  AND v.status='ready' AND v.deleted_at IS NULL
+  AND EXISTS (
+    SELECT 1 FROM ranges r
+    WHERE r.video_id=t.video_id AND t.start_ms<r.end_ms AND t.end_ms>r.start_ms
+  )
+ORDER BY t.video_id,t.start_ms
+`
+
+type TextRangesParams struct {
+	WorkspaceID int64
+	VideoIds    []int64
+	StartMs     []int32
+	EndMs       []int32
+}
+
+func (q *Queries) TextRanges(ctx context.Context, arg TextRangesParams) ([]TextSpan, error) {
+	rows, err := q.db.Query(ctx, textRanges,
+		arg.WorkspaceID,
+		arg.VideoIds,
+		arg.StartMs,
+		arg.EndMs,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []TextSpan{}
+	for rows.Next() {
+		var i TextSpan
+		if err := rows.Scan(
+			&i.VideoID,
+			&i.WorkspaceID,
+			&i.Kind,
+			&i.StartMs,
+			&i.EndMs,
+			&i.Text,
+			&i.Words,
+			&i.Model,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

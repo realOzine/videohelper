@@ -185,7 +185,8 @@ func vectorSQL(vq VectorQuery) (string, []any, error) {
 SELECT e.video_id,e.start_ms,e.end_ms,%s AS distance
 FROM embedding e JOIN video v ON v.id=e.video_id AND v.workspace_id=e.workspace_id
 WHERE e.channel='%s' AND e.space_id='%s' AND e.seg='%s' AND e.workspace_id=$2
-AND v.status='ready' AND v.deleted_at IS NULL`, distance, vq.Channel, vq.Space.ID, vq.Seg)
+AND v.status='ready' AND v.deleted_at IS NULL
+AND EXISTS (SELECT 1 FROM embedding_space s WHERE s.id='%s' AND NOT s.disabled)`, distance, vq.Channel, vq.Space.ID, vq.Seg, vq.Space.ID)
 	args := []any{pgvector.NewHalfVector(vq.Vec), vq.WorkspaceID, vq.K}
 	if vq.VideoIDs != nil {
 		args = append(args, vq.VideoIDs)
@@ -195,6 +196,7 @@ AND v.status='ready' AND v.deleted_at IS NULL`, distance, vq.Channel, vq.Space.I
 		args = append(args, vq.TimeRange.EndMs, vq.TimeRange.StartMs)
 		sql += fmt.Sprintf(" AND e.start_ms<$%d AND e.end_ms>$%d", len(args)-1, len(args))
 	}
+	// shortcut: tied ANN membership may vary to preserve HNSW, revisit when exact tied-set reproducibility is required.
 	sql += " ORDER BY " + distance + " LIMIT $3) SELECT * FROM hits ORDER BY distance,video_id,start_ms,end_ms"
 	return sql, args, nil
 }
