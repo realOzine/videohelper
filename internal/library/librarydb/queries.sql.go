@@ -57,6 +57,39 @@ func (q *Queries) CreateProject(ctx context.Context, arg CreateProjectParams) (P
 	return i, err
 }
 
+const createUploadVideo = `-- name: CreateUploadVideo :one
+INSERT INTO video (workspace_id, title, source_kind, status) VALUES ($1, $2, 'upload', 'uploading') RETURNING id, workspace_id, title, source_kind, source_url, source_key, normalized_video_key, duration_ms, has_video, has_audio, thumbs, status, error, deleted_at, created_at, updated_at
+`
+
+type CreateUploadVideoParams struct {
+	WorkspaceID int64
+	Title       string
+}
+
+func (q *Queries) CreateUploadVideo(ctx context.Context, arg CreateUploadVideoParams) (Video, error) {
+	row := q.db.QueryRow(ctx, createUploadVideo, arg.WorkspaceID, arg.Title)
+	var i Video
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Title,
+		&i.SourceKind,
+		&i.SourceUrl,
+		&i.SourceKey,
+		&i.NormalizedVideoKey,
+		&i.DurationMs,
+		&i.HasVideo,
+		&i.HasAudio,
+		&i.Thumbs,
+		&i.Status,
+		&i.Error,
+		&i.DeletedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const deleteProject = `-- name: DeleteProject :execrows
 DELETE FROM project WHERE id = $1 AND workspace_id = $2
 `
@@ -253,6 +286,15 @@ func (q *Queries) ProjectVideoIDs(ctx context.Context, arg ProjectVideoIDsParams
 	return items, nil
 }
 
+const removeUnstartedUpload = `-- name: RemoveUnstartedUpload :exec
+DELETE FROM video WHERE id = $1 AND status = 'uploading' AND source_key IS NULL AND deleted_at IS NULL
+`
+
+func (q *Queries) RemoveUnstartedUpload(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, removeUnstartedUpload, id)
+	return err
+}
+
 const removeVideoFromProject = `-- name: RemoveVideoFromProject :one
 WITH allowed AS (
   SELECT p.id AS project_id, v.id AS video_id FROM project p, video v
@@ -275,6 +317,44 @@ func (q *Queries) RemoveVideoFromProject(ctx context.Context, arg RemoveVideoFro
 	var exists bool
 	err := row.Scan(&exists)
 	return exists, err
+}
+
+const restoreVideo = `-- name: RestoreVideo :exec
+UPDATE video SET deleted_at = NULL, status = $3, error = NULL, updated_at = now() WHERE id = $1 AND workspace_id = $2
+`
+
+type RestoreVideoParams struct {
+	ID          int64
+	WorkspaceID int64
+	Status      string
+}
+
+func (q *Queries) RestoreVideo(ctx context.Context, arg RestoreVideoParams) error {
+	_, err := q.db.Exec(ctx, restoreVideo, arg.ID, arg.WorkspaceID, arg.Status)
+	return err
+}
+
+const saveUpload = `-- name: SaveUpload :exec
+INSERT INTO video_upload (video_id, object_key, upload_id, size_bytes, part_size) VALUES ($1, $2, $3, $4, $5)
+`
+
+type SaveUploadParams struct {
+	VideoID   int64
+	ObjectKey string
+	UploadID  string
+	SizeBytes int64
+	PartSize  int64
+}
+
+func (q *Queries) SaveUpload(ctx context.Context, arg SaveUploadParams) error {
+	_, err := q.db.Exec(ctx, saveUpload,
+		arg.VideoID,
+		arg.ObjectKey,
+		arg.UploadID,
+		arg.SizeBytes,
+		arg.PartSize,
+	)
+	return err
 }
 
 const scopedVideoIDs = `-- name: ScopedVideoIDs :many
@@ -322,6 +402,20 @@ func (q *Queries) SetStatus(ctx context.Context, arg SetStatusParams) (int64, er
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const softDelete = `-- name: SoftDelete :exec
+UPDATE video SET deleted_at = now(), updated_at = now() WHERE id = $1 AND workspace_id = $2
+`
+
+type SoftDeleteParams struct {
+	ID          int64
+	WorkspaceID int64
+}
+
+func (q *Queries) SoftDelete(ctx context.Context, arg SoftDeleteParams) error {
+	_, err := q.db.Exec(ctx, softDelete, arg.ID, arg.WorkspaceID)
+	return err
 }
 
 const updatePreparedMedia = `-- name: UpdatePreparedMedia :execrows
@@ -386,6 +480,29 @@ func (q *Queries) UpdateSource(ctx context.Context, arg UpdateSourceParams) (int
 	return result.RowsAffected(), nil
 }
 
+const upload = `-- name: Upload :one
+SELECT u.video_id, u.object_key, u.upload_id, u.size_bytes, u.part_size FROM video_upload u JOIN video v ON v.id = u.video_id
+WHERE u.video_id = $1 AND v.workspace_id = $2 AND v.deleted_at IS NULL
+`
+
+type UploadParams struct {
+	VideoID     int64
+	WorkspaceID int64
+}
+
+func (q *Queries) Upload(ctx context.Context, arg UploadParams) (VideoUpload, error) {
+	row := q.db.QueryRow(ctx, upload, arg.VideoID, arg.WorkspaceID)
+	var i VideoUpload
+	err := row.Scan(
+		&i.VideoID,
+		&i.ObjectKey,
+		&i.UploadID,
+		&i.SizeBytes,
+		&i.PartSize,
+	)
+	return i, err
+}
+
 const video = `-- name: Video :one
 SELECT id, workspace_id, title, source_kind, source_url, source_key, normalized_video_key, duration_ms, has_video, has_audio, thumbs, status, error, deleted_at, created_at, updated_at FROM video WHERE id = $1 AND workspace_id = $2 AND deleted_at IS NULL
 `
@@ -425,6 +542,39 @@ SELECT id, workspace_id, title, source_kind, source_url, source_key, normalized_
 
 func (q *Queries) VideoForWorker(ctx context.Context, id int64) (Video, error) {
 	row := q.db.QueryRow(ctx, videoForWorker, id)
+	var i Video
+	err := row.Scan(
+		&i.ID,
+		&i.WorkspaceID,
+		&i.Title,
+		&i.SourceKind,
+		&i.SourceUrl,
+		&i.SourceKey,
+		&i.NormalizedVideoKey,
+		&i.DurationMs,
+		&i.HasVideo,
+		&i.HasAudio,
+		&i.Thumbs,
+		&i.Status,
+		&i.Error,
+		&i.DeletedAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const videoIncludingDeleted = `-- name: VideoIncludingDeleted :one
+SELECT id, workspace_id, title, source_kind, source_url, source_key, normalized_video_key, duration_ms, has_video, has_audio, thumbs, status, error, deleted_at, created_at, updated_at FROM video WHERE id = $1 AND workspace_id = $2 FOR UPDATE
+`
+
+type VideoIncludingDeletedParams struct {
+	ID          int64
+	WorkspaceID int64
+}
+
+func (q *Queries) VideoIncludingDeleted(ctx context.Context, arg VideoIncludingDeletedParams) (Video, error) {
+	row := q.db.QueryRow(ctx, videoIncludingDeleted, arg.ID, arg.WorkspaceID)
 	var i Video
 	err := row.Scan(
 		&i.ID,

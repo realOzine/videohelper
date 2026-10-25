@@ -18,13 +18,13 @@ import (
 const maxParts = 10000
 
 type Part struct {
-	N    int
-	ETag string
+	N    int    `json:"n"`
+	ETag string `json:"etag"`
 }
 
 type PartURL struct {
-	N   int
-	URL string
+	N   int    `json:"n"`
+	URL string `json:"url"`
 }
 
 type Store struct {

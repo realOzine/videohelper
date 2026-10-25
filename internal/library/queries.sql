@@ -72,3 +72,25 @@ WHERE id = $1 AND deleted_at IS NULL;
 
 -- name: SetStatus :execrows
 UPDATE video SET status = $2, error = $3, updated_at = now() WHERE id = $1 AND deleted_at IS NULL;
+
+-- name: CreateUploadVideo :one
+INSERT INTO video (workspace_id, title, source_kind, status) VALUES ($1, $2, 'upload', 'uploading') RETURNING *;
+
+-- name: SaveUpload :exec
+INSERT INTO video_upload (video_id, object_key, upload_id, size_bytes, part_size) VALUES ($1, $2, $3, $4, $5);
+
+-- name: Upload :one
+SELECT u.* FROM video_upload u JOIN video v ON v.id = u.video_id
+WHERE u.video_id = $1 AND v.workspace_id = $2 AND v.deleted_at IS NULL;
+
+-- name: RemoveUnstartedUpload :exec
+DELETE FROM video WHERE id = $1 AND status = 'uploading' AND source_key IS NULL AND deleted_at IS NULL;
+
+-- name: VideoIncludingDeleted :one
+SELECT * FROM video WHERE id = $1 AND workspace_id = $2 FOR UPDATE;
+
+-- name: SoftDelete :exec
+UPDATE video SET deleted_at = now(), updated_at = now() WHERE id = $1 AND workspace_id = $2;
+
+-- name: RestoreVideo :exec
+UPDATE video SET deleted_at = NULL, status = $3, error = NULL, updated_at = now() WHERE id = $1 AND workspace_id = $2;
