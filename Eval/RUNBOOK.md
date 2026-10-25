@@ -104,6 +104,14 @@ ml/.venv/bin/python Eval/tools/score.py compare --before "Eval/runs/${RUN}-a/rep
 
 `--k` 是每路召回数，不是评分的 Recall@K，也不改变每题输出上限 10；`--rrf-k` 对应 `search.rrf_k`，`--merge-gap` 对应 `search.merge_gap_cells`。参数比较可以仍是固定索引，但 `identical_retrieval_conditions` 应为 false。不要用同批调参样本宣称最终泛化验收。
 
+融合权重可单独消融；以下仅演示参数用法，不代表推荐值：
+
+```sh
+ml/.venv/bin/python Eval/tools/run.py retrieve --snapshot "$SNAPSHOT" --run-id "${RUN}-weights" --visual-weight 1 --speech-weight 2 --audio-weight 0
+```
+
+三个参数是原配置权重的乘数，仅作用于 fused；0 会关闭对应查询通道，不能全部为 0。模型、索引和查询文字保持不变，单通道对照仍按原参数运行。实际乘数、有效权重和参与通道保存在 metadata 中。多组参数比较用 `tools/ablate.py summarize --plan <plan.json> --reports <report.json>... --output <directory>`；先固定题目划分和选择规则，候选冻结后才使用 `--verify` 检查内部核验集。
+
 ## 4. 恢复快照，再验证固定索引检索
 
 ```sh
