@@ -90,22 +90,31 @@ func (a api) search(r *http.Request) (int, any, error) {
 			snippet := moment.Snippet
 			public.Snippet = &snippet
 		}
-		if video.Thumbs != nil && video.NormalizedVideoKey != "" && a.Blob != nil {
-			sprite, x, y := video.Thumbs.Tile(moment.ThumbCell)
-			if sprite >= 0 {
-				key := blob.SpriteKeyForVideo(video.NormalizedVideoKey, sprite)
-				url, ok := urls[key]
-				if !ok {
-					url, err = a.Blob.PresignGet(r.Context(), key, a.Config.PresignTTL)
-					if err != nil {
-						return 0, nil, err
-					}
-					urls[key] = url
-				}
-				public.Thumbnail = &thumbnail{URL: url, X: x, Y: y, W: video.Thumbs.TileW, H: video.Thumbs.TileH}
-			}
+		if public.Thumbnail, err = a.thumb(r, video, moment.ThumbCell, urls); err != nil {
+			return 0, nil, err
 		}
 		moments = append(moments, public)
 	}
 	return 200, map[string]any{"moments": moments, "skipped_channels": result.Skipped}, nil
+}
+
+// thumb signs the sprite tile of one cell; urls reuses signatures per sprite within a response.
+func (a api) thumb(r *http.Request, video library.Video, cell int, urls map[string]string) (*thumbnail, error) {
+	if video.Thumbs == nil || video.NormalizedVideoKey == "" || a.Blob == nil {
+		return nil, nil
+	}
+	sprite, x, y := video.Thumbs.Tile(cell)
+	if sprite < 0 {
+		return nil, nil
+	}
+	key := blob.SpriteKeyForVideo(video.NormalizedVideoKey, sprite)
+	url, ok := urls[key]
+	if !ok {
+		var err error
+		if url, err = a.Blob.PresignGet(r.Context(), key, a.Config.PresignTTL); err != nil {
+			return nil, err
+		}
+		urls[key] = url
+	}
+	return &thumbnail{URL: url, X: x, Y: y, W: video.Thumbs.TileW, H: video.Thumbs.TileH}, nil
 }

@@ -1328,6 +1328,7 @@ LIMIT $2;                                      -- 每轮最多回填多少个视
   "source_kind": "upload",           // upload / youtube / bilibili / direct
   "duration_ms": 3480000,            // probe 完成前为 null
   "error": null,                     // failed 时的原因
+  "thumbnail": null,                 // 封面：视频中间那一格的雪碧图块，形状同 Moment.thumbnail；prepare_media 完成前为 null
   "created_at": "2026-10-25T08:00:00Z",
   "updated_at": "2026-10-25T08:05:00Z"
 }

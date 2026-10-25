@@ -35,14 +35,25 @@ func principal(r *http.Request) workspace.Principal {
 	return p
 }
 
-func publicVideo(v library.Video) library.Video {
+type videoResponse struct {
+	library.Video
+	Thumbnail *thumbnail `json:"thumbnail"`
+}
+
+// publicVideo adds a poster tile from the middle of the video, past most title cards.
+func (a api) publicVideo(r *http.Request, v library.Video, urls map[string]string) (videoResponse, error) {
 	v.SourceURL = ""
 	v.CreatedAt, v.UpdatedAt = v.CreatedAt.UTC(), v.UpdatedAt.UTC()
 	if v.DeletedAt != nil {
 		utc := v.DeletedAt.UTC()
 		v.DeletedAt = &utc
 	}
-	return v
+	cell := 0
+	if v.Thumbs != nil {
+		cell = v.Thumbs.Count / 2
+	}
+	thumb, err := a.thumb(r, v, cell, urls)
+	return videoResponse{Video: v, Thumbnail: thumb}, err
 }
 
 func (a api) me(r *http.Request) (int, any, error) {
@@ -142,7 +153,11 @@ func (a api) startUpload(r *http.Request) (int, any, error) {
 		return 0, nil, err
 	}
 	plan.ExpiresAt = plan.ExpiresAt.UTC()
-	return 201, map[string]any{"video": publicVideo(video), "upload": plan}, nil
+	public, err := a.publicVideo(r, video, map[string]string{})
+	if err != nil {
+		return 0, nil, err
+	}
+	return 201, map[string]any{"video": public, "upload": plan}, nil
 }
 
 func (a api) completeUpload(r *http.Request) (int, any, error) {
@@ -161,7 +176,11 @@ func (a api) completeUpload(r *http.Request) (int, any, error) {
 	if err != nil {
 		return 0, nil, err
 	}
-	return 202, map[string]any{"video": publicVideo(video)}, nil
+	public, err := a.publicVideo(r, video, map[string]string{})
+	if err != nil {
+		return 0, nil, err
+	}
+	return 202, map[string]any{"video": public}, nil
 }
 
 func (a api) videos(r *http.Request) (int, any, error) {
@@ -185,14 +204,18 @@ func (a api) videos(r *http.Request) (int, any, error) {
 	if err != nil {
 		return 0, nil, err
 	}
+	public := make([]videoResponse, len(videos))
+	urls := map[string]string{}
 	for i := range videos {
-		videos[i] = publicVideo(videos[i])
+		if public[i], err = a.publicVideo(r, videos[i], urls); err != nil {
+			return 0, nil, err
+		}
 	}
 	var cursor *string
 	if next != "" {
 		cursor = &next
 	}
-	return 200, map[string]any{"videos": videos, "next_cursor": cursor}, nil
+	return 200, map[string]any{"videos": public, "next_cursor": cursor}, nil
 }
 
 func (a api) video(r *http.Request) (int, any, error) {
@@ -214,7 +237,11 @@ func (a api) video(r *http.Request) (int, any, error) {
 	for i := range stages {
 		stages[i].UpdatedAt = stages[i].UpdatedAt.UTC()
 	}
-	return 200, map[string]any{"video": publicVideo(video), "stages": stages}, nil
+	public, err := a.publicVideo(r, video, map[string]string{})
+	if err != nil {
+		return 0, nil, err
+	}
+	return 200, map[string]any{"video": public, "stages": stages}, nil
 }
 
 func (a api) deleteVideo(r *http.Request) (int, any, error) {
@@ -240,7 +267,11 @@ func (a api) restoreVideo(r *http.Request) (int, any, error) {
 	if err != nil {
 		return 0, nil, err
 	}
-	return 202, map[string]any{"video": publicVideo(video)}, nil
+	public, err := a.publicVideo(r, video, map[string]string{})
+	if err != nil {
+		return 0, nil, err
+	}
+	return 202, map[string]any{"video": public}, nil
 }
 
 func (a api) retryVideo(r *http.Request) (int, any, error) {

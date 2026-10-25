@@ -401,6 +401,18 @@ func TestCoreHTTPIntegration(t *testing.T) {
 	if get.StatusCode != 200 || !bytes.Equal(imageBytes, sprite.Bytes()) {
 		t.Fatalf("thumbnail did not resolve persisted artifact: %s", get.Status)
 	}
+	status, body = call("GET", "/v1/videos/"+videoID, "", owner, nil)
+	var posted struct {
+		Video struct {
+			Thumbnail *thumbnail `json:"thumbnail"`
+		} `json:"video"`
+	}
+	if err := json.Unmarshal(body, &posted); status != 200 || err != nil || posted.Video.Thumbnail == nil {
+		t.Fatalf("video poster: %d %s", status, body)
+	}
+	if poster, _ := url.Parse(posted.Video.Thumbnail.URL); posted.Video.Thumbnail.X != 16 || poster.Path != "/"+bucket+"/"+spriteKey {
+		t.Fatalf("video poster used wrong tile: %+v", posted.Video.Thumbnail)
+	}
 	for _, invalid := range []string{`{"query":"文本","image":{"uri":"s3://bucket/key"}}`, `{"query":"文本","video_ids":[1]}`, `{"query":"文本","project_id":1}`} {
 		if status, body := call("POST", "/v1/search", invalid, owner, nil); status != 400 {
 			t.Fatalf("invalid search accepted: %d %s", status, body)
