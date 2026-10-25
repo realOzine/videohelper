@@ -623,7 +623,7 @@ erDiagram
   WORKSPACE ||--o{ USAGE_EVENT : records
 ```
 
-首版 11 张业务表：`workspace`、`app_user`、`membership`、`project`、`project_video`、`video`、`stage_run`、`text_span`、`embedding_space`、`embedding`、`usage_event`，另加 ADK 自动创建的会话表。完整 DDL 见 [spec.md 第 3 章](spec.md#3-数据库)。
+初始迁移 11 张业务表：`workspace`、`app_user`、`membership`、`project`、`project_video`、`video`、`stage_run`、`text_span`、`embedding_space`、`embedding`、`usage_event`；迁移 `0002` 增加可信分片上传会话表 `video_upload`。ADK 会话表暂缓。完整 DDL 见 [spec.md 第 3 章](spec.md#3-数据库)。
 
 刻意不建的表：
 

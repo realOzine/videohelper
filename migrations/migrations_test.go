@@ -49,7 +49,7 @@ func TestMigrationAndDatabaseIntegration(t *testing.T) {
 	if err := migrations.Up(ctx, sqldb); err != nil {
 		t.Fatalf("idempotent up: %v", err)
 	}
-	if err := sqldb.QueryRowContext(ctx, "SELECT count(*) FROM pg_tables WHERE schemaname='public' AND tablename <> 'goose_db_version'").Scan(&count); err != nil || count != 11 {
+	if err := sqldb.QueryRowContext(ctx, "SELECT count(*) FROM pg_tables WHERE schemaname='public' AND tablename <> 'goose_db_version'").Scan(&count); err != nil || count != 12 {
 		t.Fatalf("business table count = %d, error = %v", count, err)
 	}
 	pool, err := db.Open(ctx, dsn, 2)
