@@ -235,7 +235,7 @@ class ScoreTests(unittest.TestCase):
         changed_code = score.evaluate(items, responses(items), metadata(code_revision="new"))
         delta = score.compare_reports(before, changed_code)
         self.assertTrue(delta["fixed_index_regression"])
-        self.assertTrue(delta["identical_retrieval_conditions"])
+        self.assertFalse(delta["identical_retrieval_conditions"])
         self.assertIn("code_revision", delta["metadata_changes"])
 
     def test_fused_weight_changes_are_changed_conditions_on_fixed_index(self):
@@ -255,6 +255,7 @@ class ScoreTests(unittest.TestCase):
         legacy = score.evaluate(items, responses(items), metadata())
         # Legacy reports do not prove that their effective weights matched.
         self.assertFalse(score.compare_reports(legacy, before)["identical_retrieval_conditions"])
+        self.assertFalse(score.compare_reports(legacy, legacy)["identical_retrieval_conditions"])
         self.assertTrue(score.compare_reports(legacy, before)["fixed_index_regression"])
 
 
