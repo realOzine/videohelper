@@ -7,23 +7,21 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"os/signal"
 	"slices"
+	"strconv"
+	"strings"
 	"syscall"
 
-	"github.com/aws/aws-sdk-go-v2/aws"
-	awsconfig "github.com/aws/aws-sdk-go-v2/config"
-	"github.com/aws/aws-sdk-go-v2/service/s3"
 	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/ozine/videohelper/internal/config"
 	"github.com/ozine/videohelper/internal/index"
-	"github.com/ozine/videohelper/internal/mlclient"
-	"github.com/ozine/videohelper/internal/platform/authn"
-	"github.com/ozine/videohelper/internal/platform/blob"
+	"github.com/ozine/videohelper/internal/library"
+	"github.com/ozine/videohelper/internal/pipeline"
 	"github.com/ozine/videohelper/internal/platform/db"
-	"github.com/ozine/videohelper/internal/space"
-	"github.com/ozine/videohelper/internal/workspace"
+	"github.com/ozine/videohelper/internal/search"
 	"github.com/ozine/videohelper/migrations"
 )
 
@@ -40,7 +38,7 @@ func run(ctx context.Context, args []string) error {
 	flags := flag.NewFlagSet("videohelper", flag.ContinueOnError)
 	path := flags.String("config", "config/local.yaml", "configuration file (run from repository root)")
 	flags.Usage = func() {
-		fmt.Fprintln(flags.Output(), "Usage: videohelper [-config path] migrate | local-init | space add <channel> <id>")
+		fmt.Fprintln(flags.Output(), "Usage: videohelper [-config path] migrate | local-init | worker | local-upload <file> | local-search <text> | local-video <id> | space add <channel> <id>")
 		flags.PrintDefaults()
 	}
 	if err := flags.Parse(args); err != nil {
@@ -51,16 +49,13 @@ func run(ctx context.Context, args []string) error {
 		flags.Usage()
 		return flag.ErrHelp
 	}
-	if (len(args) != 1 || (args[0] != "migrate" && args[0] != "local-init")) && (len(args) != 4 || args[0] != "space" || args[1] != "add") {
-		return errors.New("unknown command; run videohelper -help")
+	role, err := commandRole(args)
+	if err != nil {
+		return err
 	}
 	cfg, err := config.Load(*path)
 	if err != nil {
 		return err
-	}
-	role := config.RoleMigrate
-	if args[0] == "space" {
-		role = config.RoleSpace
 	}
 	if err := cfg.Validate(role); err != nil {
 		return err
@@ -78,27 +73,71 @@ func run(ctx context.Context, args []string) error {
 		return err
 	}
 	defer pool.Close()
+	defer http.DefaultClient.CloseIdleConnections()
 	if args[0] == "local-init" {
 		if cfg.S3.Endpoint == "" {
 			return errors.New("local-init requires an explicit local S3 endpoint")
 		}
-		objects, err := objectStore(ctx, cfg.S3)
+		client := commandHTTPClient()
+		defer client.CloseIdleConnections()
+		objects, err := objectStore(ctx, cfg.S3, client)
 		if err != nil {
 			return err
 		}
 		if err := objects.EnsureBucket(ctx); err != nil {
 			return err
 		}
-		principal, err := workspace.New(pool).Resolve(ctx, authn.Claims{Sub: "videohelper-local", Name: "Local", Email: "local@videohelper"}, 0)
+		principal, err := localPrincipal(ctx, pool)
 		if err != nil {
 			return err
 		}
 		return json.NewEncoder(os.Stdout).Encode(map[string]string{"workspace_id": fmt.Sprint(principal.WorkspaceID), "user_id": fmt.Sprint(principal.UserID)})
 	}
-	var registry *space.Registry
-	client := mlclient.New(cfg.ML, func(id string) (string, bool) { return registry.Resolve(id) })
-	registry = space.New(pool, client)
-	if err := registry.Sync(ctx); err != nil {
+	if args[0] == "local-video" {
+		principal, err := localPrincipal(ctx, pool)
+		if err != nil {
+			return err
+		}
+		id, _ := strconv.ParseInt(args[1], 10, 64)
+		video, err := library.New(pool, nil, library.Config{}, nil, nil).Get(ctx, principal, id)
+		if err != nil {
+			return err
+		}
+		stages, err := pipeline.New(pipeline.Deps{Pool: pool}).ListStages(ctx, principal.WorkspaceID, id)
+		if err != nil {
+			return err
+		}
+		return json.NewEncoder(os.Stdout).Encode(struct {
+			Video  library.Video          `json:"video"`
+			Stages []pipeline.StageStatus `json:"stages"`
+		}{video, stages})
+	}
+	if args[0] != "space" {
+		app, err := newRuntime(ctx, pool, cfg, role)
+		if err != nil {
+			return err
+		}
+		defer app.close()
+		if args[0] == "worker" {
+			return runWorker(ctx, app, cfg)
+		}
+		principal, err := localPrincipal(ctx, pool)
+		if err != nil {
+			return err
+		}
+		var result any
+		if args[0] == "local-upload" {
+			result, err = localUpload(ctx, app, principal, args[1])
+		} else {
+			result, err = app.search.Search(ctx, principal, search.Query{Text: args[1]})
+		}
+		if err != nil {
+			return err
+		}
+		return json.NewEncoder(os.Stdout).Encode(result)
+	}
+	_, registry, err := modelRegistry(ctx, pool, cfg.ML)
+	if err != nil {
 		return err
 	}
 	channel, id := args[2], args[3]
@@ -116,16 +155,30 @@ func run(ctx context.Context, args []string) error {
 	return json.NewEncoder(os.Stdout).Encode(map[string]string{"channel": channel, "space": id, "status": "indexed"})
 }
 
-func objectStore(ctx context.Context, cfg config.S3Config) (*blob.Store, error) {
-	awsCfg, err := awsconfig.LoadDefaultConfig(ctx, awsconfig.WithRegion(cfg.Region))
-	if err != nil {
-		return nil, err
-	}
-	client := s3.NewFromConfig(awsCfg, func(options *s3.Options) {
-		if cfg.Endpoint != "" {
-			options.BaseEndpoint = aws.String(cfg.Endpoint)
-			options.UsePathStyle = true
+func commandRole(args []string) (config.Role, error) {
+	if len(args) == 1 {
+		switch args[0] {
+		case "migrate", "local-init":
+			return config.RoleMigrate, nil
+		case "worker":
+			return config.RoleWorker, nil
 		}
-	})
-	return blob.New(client, cfg.Bucket), nil
+	}
+	if len(args) == 2 && strings.TrimSpace(args[1]) != "" {
+		switch args[0] {
+		case "local-upload":
+			return config.RoleWorker, nil
+		case "local-search":
+			return config.RoleEval, nil
+		case "local-video":
+			id, err := strconv.ParseInt(args[1], 10, 64)
+			if err == nil && id > 0 {
+				return config.RoleMigrate, nil
+			}
+		}
+	}
+	if len(args) == 4 && args[0] == "space" && args[1] == "add" {
+		return config.RoleSpace, nil
+	}
+	return "", errors.New("unknown command or invalid arguments; run videohelper -help")
 }
