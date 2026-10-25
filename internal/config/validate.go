@@ -65,13 +65,6 @@ func (c Config) Validate(role Role) error {
 			require(httpURL(origin), "server.cors_origins")
 		}
 		require(httpURL(c.Auth.Issuer) && httpURL(c.Auth.JWKSURL) && c.Auth.Audience != "", "auth.issuer / auth.jwks_url / auth.audience")
-		require(c.Database.ADKSchema != "", "database.adk_schema")
-		require(httpURL(c.LLM.BaseURL) && c.LLM.APIKey != "", "llm.base_url / llm.api_key_env")
-		require(c.LLM.ChatModel != "", "llm.chat_model")
-		if c.LLM.InspectClipEnabled {
-			require(c.LLM.VisionModel != "", "llm.vision_model")
-		}
-		require(c.LLM.TurnTimeout > 0 && c.LLM.MaxToolCallsPerTurn > 0, "llm turn limits")
 	} else {
 		require(c.Worker.CPUConcurrency > 0 && c.Worker.GPUConcurrency > 0, "worker concurrency")
 		require(c.Worker.WorkspaceGPULimit > 0 && c.Worker.WorkspaceGPULimit < c.Worker.GPUConcurrency, "worker.workspace_gpu_limit")
