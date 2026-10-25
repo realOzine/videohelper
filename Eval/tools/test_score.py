@@ -1,10 +1,10 @@
 import copy
 import json
-from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
+from pathlib import Path
 
 import score
 
@@ -161,14 +161,14 @@ class ScoreTests(unittest.TestCase):
             (root / "metadata.json").write_text(json.dumps(metadata()))
             command = [sys.executable, str(Path(score.__file__)), "evaluate", "--queries", str(root / "queries.jsonl"),
                        "--results", str(root / "results.jsonl"), "--metadata", str(root / "metadata.json"), "--output", str(root)]
-            self.assertEqual(subprocess.run(command, capture_output=True).returncode, 0)
+            self.assertEqual(subprocess.run(command, capture_output=True, check=False).returncode, 0)
             report = json.loads((root / "report.json").read_text())
             rows = [json.loads(line) for line in (root / "per_query.jsonl").read_text().splitlines()]
             self.assertEqual(rows, report["per_query"])
             self.assertIn("not probabilities", (root / "report.md").read_text())
             command = [sys.executable, str(Path(score.__file__)), "compare", "--before", str(root / "report.json"),
                        "--after", str(root / "report.json"), "--output", str(root)]
-            self.assertEqual(subprocess.run(command, capture_output=True).returncode, 0)
+            self.assertEqual(subprocess.run(command, capture_output=True, check=False).returncode, 0)
             self.assertEqual(json.loads((root / "delta.json").read_text())["per_query_changes"], [])
             self.assertIn("Fixed-index", (root / "delta.md").read_text())
 
@@ -193,7 +193,7 @@ class ScoreTests(unittest.TestCase):
             result = subprocess.run([
                 sys.executable, str(Path(score.__file__)), "evaluate", "--queries", str(root / "queries.jsonl"),
                 "--results", str(root / "results.jsonl"), "--metadata", str(root / "metadata.json"), "--output", str(root),
-            ], capture_output=True)
+            ], capture_output=True, check=False)
             self.assertEqual(result.returncode, 1, result.stderr)
             report = json.loads((root / "report.json").read_text())
             self.assertFalse(report["passed"])

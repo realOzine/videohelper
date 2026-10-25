@@ -1,11 +1,10 @@
 """Standard-library scoring. Run `python3 Eval/tools/score.py --help` for CLI use."""
 
 import argparse
-from collections import Counter, defaultdict
 import json
 import math
+from collections import Counter, defaultdict
 from pathlib import Path
-
 
 MODES = ("visual", "speech", "fused")
 KS = (1, 5, 10)
@@ -196,7 +195,7 @@ def evaluate(queries, results, metadata):
     indexed = defaultdict(list)
     for response in results:
         if not isinstance(response, dict):
-            raise ValueError("result must be an object")
+            raise TypeError("result must be an object")
         key = response.get("query_id"), response.get("mode")
         if key[0] not in query_ids or key[1] not in MODES:
             raise ValueError(f"unknown result query/mode: {key}")
@@ -251,8 +250,8 @@ def _report_markdown(report):
         sections.extend((f"language: {language}", group) for language, group in groups.get("by_language", {}).items())
         for category, group in sections:
             lines.extend([f"## {mode} / {category}", "",
-                          f"Queries: {group['query_count']}; positives: {group['positive_count']}; "
-                          f"negatives: {group['negative_count']}; status: {group['status_counts']}", "",
+                          (f"Queries: {group['query_count']}; positives: {group['positive_count']}; "
+                          f"negatives: {group['negative_count']}; status: {group['status_counts']}"), "",
                           "| Metric | Sum / denominator | Value |", "|---|---:|---:|"])
             for name, metric in group["positive_metrics"].items():
                 lines.append(f"| {name} | {_number(metric['numerator'])} / {metric['denominator']} | {_number(metric['value'])} |")
@@ -346,9 +345,9 @@ def write_comparison(delta, output_dir):
     output.mkdir(parents=True, exist_ok=True)
     _json_write(output / "delta.json", delta)
     lines = ["# Evaluation comparison", "", f"`{delta['before_run_id']}` → `{delta['after_run_id']}`", "",
-             f"Compatible corpus/labels/scoring: **{delta['compatible']}**. "
+             (f"Compatible corpus/labels/scoring: **{delta['compatible']}**. "
              f"Fixed-index regression: **{delta['fixed_index_regression']}**. "
-             f"Identical retrieval conditions: **{delta['identical_retrieval_conditions']}**.", "",
+             f"Identical retrieval conditions: **{delta['identical_retrieval_conditions']}**."), "",
              "## Metadata changes", "", "```json", json.dumps(delta["metadata_changes"], ensure_ascii=False, indent=2), "```", "",
              "## Positive metric deltas", "", "| Mode | Metric | After − before |", "|---|---|---:|"]
     for mode, metrics in delta["positive_metric_delta"].items():
