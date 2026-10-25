@@ -115,12 +115,18 @@ func UpsertVectors(ctx context.Context, q db.Querier, rows []VectorRow) error {
 		if err := validVector(row.Vec, sp); err != nil {
 			return err
 		}
-		_, err := q.Exec(ctx, `INSERT INTO embedding(video_id,workspace_id,channel,space_id,seg,start_ms,end_ms,vec)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+		// Serialize writes with space disable so a drop cannot leave newly inserted vectors behind.
+		tag, err := q.Exec(ctx, `WITH active_space AS MATERIALIZED (
+SELECT id FROM embedding_space WHERE id=$4 AND NOT disabled FOR SHARE)
+INSERT INTO embedding(video_id,workspace_id,channel,space_id,seg,start_ms,end_ms,vec)
+SELECT $1,$2,$3,$4,$5,$6,$7,$8 FROM active_space
 ON CONFLICT (video_id,channel,space_id,seg,start_ms) DO UPDATE SET workspace_id=EXCLUDED.workspace_id,end_ms=EXCLUDED.end_ms,vec=EXCLUDED.vec`,
 			row.VideoID, row.WorkspaceID, row.Channel, row.SpaceID, row.Seg, row.Span.StartMs, row.Span.EndMs, pgvector.NewHalfVector(row.Vec))
 		if err != nil {
 			return err
+		}
+		if tag.RowsAffected() == 0 {
+			return apperr.New(apperr.Unavailable, "unavailable", "向量空间已停用")
 		}
 	}
 	return nil
