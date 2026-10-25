@@ -218,7 +218,7 @@ func (c *Client) Transcribe(ctx context.Context, baseURL string, req TranscribeR
 		if err := c.do(ctx, baseURL, "/v1/transcribe", req, &response); err != nil {
 			return TranscribeResponse{}, err
 		}
-		if err := validateTranscript(req, response, info); err != nil {
+		if err := ValidateTranscript(req, response, info); err != nil {
 			return TranscribeResponse{}, err
 		}
 		return response, nil

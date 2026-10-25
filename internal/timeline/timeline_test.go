@@ -98,7 +98,11 @@ func TestMergeSentences(t *testing.T) {
 		{"next cannot fit so merge backward", []Sentence{{Span{0, 10}, "完整句子"}, {Span{10, 20}, "啊"}, {Span{20, 30}, "另一个完整句子"}}, []Sentence{{Span{0, 20}, "完整句子啊"}, {Span{20, 30}, "另一个完整句子"}}, 3, 5},
 		{"max prevents merge", []Sentence{{Span{0, 10}, "你好"}, {Span{10, 20}, "世界"}}, []Sentence{{Span{0, 10}, "你好"}, {Span{10, 20}, "世界"}}, 3, 3},
 		{"long sentence preserved", []Sentence{{Span{0, 10}, "很长很长的句子"}, {Span{10, 20}, "啊"}}, []Sentence{{Span{0, 10}, "很长很长的句子"}, {Span{10, 20}, "啊"}}, 3, 5},
-		{"overlap preserved", []Sentence{{Span{0, 20}, "你"}, {Span{10, 30}, "好"}}, []Sentence{{Span{0, 20}, "你"}, {Span{10, 30}, "好"}}, 3, 10},
+		{"ordered overlap union", []Sentence{{Span{1000, 1500}, "今天"}, {Span{1450, 1900}, "下雨"}}, []Sentence{{Span{1000, 1900}, "今天下雨"}}, 5, 10},
+		{"contained end union", []Sentence{{Span{0, 30}, "你"}, {Span{10, 20}, "好"}}, []Sentence{{Span{0, 30}, "你好"}}, 3, 10},
+		{"equal start union", []Sentence{{Span{0, 30}, "你"}, {Span{0, 20}, "好"}}, []Sentence{{Span{0, 30}, "你好"}}, 3, 10},
+		{"contained backward merge union", []Sentence{{Span{0, 30}, "完整句子"}, {Span{10, 20}, "啊"}}, []Sentence{{Span{0, 30}, "完整句子啊"}}, 3, 5},
+		{"backwards after forward merge stays separate", []Sentence{{Span{0, 30}, "你"}, {Span{20, 25}, "好"}, {Span{10, 40}, "啊"}}, []Sentence{{Span{0, 30}, "你好"}, {Span{10, 40}, "啊"}}, 4, 5},
 		{"invalid span preserved", []Sentence{{Span{10, 10}, "你"}, {Span{20, 30}, "好"}}, []Sentence{{Span{10, 10}, "你"}, {Span{20, 30}, "好"}}, 3, 10},
 		{"out of order preserved", []Sentence{{Span{20, 30}, "你"}, {Span{0, 10}, "好"}}, []Sentence{{Span{20, 30}, "你"}, {Span{0, 10}, "好"}}, 3, 10},
 		{"text bytes preserved", []Sentence{{Span{0, 10}, "hello "}, {Span{10, 20}, "世界！"}}, []Sentence{{Span{0, 20}, "hello 世界！"}}, 8, 9},
@@ -113,11 +117,6 @@ func TestMergeSentences(t *testing.T) {
 			}
 			if !reflect.DeepEqual(tt.in, original) {
 				t.Fatal("input was modified")
-			}
-			for i := 1; i < len(got); i++ {
-				if tt.name != "overlap preserved" && got[i-1].Span.Overlaps(got[i].Span) {
-					t.Fatalf("merged sentences overlap: %v", got)
-				}
 			}
 		})
 	}
