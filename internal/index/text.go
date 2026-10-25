@@ -86,6 +86,30 @@ func SpeechSentences(ctx context.Context, q db.Querier, videoID int64) ([]TextSp
 	return textSpans(rows)
 }
 
+type VideoSpan struct {
+	VideoID int64
+	Span    timeline.Span
+}
+
+// TextRanges batches retained search moments; overlapping ranges return each sentence once.
+func TextRanges(ctx context.Context, q db.Querier, workspaceID int64, ranges []VideoSpan) ([]TextSpan, error) {
+	if len(ranges) == 0 {
+		return []TextSpan{}, nil
+	}
+	params := indexdb.TextRangesParams{WorkspaceID: workspaceID, VideoIds: make([]int64, len(ranges)), StartMs: make([]int32, len(ranges)), EndMs: make([]int32, len(ranges))}
+	for i, window := range ranges {
+		if err := validSpan(window.Span); err != nil {
+			return nil, err
+		}
+		params.VideoIds[i], params.StartMs[i], params.EndMs[i] = window.VideoID, int32(window.Span.StartMs), int32(window.Span.EndMs)
+	}
+	rows, err := indexdb.New(q).TextRanges(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+	return textSpans(rows)
+}
+
 func textSpans(rows []indexdb.TextSpan) ([]TextSpan, error) {
 	spans := make([]TextSpan, 0, len(rows))
 	for _, row := range rows {
