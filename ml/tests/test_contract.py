@@ -48,3 +48,10 @@ def test_error_and_exactly_one_input_contract(client, contract):
     for body in ({}, {"text": None}, {"text": "x", "audio": None}):
         with pytest.raises(jsonschema.ValidationError):
             validate(contract, {"$ref": "#/components/schemas/EmbedInput"}, body)
+
+
+def test_image_contract_has_uri_only(contract):
+    schema = {"$ref": "#/components/schemas/EmbedInput"}
+    validate(contract, schema, {"image": {"uri": "s3://bucket/image.png"}})
+    with pytest.raises(jsonschema.ValidationError):
+        validate(contract, schema, {"image": {"uri": "s3://bucket/image.png", "start_ms": 0}})

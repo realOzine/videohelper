@@ -416,10 +416,10 @@ type PurgePayload struct { WorkspaceID, VideoID int64 }
 var ErrThrottled = errors.New("throttled") // 名额不够：稍后重试，不计失败
 
 func StageTaskID(p StagePayload) string // "stage:{video_id}:{stage}:{version}"
-func EnqueueStage(ctx context.Context, c *asynq.Client, p StagePayload, queue string, timeout time.Duration) error // 任务 id 冲突视为成功
-func EnqueuePurge(ctx context.Context, c *asynq.Client, p PurgePayload) error
+func EnqueueStage(ctx context.Context, c *asynq.Client, p StagePayload, queue string, timeout time.Duration, maxRetry int) error // 任务 id 冲突视为成功
+func EnqueuePurge(ctx context.Context, c *asynq.Client, p PurgePayload, maxRetry int) error
 func NewServers(cfg config.WorkerConfig, r asynq.RedisConnOpt) (cpu, gpu *asynq.Server) // 配置 IsFailure 与 RetryDelayFunc
-func NewScheduler(r asynq.RedisConnOpt, every time.Duration) *asynq.Scheduler
+func EnqueueReconcile(ctx context.Context, c *asynq.Client, now time.Time, every time.Duration) error // worker ticker 调用；按时间窗口生成唯一 id
 ```
 
 #### platform/events
@@ -708,7 +708,7 @@ type TextSpan struct {
 }
 
 // 一个事务里：删这个视频的 speech 句子 → 删它的 speech 向量 → 写入新句子
-func ReplaceSpeech(ctx context.Context, q db.Querier, workspaceID, videoID int64, model string, sents []TextSpan) error
+func ReplaceSpeech(ctx context.Context, tx pgx.Tx, workspaceID, videoID int64, model string, sents []TextSpan) error // 调用方拥有事务，与阶段完成一起提交
 func TextRange(ctx context.Context, q db.Querier, workspaceID, videoID int64, s timeline.Span) ([]TextSpan, error)
 func SpeechSentences(ctx context.Context, q db.Querier, videoID int64) ([]TextSpan, error)
 ```

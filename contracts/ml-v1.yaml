@@ -292,8 +292,9 @@ paths:
         required: false
         schema:
           type: string
-      description: 每个输入只含 text、video、audio 之一，返回顺序与 inputs 一致。时间窗口满足 0≤start_ms<end_ms，end_ms
-        截到媒体结尾；输入数量、类型和时长遵循 /v1/spaces。cosine 向量 L2 归一化，所有值有限。
+      description: 每个输入只含 text、video、audio、image 之一，返回顺序与 inputs 一致。时间窗口满足 0≤start_ms<end_ms，end_ms
+        截到媒体结尾；输入数量、类型和时长遵循 /v1/spaces。cosine 向量 L2 归一化，所有值有限。 image 仅包含 S3 uri，不含时间窗口；当前搜索输入仅
+        text。
   /v1/transcribe:
     post:
       summary: Transcribe
@@ -439,6 +440,13 @@ components:
         required:
         - audio
         additionalProperties: false
+      - type: object
+        properties:
+          image:
+            $ref: '#/components/schemas/ImageRef'
+        required:
+        - image
+        additionalProperties: false
     EmbedRequest:
       properties:
         space:
@@ -567,6 +575,7 @@ components:
             - text
             - video
             - audio
+            - image
           type: array
           minItems: 1
           title: Query Inputs
@@ -577,6 +586,7 @@ components:
             - text
             - video
             - audio
+            - image
           type: array
           minItems: 1
           title: Doc Inputs
@@ -770,6 +780,16 @@ components:
       - error
       title: ErrorBody
       type: object
+    ImageRef:
+      type: object
+      additionalProperties: false
+      properties:
+        uri:
+          type: string
+          pattern: ^s3://[a-z0-9][a-z0-9.-]*/[^?#]+$
+          title: Uri
+      required:
+      - uri
   securitySchemes:
     InternalToken:
       type: apiKey

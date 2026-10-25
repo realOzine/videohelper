@@ -17,6 +17,8 @@ def test_media_duration_frames_audio_and_short_end_window(media_file):
     assert frames[0].mean() < frames[-1].mean()
     end = video.sample_frames(media_file, 1900, 2000, 8, 16)
     assert end.shape == (8, 16, 16, 3)
+    tiny = video.sample_frames(media_file, 1950, 1951, 4, None)
+    assert tiny.shape == (4, 32, 32, 3)
     samples = audio.load(media_file, 500, 1000, 48000)
     assert samples.shape == (24000,)
     assert np.isfinite(samples).all()
@@ -50,3 +52,17 @@ def test_silent_audio_returns_empty_transcript(tmp_path):
     transcript = FakeTranscriber(info, {}).transcribe(path, "zh", 100, 900)
     assert transcript.duration_ms == 1000
     assert transcript.sentences == []
+
+
+def test_image_decode_converts_rgb_and_rejects_invalid(tmp_path):
+    from PIL import Image
+
+    from app.media.image import load_image
+
+    path = tmp_path / "image.png"
+    Image.new("RGBA", (12, 8), (255, 0, 0, 255)).save(path)
+    assert load_image(path).mode == "RGB"
+    path.write_bytes(b"broken")
+    with pytest.raises(MLError) as error:
+        load_image(path)
+    assert error.value.code == "media_unreadable"

@@ -162,3 +162,19 @@ def test_http_busy_and_deadline_preserve_running_capacity(client, monkeypatch):
         assert expired.json()["error"]["code"] == "deadline_exceeded"
         assert client.post("/v1/embed", json=QUERY).status_code == 503
         release.set()
+
+
+def test_image_document_embeds_but_image_query_and_timestamp_are_rejected(client, tmp_path):
+    from PIL import Image
+
+    path = tmp_path / "test.png"
+    Image.new("RGB", (32, 24), "red").save(path)
+    client.app.state.cache.download = lambda uri, write, limit: write(path.read_bytes())
+    image = {"image": {"uri": "s3://test/image.png"}}
+    response = client.post("/v1/embed", json={**QUERY, "role": "document", "inputs": [image]})
+    assert response.status_code == 200, response.text
+    assert len(response.json()["vectors"][0]) == 1024
+    assert client.post("/v1/embed", json={**QUERY, "inputs": [image]}).status_code == 400
+    image["image"]["start_ms"] = 0
+    response = client.post("/v1/embed", json={**QUERY, "role": "document", "inputs": [image]})
+    assert response.status_code == 400

@@ -3,7 +3,7 @@ from typing import Annotated, Literal
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 Role = Literal["query", "document"]
-InputKind = Literal["text", "video", "audio"]
+InputKind = Literal["text", "video", "audio", "image"]
 PositiveInt = Annotated[int, Field(strict=True, gt=0)]
 Timestamp = Annotated[int, Field(strict=True, ge=0)]
 Identifier = Annotated[str, Field(min_length=1, pattern=r"^[a-z0-9@._-]+$")]
@@ -15,8 +15,11 @@ class Schema(BaseModel):
     model_config = ConfigDict(extra="forbid", allow_inf_nan=False)
 
 
-class MediaRef(Schema):
+class ImageRef(Schema):
     uri: S3URI
+
+
+class MediaRef(ImageRef):
     start_ms: Timestamp
     end_ms: PositiveInt
 
@@ -31,13 +34,14 @@ class EmbedInput(Schema):
     text: Annotated[str, Field(min_length=1)] | None = None
     video: MediaRef | None = None
     audio: MediaRef | None = None
+    image: ImageRef | None = None
 
     @model_validator(mode="after")
     def exactly_one_input(self):
         if len(self.model_fields_set) != 1 or all(
-            value is None for value in (self.text, self.video, self.audio)
+            value is None for value in (self.text, self.video, self.audio, self.image)
         ):
-            raise ValueError("each input must contain exactly one of text, video, audio")
+            raise ValueError("each input must contain exactly one of text, video, audio, image")
         return self
 
     @property
