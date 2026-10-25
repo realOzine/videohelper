@@ -11,6 +11,8 @@ def fingerprint(config: dict, *, fake: bool) -> str:
             "revision",
             "weights_digest",
             "dtype",
+            "dim",
+            "metric",
             "preprocess",
         )
     }

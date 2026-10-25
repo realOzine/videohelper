@@ -28,8 +28,10 @@ class ModelConfig(BaseModel):
     query_queue_limit: int = Field(default=8, ge=0)
     dim: int | None = Field(default=None, gt=0)
     metric: Literal["cosine", "ip", "l2"] = "cosine"
-    query_inputs: list[Literal["text", "video", "audio"]] = Field(default_factory=lambda: ["text"])
-    doc_inputs: list[Literal["text", "video", "audio"]] = Field(default_factory=list)
+    query_inputs: list[Literal["text", "video", "audio", "image"]] = Field(
+        default_factory=lambda: ["text"]
+    )
+    doc_inputs: list[Literal["text", "video", "audio", "image"]] = Field(default_factory=list)
     max_batch: int = Field(default=64, gt=0)
     max_span_ms: int | None = Field(default=None, gt=0)
     max_window_ms: int = Field(default=900000, gt=0)
@@ -45,7 +47,7 @@ class ModelConfig(BaseModel):
             raise ValueError("embedder requires dim, query_inputs and doc_inputs")
         if (
             self.kind == "embedder"
-            and any(kind != "text" for kind in self.query_inputs + self.doc_inputs)
+            and any(kind in ("video", "audio") for kind in self.query_inputs + self.doc_inputs)
             and self.max_span_ms is None
         ):
             raise ValueError("media embedder requires max_span_ms")
@@ -66,8 +68,6 @@ class Registry:
         ids = [config.id for config in manifest.models]
         if len(set(ids)) != len(ids):
             raise ValueError("Duplicate model id")
-        if not fake:
-            raise ValueError("Real model adapters are not installed; explicitly set ML_FAKE=1")
         for config in manifest.models:
             digest = fingerprint(config.model_dump(), fake=fake)
             if config.kind == "embedder":
@@ -81,15 +81,30 @@ class Registry:
                     max_batch=config.max_batch,
                     fingerprint=digest,
                 )
-                adapter = FakeEmbedder(info, config.preprocess)
+                if fake:
+                    adapter = FakeEmbedder(info, config.preprocess)
+                elif config.adapter == "wemm":
+                    from app.adapters.wemm import WeMMEmbedder
+
+                    adapter = WeMMEmbedder(info, config.model_dump())
+                else:
+                    raise ValueError(f"Real adapter {config.adapter!r} is not installed")
                 adapter.load()
                 self.embedders[config.id] = adapter
                 self.gates[config.id, "document"] = Gate(config.max_concurrency, config.queue_limit)
-                self.gates[config.id, "query"] = Gate(
-                    config.query_concurrency,
-                    config.query_queue_limit,
-                )
+                if fake:
+                    self.gates[config.id, "query"] = Gate(
+                        config.query_concurrency,
+                        config.query_queue_limit,
+                    )
+                else:
+                    # WeMM's upstream forward mutates rope_deltas; share one gate across roles.
+                    self.gates[config.id, "query"] = self.gates[config.id, "document"]
             else:
+                if not fake:
+                    raise ValueError(
+                        "Real ASR is not installed; use models.wemm.yaml for real WeMM"
+                    )
                 info = TranscriberInfo(
                     id=config.id,
                     languages=config.languages,

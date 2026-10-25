@@ -3,9 +3,10 @@ from pathlib import Path
 
 import numpy as np
 
-from app.adapters.base import MediaInput, TextInput
+from app.adapters.base import ImageInput, MediaInput, TextInput
 from app.api.schemas import Role, Sentence, SpaceInfo, TranscriberInfo, Transcript, Word
 from app.media import audio, video
+from app.media.image import load_image
 from app.media.probe import duration_ms
 
 
@@ -17,11 +18,13 @@ class FakeEmbedder:
     def load(self):
         pass
 
-    def embed(self, inputs: list[TextInput | MediaInput], role: Role) -> np.ndarray:
+    def embed(self, inputs: list[TextInput | MediaInput | ImageInput], role: Role) -> np.ndarray:
         vectors = []
         for item in inputs:
             if isinstance(item, TextInput):
                 content = item.text.encode()
+            elif isinstance(item, ImageInput):
+                content = load_image(item.path).tobytes()
             elif item.kind == "video":
                 content = video.sample_frames(
                     item.path,
