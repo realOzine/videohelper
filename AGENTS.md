@@ -30,4 +30,4 @@ Use isolated worktrees for parallel execution with `gpt-6.1-sol` at high effort.
 
 ## Current Implementation Boundary
 
-Local text search uses WeMM-Embedding-2B video, text, and image encoding, with ASR and `visual`/`speech` retrieval. Preserve source audio for ASR. Frontend, LLM/Agent, AWS acceptance, and the `audio`/CLAP retrieval channel are deferred.
+Local text search uses WeMM-Embedding-2B for video, text, and image encoding, ASR for `speech`, and CLAP HTSAT unfused for the `audio` sound channel. Preserve source audio for ASR and CLAP. Pass query text unchanged; English translation is deferred. Frontend, LLM/Agent, and AWS acceptance remain deferred.
