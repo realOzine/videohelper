@@ -211,7 +211,7 @@ def s3_client(state):
     )
 
 
-def prepare(run_id):
+def prepare(run_id, *, indexing=True):
     """Create a fresh database, bucket and config, or fail preserving all evidence."""
     db_name, bucket = names(run_id)
     runtime_dir = EVAL / ".runtime" / run_id
@@ -236,7 +236,8 @@ def prepare(run_id):
     client = s3_client(state)
     if any(item["Name"] == bucket for item in client.list_buckets()["Buckets"]):
         raise FileExistsError(f"evaluation bucket already exists: {bucket}")
-    start_redis()
+    if indexing:
+        start_redis()
     runtime_dir.mkdir(parents=True, exist_ok=False)
     (runtime_dir / "tmp").mkdir()
     config["database"]["url_env"] = "VH_EVAL_DB_URL"

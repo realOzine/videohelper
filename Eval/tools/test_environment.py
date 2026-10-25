@@ -82,6 +82,20 @@ class EnvironmentTest(unittest.TestCase):
             yaml.safe_load((self.root / "config/local.yaml").read_text()), self.config
         )
 
+    def test_restore_preparation_does_not_touch_redis(self):
+        client = MagicMock()
+        client.list_buckets.return_value = {"Buckets": []}
+        with (
+            patch.object(environment, "verify_models", return_value={}),
+            patch.object(environment, "_psql", return_value=""),
+            patch.object(environment, "s3_client", return_value=client),
+            patch.object(environment, "start_redis") as redis,
+        ):
+            state = environment.prepare("restore-1", indexing=False)
+        redis.assert_not_called()
+        self.assertEqual(state["db_name"], "vh_eval_restore_1")
+        client.create_bucket.assert_called_once_with(Bucket="vh-eval-restore-1")
+
     def test_existing_runtime_is_never_overwritten(self):
         directory = self.root / "Eval/.runtime/run-1"
         directory.mkdir(parents=True)
