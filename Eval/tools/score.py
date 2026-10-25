@@ -283,7 +283,7 @@ def write_report(report, output_dir):
 
 
 def compare_reports(before, after):
-    """Require fixed corpus/labels/scoring; annotate changed retrieval conditions."""
+    """Require fixed corpus/labels/scoring; missing legacy weight metadata stays conservative."""
     for key in ("dataset_id", "dataset_sha256", "labels_sha256"):
         if before["metadata"][key] != after["metadata"][key]:
             raise ValueError(f"incompatible comparison: {key}")
@@ -331,7 +331,7 @@ def compare_reports(before, after):
         "snapshot_id", "index_sha256", "model_mode", "model_fingerprints",
         "models_config_sha256",
     ))
-    identical_conditions = fixed and not any(key in changes for key in ("channels", "search_config"))
+    identical_conditions = fixed and not any(key in changes for key in ("channels", "search_config", "fused_channel_weights"))
     return {"before_run_id": before["metadata"]["run_id"], "after_run_id": after["metadata"]["run_id"],
             "compatible": True, "fixed_index_regression": fixed, "metadata_changes": changes,
             "identical_retrieval_conditions": identical_conditions,

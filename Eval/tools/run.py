@@ -306,7 +306,7 @@ def restore_run(snapshot_id, run_id):
     print(f"restore passed: {state['runtime_dir']}/state.json", flush=True)
 
 
-def retrieve_run(snapshot_id, run_id, restored_state=None, overrides=None):
+def retrieve_run(snapshot_id, run_id, restored_state=None, overrides=None, fused_weights=None):
     from score import MODES, evaluate, write_report
 
     for flag, value in (overrides or {}).items():
@@ -317,10 +317,24 @@ def retrieve_run(snapshot_id, run_id, restored_state=None, overrides=None):
                 or flag != "merge-gap" and value == 0
                 or flag != "rrf-k" and type(value) is not int):
             raise ValueError(f"invalid search override: {flag}={value}")
+    multipliers = dict.fromkeys(("visual", "speech", "audio"), 1.0)
+    if fused_weights is not None and not isinstance(fused_weights, dict):
+        raise ValueError("fused_weights must be a channel multiplier mapping")
+    for channel, value in (fused_weights or {}).items():
+        if (channel not in multipliers or type(value) not in (int, float)
+                or not math.isfinite(value) or value < 0):
+            raise ValueError(f"invalid fused channel weight: {channel}={value}")
+        multipliers[channel] = value
+    if not any(multipliers.values()):
+        raise ValueError("at least one fused channel weight must be positive")
     manifest, queries = corpus()
     _directory, snapshot = load_snapshot(snapshot_id)
     state = read_json(restored_state) if restored_state else snapshot["state"]
     config = config_for(state)
+    channels = yaml.safe_load(Path(config["channels_file"]).read_text())["channels"]
+    effective_weights = {channel: settings["weight"] * multipliers[channel] for channel, settings in channels.items()}
+    if not all(math.isfinite(value) for value in effective_weights.values()) or not any(effective_weights.values()):
+        raise ValueError("effective fused channel weights must be finite and not all zero")
     model_info = environment.verify_models(state["ml_endpoint"], environment.runtime_env(state)["VH_EVAL_ML_TOKEN"])
     if model_info != snapshot["state"]["models"]:
         raise ValueError("live models differ from snapshot")
@@ -331,6 +345,9 @@ def retrieve_run(snapshot_id, run_id, restored_state=None, overrides=None):
         raise ValueError("index differs from snapshot; retrieval refused")
     requests = [{**scope(snapshot), "query_id": q["id"], "text": q["query"], "mode": mode, "limit": 10}
                 for mode in MODES for q in queries]
+    for request in requests:
+        if request["mode"] == "fused":
+            request["channel_weights"] = {channel: multipliers[channel] for channel in channels}
     request_file = output / "requests.jsonl"
     request_file.write_text("".join(json.dumps(q, ensure_ascii=False) + "\n" for q in requests))
     command = [str(ROOT / "bin/evalbridge"), "-config", state["config_path"]]
@@ -396,11 +413,12 @@ def retrieve_run(snapshot_id, run_id, restored_state=None, overrides=None):
         after = {"passed": False, "error": type(error).__name__ + ": " + str(error)}
     write_json(output / "inspection-after.json", after)
     stable = after["passed"] and before["index_sha256"] == after["index_sha256"]
-    channels = yaml.safe_load(Path(config["channels_file"]).read_text())["channels"]
     metadata = {key: snapshot[key] for key in ("dataset_id", "dataset_sha256", "labels_sha256", "snapshot_id", "index_sha256", "model_fingerprints", "models_config_sha256")}
     metadata.update(run_id=run_id, code_revision=revision(), model_mode="real", search_config=search_config,
                     runtime={key: state[key] for key in ("run_id", "db_name", "bucket")},
-                    channels={"visual": ["visual"], "speech": ["speech"], "fused": sorted(channels)},
+                    channels={"visual": ["visual"], "speech": ["speech"],
+                              "fused": sorted(channel for channel, weight in effective_weights.items() if weight > 0)},
+                    fused_channel_weights={"multipliers": multipliers, "effective": effective_weights},
                     channel_config=channels, index_unchanged=stable, bridge_exit_code=exit_code,
                     bridge_errors=bridge_errors, bridge_build_provenance=provenance,
                     languages={q["id"]: "zh" if any("\u4e00" <= c <= "\u9fff" for c in q["query"]) else "en" for q in queries},
@@ -430,6 +448,9 @@ def main():
     retrieve.add_argument("--k", type=int)
     retrieve.add_argument("--rrf-k", type=float)
     retrieve.add_argument("--merge-gap", type=int)
+    for channel in ("visual", "speech", "audio"):
+        retrieve.add_argument(f"--{channel}-weight", type=float, default=1.0,
+                              help=f"fused {channel} channel multiplier (0 disables route)")
     restore = commands.add_parser("restore")
     restore.add_argument("--snapshot", required=True)
     restore.add_argument("--run-id", required=True)
@@ -446,7 +467,9 @@ def main():
             restore_run(args.snapshot, args.run_id)
     else:
         return 0 if retrieve_run(args.snapshot, args.run_id, args.state,
-                                  {"k": args.k, "rrf-k": args.rrf_k, "merge-gap": args.merge_gap}) else 1
+                                  {"k": args.k, "rrf-k": args.rrf_k, "merge-gap": args.merge_gap},
+                                  {channel: getattr(args, channel + "_weight")
+                                   for channel in ("visual", "speech", "audio")}) else 1
     return 0
 
 
