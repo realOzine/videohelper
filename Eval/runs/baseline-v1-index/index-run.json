@@ -1,0 +1,12 @@
+{
+  "run_id": "baseline-v1",
+  "started_at": "2026-10-25T11:35:29.012373+00:00",
+  "code_revision": "9d10a37411881b862152d2c00183c3e386edf3bd",
+  "model_mode": "real",
+  "status": "stopped_after_reproducible_asr_failure",
+  "stopped_at": "2026-10-25T11:50:56.082630+00:00",
+  "failure_evidence": "asr-diagnostic.json",
+  "reason": "Two independently replayed ASR requests returned HTTP 500: ASR word timestamps are invalid. Evaluation worker stopped; no snapshot accepted.",
+  "ready_videos": 3,
+  "completed_stages": 29
+}
