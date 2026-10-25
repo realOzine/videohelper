@@ -146,3 +146,29 @@ def test_combined_registry_does_not_fall_back_to_fake(monkeypatch):
     assert isinstance(registry.embedders["wemm-2b@r1"], WeMMEmbedder)
     assert isinstance(registry.transcribers["paraformer-zh@r1"], FunASRTranscriber)
     assert registry.spaces().transcribers[0].languages == ["zh"]
+
+
+def test_incomplete_offline_snapshot_never_serves_uninitialized_weights(tmp_path, monkeypatch):
+    import sys
+    from types import SimpleNamespace
+
+    instance = adapter()
+    monkeypatch.setitem(
+        sys.modules,
+        "funasr",
+        SimpleNamespace(
+            AutoModel=lambda **kwargs: pytest.fail(
+                "Model must not load from an incomplete snapshot"
+            ),
+        ),
+    )
+    monkeypatch.setitem(
+        sys.modules,
+        "huggingface_hub",
+        SimpleNamespace(
+            constants=SimpleNamespace(HF_HUB_OFFLINE=True),
+            snapshot_download=lambda **kwargs: str(tmp_path),
+        ),
+    )
+    with pytest.raises(RuntimeError, match="incomplete"):
+        instance.load()

@@ -94,6 +94,15 @@ class FunASRTranscriber:
             )
             for repo, revision in (ASR_MODEL, VAD_MODEL, PUNC_MODEL)
         ]
+        required_files = [
+            ("model.pt", "config.yaml", "configuration.json", "am.mvn", "tokens.json", "seg_dict"),
+            ("model.pt", "config.yaml", "configuration.json", "am.mvn"),
+            ("model.pt", "config.yaml", "configuration.json", "tokens.json"),
+        ]
+        for directory, required in zip(directories, required_files, strict=True):
+            if any(not (Path(directory) / name).is_file() for name in required):
+                # FunASR otherwise skips absent init_param and can serve random weights.
+                raise RuntimeError("Pinned FunASR model snapshot is incomplete")
         self.model = AutoModel(
             model=directories[0],
             model_revision=ASR_MODEL[1],
