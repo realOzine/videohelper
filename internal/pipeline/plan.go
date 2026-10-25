@@ -29,7 +29,8 @@ func ExpandPlan(v library.Video, channels []space.Channel, registry *space.Regis
 		finalDeps = append(finalDeps, "asr")
 	}
 	for _, channel := range channels {
-		if (channel.Name != "visual" || !*v.HasVideo) && (channel.Name != "speech" || !*v.HasAudio) {
+		eligible := channel.Name == "visual" && *v.HasVideo || (channel.Name == "speech" || channel.Name == "audio") && *v.HasAudio
+		if !eligible {
 			continue
 		}
 		dep, timeout := "prepare_media", 3*time.Hour

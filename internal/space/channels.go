@@ -34,6 +34,8 @@ func NewChannels(cfg config.ChannelsConfig) (*Channels, error) {
 			doc, seg = "video", "grid@v1"
 		case "speech":
 			doc, seg = "text", "sentence@v1"
+		case "audio":
+			doc, seg = "audio", "grid@v1"
 		default:
 			return nil, fmt.Errorf("unsupported retrieval channel %q", name)
 		}
@@ -89,7 +91,7 @@ func (c *Channels) Validate(ctx context.Context, r *Registry) error {
 				if !slices.Contains(info.DocInputs, channel.Doc) || !slices.Contains(info.QueryInputs, "text") {
 					return fmt.Errorf("channel %s space %s lacks required inputs", channel.Name, id)
 				}
-				if channel.Doc == "video" && info.MaxSpanMs < 2500 {
+				if (channel.Doc == "video" || channel.Doc == "audio") && info.MaxSpanMs < 2500 {
 					return fmt.Errorf("space %s cannot encode grid@v1 cells", id)
 				}
 				ready, err := index.VectorIndexReady(ctx, r.pool, channel.Name, id)

@@ -25,7 +25,7 @@ func TestExampleLoadsEnvironmentAndChannels(t *testing.T) {
 	if c.ML.QueryTimeout != 5*time.Second || c.Limits.SoftDeletePurgeAfter != 720*time.Hour || c.Import.Timeout != 2*time.Hour {
 		t.Fatal("duration fields were not parsed")
 	}
-	if len(c.Channels) != 2 || c.Channels["visual"].Active[0] != "wemm-2b@r1" || c.Channels["speech"].Doc != "text" || len(c.Import.Platforms["youtube"].Hosts) != 4 {
+	if len(c.Channels) != 3 || c.Channels["visual"].Active[0] != "wemm-2b@r1" || c.Channels["speech"].Doc != "text" || c.Channels["audio"].Active[0] != "clap-htsat-unfused@r1" || len(c.Import.Platforms["youtube"].Hosts) != 4 {
 		t.Fatal("nested channel/platform configuration was lost")
 	}
 	if err := c.Validate(RoleWorker); err != nil {
