@@ -5,6 +5,6 @@ __pycache__/
 .worktrees/
 .runtime/
 bin/
-snapshots/*/database.dump
-snapshots/*/objects/
-runs/*/*.log
+# Keep selected conclusions in baselines/; generated runs and snapshots are disposable.
+snapshots/
+runs/
