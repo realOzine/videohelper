@@ -1,0 +1,196 @@
+{
+  "run": {
+    "run_id": "ablation-v2",
+    "started_at": "2026-10-25T20:23:54.796943+00:00",
+    "code_revision": "1a756fd921aa2ebdab4a5e554776f11f2ace65be",
+    "model_mode": "real",
+    "status": "passed",
+    "build_provenance": {
+      "videohelper": {
+        "sha256": "bf57cf48026ebc8254c837d870928c988b68c12e4f94294c9b115f08e4b99605",
+        "build_revision": "4d2dce9f7fe9b22891b73ab3c78003b4a147acc3"
+      },
+      "evalbridge": {
+        "sha256": "51ec7ff0070c341cfd3a695bb12acb7171110c331c9bd9246473362794e4588a",
+        "build_revision": "4d2dce9f7fe9b22891b73ab3c78003b4a147acc3"
+      }
+    },
+    "elapsed_seconds": 292.81,
+    "snapshot": "snapshots/ablation-v2",
+    "index_sha256": "3e82f81d34918567385f2ede34560dd0cd3dc27895310b4ae4d79a473f8007c2",
+    "object_count": 20,
+    "video_count": 5,
+    "uploads": [
+      {
+        "media_id": "study_zh",
+        "video_id": 1,
+        "elapsed_ms": 108.59
+      },
+      {
+        "media_id": "blockchain_mix",
+        "video_id": 2,
+        "elapsed_ms": 74.13
+      },
+      {
+        "media_id": "story_en",
+        "video_id": 3,
+        "elapsed_ms": 142.92
+      },
+      {
+        "media_id": "vlog_zh",
+        "video_id": 4,
+        "elapsed_ms": 151.66
+      },
+      {
+        "media_id": "landscape_en",
+        "video_id": 5,
+        "elapsed_ms": 108.01
+      }
+    ]
+  },
+  "passed": true,
+  "violations": [],
+  "coverage": [
+    {
+      "video_id": 1,
+      "channel": "audio",
+      "space_id": "clap-htsat-unfused@r1",
+      "seg": "grid@v1",
+      "expected_count": 84,
+      "actual_count": 84,
+      "matched": true
+    },
+    {
+      "video_id": 1,
+      "channel": "speech",
+      "space_id": "wemm-2b@r1",
+      "seg": "sentence@v1",
+      "expected_count": 15,
+      "actual_count": 15,
+      "matched": true
+    },
+    {
+      "video_id": 1,
+      "channel": "visual",
+      "space_id": "wemm-2b@r1",
+      "seg": "grid@v1",
+      "expected_count": 84,
+      "actual_count": 84,
+      "matched": true
+    },
+    {
+      "video_id": 2,
+      "channel": "audio",
+      "space_id": "clap-htsat-unfused@r1",
+      "seg": "grid@v1",
+      "expected_count": 48,
+      "actual_count": 48,
+      "matched": true
+    },
+    {
+      "video_id": 2,
+      "channel": "speech",
+      "space_id": "wemm-2b@r1",
+      "seg": "sentence@v1",
+      "expected_count": 18,
+      "actual_count": 18,
+      "matched": true
+    },
+    {
+      "video_id": 2,
+      "channel": "visual",
+      "space_id": "wemm-2b@r1",
+      "seg": "grid@v1",
+      "expected_count": 48,
+      "actual_count": 48,
+      "matched": true
+    },
+    {
+      "video_id": 3,
+      "channel": "audio",
+      "space_id": "clap-htsat-unfused@r1",
+      "seg": "grid@v1",
+      "expected_count": 44,
+      "actual_count": 44,
+      "matched": true
+    },
+    {
+      "video_id": 3,
+      "channel": "speech",
+      "space_id": "wemm-2b@r1",
+      "seg": "sentence@v1",
+      "expected_count": 16,
+      "actual_count": 16,
+      "matched": true
+    },
+    {
+      "video_id": 3,
+      "channel": "visual",
+      "space_id": "wemm-2b@r1",
+      "seg": "grid@v1",
+      "expected_count": 44,
+      "actual_count": 44,
+      "matched": true
+    },
+    {
+      "video_id": 4,
+      "channel": "audio",
+      "space_id": "clap-htsat-unfused@r1",
+      "seg": "grid@v1",
+      "expected_count": 39,
+      "actual_count": 39,
+      "matched": true
+    },
+    {
+      "video_id": 4,
+      "channel": "speech",
+      "space_id": "wemm-2b@r1",
+      "seg": "sentence@v1",
+      "expected_count": 22,
+      "actual_count": 22,
+      "matched": true
+    },
+    {
+      "video_id": 4,
+      "channel": "visual",
+      "space_id": "wemm-2b@r1",
+      "seg": "grid@v1",
+      "expected_count": 39,
+      "actual_count": 39,
+      "matched": true
+    },
+    {
+      "video_id": 5,
+      "channel": "audio",
+      "space_id": "clap-htsat-unfused@r1",
+      "seg": "grid@v1",
+      "expected_count": 36,
+      "actual_count": 36,
+      "matched": true
+    },
+    {
+      "video_id": 5,
+      "channel": "speech",
+      "space_id": "wemm-2b@r1",
+      "seg": "sentence@v1",
+      "expected_count": 12,
+      "actual_count": 12,
+      "matched": true
+    },
+    {
+      "video_id": 5,
+      "channel": "visual",
+      "space_id": "wemm-2b@r1",
+      "seg": "grid@v1",
+      "expected_count": 36,
+      "actual_count": 36,
+      "matched": true
+    }
+  ],
+  "model_fingerprints": {
+    "wemm-2b@r1": "sha256:10930e4bb624c52978574c4e88d998cd663b7a67455ed33dd34cef2e5f6731c0",
+    "clap-htsat-unfused@r1": "sha256:ed71d672a7feac1f1ded9e5934ae787f8af1716bc101015d5a2b5566c5f35da3",
+    "paraformer-zh@r1": "sha256:8b5293fa83545a547f846c5878a83546b103de2601f844b026bf23d325a95e8f"
+  },
+  "models_config_sha256": "6039b22c73f754d1a2e2fa571c0ba6a851dc6e7daa36594960d446467aee4225"
+}

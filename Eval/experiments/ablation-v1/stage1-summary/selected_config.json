@@ -1,0 +1,76 @@
+{
+  "run_id": "abl01-k5",
+  "baseline_run_id": "abl01-default",
+  "overrides": {
+    "k": 5,
+    "rrf-k": 60,
+    "merge-gap": 1
+  },
+  "fused_weights": {
+    "visual": 1,
+    "speech": 1,
+    "audio": 1
+  },
+  "search_config": {
+    "k": 5,
+    "rrf_k": 60,
+    "merge_gap_cells": 1,
+    "max_limit": 50
+  },
+  "fused_channel_weights": {
+    "multipliers": {
+      "visual": 1,
+      "speech": 1,
+      "audio": 1
+    },
+    "effective": {
+      "visual": 1.0,
+      "speech": 1.0,
+      "audio": 1.0
+    }
+  },
+  "selection_basis": {
+    "query_ids": [
+      "q001",
+      "q002",
+      "q003",
+      "q007",
+      "q008",
+      "q009",
+      "q013",
+      "q014",
+      "q015",
+      "q019",
+      "q020",
+      "q021",
+      "q025",
+      "q026",
+      "q027",
+      "q031",
+      "q032",
+      "q033"
+    ],
+    "mode": "fused",
+    "objective": "mean(jump_hit@1, tiou_0.5_recall@1)",
+    "guardrail": "video_recall@1 and @5 >= baseline on development",
+    "tie_break": "tiou_0.3_recall@1 desc, best_tiou desc, k asc, run_id asc",
+    "ranking": [
+      "abl01-k5",
+      "abl01-only-speech",
+      "abl01-no-speech",
+      "abl01-gap0",
+      "abl01-audio0",
+      "abl01-default",
+      "abl01-rrf100",
+      "abl01-rrf30",
+      "abl01-speech2",
+      "abl01-audio0p25",
+      "abl01-audio0p5",
+      "abl01-rrf10",
+      "abl01-speech0p5",
+      "abl01-visual2"
+    ]
+  },
+  "recommendation": "pending_final_verification",
+  "verification_performed": false
+}
