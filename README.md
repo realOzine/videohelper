@@ -1,0 +1,45 @@
+# VideoHelper
+
+本地视频处理与文字搜索：保留原片音轨，通过 WeMM 编码画面，通过 FunASR 转录后编码文字，按 `visual`、`speech` 两路检索。图片文档编码已提供 ML 接口；搜索输入为文字。设计与契约见 [docs/design.md](docs/design.md) 和 [docs/spec.md](docs/spec.md)。
+
+需要 Go、Python 3.12、uv、FFmpeg/ffprobe 和 Docker Compose。当前真实模型清单使用 Apple Silicon MPS 运行 WeMM，CPU 运行 ASR。以下命令在仓库根目录执行；每个终端先载入 `.env`。
+
+```sh
+cp -n .env.example .env
+set -a
+source .env
+set +a
+make deps-up
+make build
+uv --directory ml sync --frozen --extra wemm --extra asr
+```
+
+启动真实模型服务，保持此终端运行。首次启动下载清单固定版本的权重；已缓存时可额外设置 `HF_HUB_OFFLINE=1`。
+
+```sh
+ML_FAKE=0 ML_MODELS_FILE=models.local.yaml uv --directory ml run --extra wemm --extra asr uvicorn app.main:app --host 127.0.0.1 --port 18080
+```
+
+在另一个已载入 `.env` 的终端初始化数据库、对象桶及向量索引，再启动 worker：
+
+```sh
+bin/videohelper migrate
+bin/videohelper local-init
+bin/videohelper space add visual wemm-2b@r1
+bin/videohelper space add speech wemm-2b@r1
+bin/videohelper worker
+```
+
+在第三个已载入 `.env` 的终端上传、查看阶段进度并搜索。将示例路径和 ID 换成自己的值：
+
+```sh
+bin/videohelper local-upload /path/to/video.mp4
+bin/videohelper local-video 1
+bin/videohelper local-search '如何搜索视频内容'
+```
+
+`local-*` 命令使用数据库管理凭据和固定本地身份，直接调用业务服务。上传按预签名分片地址流式发送；失败时保留上传会话，错误包含视频 ID。`local-video` 只依赖数据库。搜索输出是诊断 JSON，字段为 Go 的 `Moments`、`Skipped` 等名称，视频 ID 为整数；对外 HTTP 接口使用独立的 snake_case、字符串 ID 契约。
+
+HTTP 服务通过 `bin/videohelper -config /path/to/config.yaml api` 启动，配置必须包含有效的 `auth.issuer`、`auth.audience`、`auth.jwks_url`。`/v1/*` 始终校验 JWT；`/healthz`、`/readyz` 无需登录。`local-*` 的固定身份不会用于 HTTP 请求。全局 `-config` 参数放在子命令之前。
+
+用 Ctrl-C 停止 Go/ML 进程，`make deps-down` 停止基础服务并保留数据卷。`make test-go`、`make vet` 检查 Go；Python 常规检查为 `uv --directory ml run pytest` 和 `uv --directory ml run ruff check .`。真实模型与 MinIO 网络测试需要显式 `VH_TEST_REAL_MODELS=1`、`VH_TEST_S3_ENDPOINT`，运行方式见 [测试文件](ml/tests/test_real_models.py)。
