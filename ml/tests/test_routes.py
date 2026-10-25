@@ -1,6 +1,8 @@
 import numpy as np
 import pytest
 
+from app.api.schemas import Transcript
+
 QUERY = {"space": "wemm-2b@r1", "role": "query", "inputs": [{"text": "hello"}]}
 URI = "s3://test/normalized_video.mp4"
 
@@ -112,6 +114,113 @@ def test_transcribe_window_absolute_and_validation(client):
     for change in ({"language": "en"}, {"end_ms": 901000}, {"start_ms": 2000}):
         response = client.post("/v1/transcribe", json={**body, **change})
         assert response.status_code == (422 if change == {"start_ms": 2000} else 400)
+
+
+@pytest.fixture
+def overlapping_transcript():
+    return Transcript.model_validate(
+        {
+            "language": "zh",
+            "duration_ms": 2000,
+            "sentences": [
+                {
+                    "start_ms": 900,
+                    "end_ms": 1600,
+                    "text": " 欢迎使用。",
+                    "words": [
+                        {"w": "欢", "s": 900, "e": 1600},
+                        {"w": "迎", "s": 1000, "e": 1400},
+                        {"w": "使用", "s": 1000, "e": 1200},
+                    ],
+                },
+                {
+                    "start_ms": 1100,
+                    "end_ms": 1500,
+                    "text": "视频助手。 ",
+                    "words": [
+                        {"w": "视频", "s": 1100, "e": 1500},
+                        {"w": "助手", "s": 1200, "e": 1400},
+                    ],
+                },
+            ],
+        }
+    )
+
+
+@pytest.mark.parametrize("equal_sentence_starts", [False, True])
+def test_transcribe_preserves_overlapping_and_contained_output(
+    client, monkeypatch, overlapping_transcript, equal_sentence_starts
+):
+    if equal_sentence_starts:
+        overlapping_transcript.sentences[1].start_ms = overlapping_transcript.sentences[0].start_ms
+    adapter = client.app.state.registry.transcribers["paraformer-zh@r1"]
+    monkeypatch.setattr(adapter, "transcribe", lambda *args: overlapping_transcript)
+    response = client.post(
+        "/v1/transcribe",
+        json={
+            "model": adapter.info.id,
+            "uri": URI,
+            "language": "zh",
+            "start_ms": 900,
+            "end_ms": 2000,
+        },
+    )
+    assert response.status_code == 200, response.text
+    assert response.json() == {
+        "model": adapter.info.id,
+        "fingerprint": adapter.info.fingerprint,
+        **overlapping_transcript.model_dump(),
+    }
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        "sentence_order",
+        "word_order",
+        "cross_sentence_order",
+        "before_sentence",
+        "after_sentence",
+        "zero",
+        "before_window",
+        "after_window",
+    ],
+)
+def test_transcribe_rejects_invalid_overlap_output(
+    client, monkeypatch, overlapping_transcript, fault
+):
+    first, second = overlapping_transcript.sentences
+    if fault == "sentence_order":
+        first.start_ms = first.words[0].s = 1000
+        second.start_ms = 900
+    elif fault == "word_order":
+        first.words[2].s = 950
+    elif fault == "cross_sentence_order":
+        first.words[-1].s = 1150
+    elif fault == "before_sentence":
+        second.words[0].s = 1050
+    elif fault == "after_sentence":
+        second.words[0].e = 1600
+    elif fault == "zero":
+        first.words[-1].e = first.words[-1].s
+    elif fault == "before_window":
+        first.start_ms = first.words[0].s = 800
+    else:
+        first.end_ms = first.words[0].e = 2100
+    adapter = client.app.state.registry.transcribers["paraformer-zh@r1"]
+    monkeypatch.setattr(adapter, "transcribe", lambda *args: overlapping_transcript)
+    response = client.post(
+        "/v1/transcribe",
+        json={
+            "model": adapter.info.id,
+            "uri": URI,
+            "language": "zh",
+            "start_ms": 900,
+            "end_ms": 2000,
+        },
+    )
+    assert response.status_code == 500, response.text
+    assert response.json()["error"]["code"] == "internal"
 
 
 def test_media_failure_does_not_expose_source_error(client):
