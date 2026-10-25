@@ -122,6 +122,10 @@ func (s *Service) Retry(ctx context.Context, workspaceID, videoID int64) error {
 	}
 	var cleanup []error
 	for _, task := range old {
+		if err := ctx.Err(); err != nil {
+			cleanup = append(cleanup, err)
+			break
+		}
 		if err := s.removeTask(task); err != nil {
 			cleanup = append(cleanup, err)
 		}
@@ -230,7 +234,8 @@ func decodeOutput(data []byte) (stageOutput, error) {
 func (s *Service) enqueue(ctx context.Context, tasks []stageTask) error {
 	var errs []error
 	for _, task := range tasks {
-		if err := queue.EnqueueStage(ctx, s.deps.Client, task.payload, task.def.Queue, task.def.Timeout, s.deps.Worker.MaxRetry); err != nil {
+		// Asynq checks exhaustion before IsFailure; reserve one attempt so throttling can always retry.
+		if err := queue.EnqueueStage(ctx, s.deps.Client, task.payload, task.def.Queue, task.def.Timeout, s.deps.Worker.MaxRetry+1); err != nil {
 			errs = append(errs, err)
 		}
 	}

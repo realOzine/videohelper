@@ -32,7 +32,10 @@ DELETE FROM stage_run WHERE video_id = $1;
 
 -- name: ReconcileStages :many
 SELECT s.*, v.workspace_id FROM stage_run s JOIN video v ON v.id = s.video_id
-WHERE s.status IN ('queued', 'running') AND s.updated_at < sqlc.arg(before_time)
+WHERE ((s.status = 'queued' AND s.updated_at < sqlc.arg(before_time)::timestamptz)
+  OR (s.status = 'running' AND s.updated_at + interval '10 minutes'
+      + interval '1 second' * ((s.output->'plan'->>'timeout')::double precision / 1000000000)
+      < sqlc.arg(now_time)::timestamptz))
   AND v.deleted_at IS NULL AND v.status IN ('indexing', 'ready')
 ORDER BY s.updated_at LIMIT 100;
 
@@ -41,3 +44,8 @@ SELECT v.id FROM video v
 WHERE v.status = 'uploading' AND v.source_kind = 'upload' AND v.source_key IS NOT NULL
   AND v.deleted_at IS NULL AND NOT EXISTS (SELECT 1 FROM stage_run s WHERE s.video_id = v.id)
 ORDER BY v.id LIMIT 100;
+
+-- name: ListStages :many
+SELECT s.* FROM stage_run s JOIN video v ON v.id = s.video_id
+WHERE s.video_id = $1 AND v.workspace_id = $2 AND v.deleted_at IS NULL
+ORDER BY s.stage;

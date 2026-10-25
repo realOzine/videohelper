@@ -26,7 +26,6 @@ import (
 	"github.com/ozine/videohelper/internal/platform/queue"
 	"github.com/ozine/videohelper/internal/space"
 	"github.com/ozine/videohelper/migrations"
-	"github.com/pressly/goose/v3"
 	"github.com/redis/go-redis/v9"
 )
 
@@ -53,11 +52,7 @@ func pipelineFixture(t *testing.T) (context.Context, *Service) {
 	t.Cleanup(func() {
 		cleanup, stop := context.WithTimeout(context.Background(), 15*time.Second)
 		defer stop()
-		provider, err := goose.NewProvider(goose.DialectPostgres, sqldb, os.DirFS("../../migrations"))
-		if err == nil {
-			_, err = provider.DownTo(cleanup, 0)
-		}
-		if err != nil {
+		if err := migrations.DownTo(cleanup, sqldb, 0); err != nil {
 			t.Error(err)
 		}
 	})
