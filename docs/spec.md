@@ -479,6 +479,8 @@ func PrincipalFrom(ctx context.Context) (Principal, bool)
 
 #### library
 
+上传会话持久化在 `video_upload`（迁移 `0002`）：`video_id`、`object_key`、`upload_id`、`size_bytes`、`part_size`。完成上传核对所属工作区、会话凭据、分片集合及对象实际字节数；S3 调用在事务外执行。成功后才写入 `source_key`，未成功启动的上传与恢复由 R4 补偿。
+
 - **职责**：项目、视频的业务规则与存取；上传、导入的登记；范围解析。
 - **不负责**：处理视频（pipeline 负责）、检索（search 负责）。
 
@@ -581,7 +583,7 @@ type Info struct {
 func (r *Registry) Sync(ctx context.Context) error             // 启动时执行，之后每 5 分钟刷新
 func (r *Registry) Get(id string) (Info, bool)
 func (r *Registry) Resolve(id string) (endpoint string, ok bool) // 传给 mlclient
-func (r *Registry) Transcriber() (id, endpoint string, ok bool)
+func (r *Registry) Transcriber() (info mlclient.TranscriberInfo, endpoint string, ok bool)
 
 type Channel struct {
     Name   string   // visual | speech；audio 暂缓
@@ -593,7 +595,7 @@ type Channel struct {
 }
 func (c *Channels) List() []Channel
 func (c *Channels) Get(name string) (Channel, bool)
-func (c *Channels) Validate(r *Registry) error
+func (c *Channels) Validate(ctx context.Context, r *Registry) error
 ```
 
 `Sync` 对每个 space 的处理：
@@ -2238,6 +2240,10 @@ flowchart TB
 
 ### 10.3 `models.yaml`
 
+当前 `ml/models.yaml` 是显式 fake 清单（仅 `ML_FAKE=1`）；真实 WeMM 使用 `ml/models.wemm.yaml`，以仓库实际清单为准。已固定官方 `tencent/WeMM-Embedding-2B` revision `bbd6cd4bf52cfc6716f752a2df80b2706720bd95`、transformers 5.2.0，检查远程模型代码 SHA256 后加载。全维输出为 2048，当前按官方 MRL 截到 1024 后再次归一化，维度参与 fingerprint。查询只接受文字；文档支持文字、视频和图片。
+
+本地使用 MPS float16、每片段均匀抽 4 帧，按官方 processor 保持宽高比缩放；图片像素范围 65536–262144，视频每帧 4096–262144，输入 token 上限 4096，单批最多 32 项、逐项推理控制内存。运行入口使用 `uv sync --extra wemm`，设置 `ML_FAKE=0 ML_MODELS_FILE=models.wemm.yaml`。下方为整体模型配置形态，真实参数以固定清单为准。
+
 ```yaml
 # 本实例加载哪些模型。id 就是契约里的 space id（或转录模型 id）。
 models:
@@ -2387,9 +2393,11 @@ class Transcriber(Protocol):
 ```text
 fingerprint = "sha256:" + sha256(JSON，按键排序（{
     "adapter":    "wemm",
-    "weights":    "Tencent/WeMM-Embedding-2B",
+    "weights":    "tencent/WeMM-Embedding-2B",
     "revision":   "<commit sha>",
     "dtype":      "float16",
+    "dim":        1024,
+    "metric":     "cosine",
     "preprocess": { ... }
 }))
 ```
@@ -2414,7 +2422,7 @@ fingerprint = "sha256:" + sha256(JSON，按键排序（{
 | 用途 | 依赖 |
 |---|---|
 | Web | fastapi、uvicorn、pydantic v2 |
-| 模型 | torch（CUDA 版）、transformers、funasr（已定）；线上不在运行时从 HF、ModelScope 下载，权重从 S3 来（提议，10.3 节） |
+| 模型 | 本地 torch（MPS/CPU）、固定 transformers，FunASR 按可选依赖安装；线上不在运行时从 HF、ModelScope 下载，权重从 S3 来（提议，10.3 节） |
 | 媒体 | av（PyAV）、numpy |
 | S3 | boto3 |
 | 配置 | pyyaml |

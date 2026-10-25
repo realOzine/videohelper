@@ -42,14 +42,14 @@ func TestMigrationAndDatabaseIntegration(t *testing.T) {
 	t.Cleanup(func() {
 		cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cleanupCancel()
-		if err := migrations.Down(cleanupCtx, sqldb); err != nil {
+		if err := migrations.DownTo(cleanupCtx, sqldb, 0); err != nil {
 			t.Error(err)
 		}
 	})
 	if err := migrations.Up(ctx, sqldb); err != nil {
 		t.Fatalf("idempotent up: %v", err)
 	}
-	if err := sqldb.QueryRowContext(ctx, "SELECT count(*) FROM pg_tables WHERE schemaname='public' AND tablename <> 'goose_db_version'").Scan(&count); err != nil || count != 11 {
+	if err := sqldb.QueryRowContext(ctx, "SELECT count(*) FROM pg_tables WHERE schemaname='public' AND tablename <> 'goose_db_version'").Scan(&count); err != nil || count != 12 {
 		t.Fatalf("business table count = %d, error = %v", count, err)
 	}
 	pool, err := db.Open(ctx, dsn, 2)
@@ -91,7 +91,7 @@ func TestMigrationAndDatabaseIntegration(t *testing.T) {
 		t.Fatal("negative span start was accepted")
 	}
 	pool.Close()
-	if err := migrations.Down(ctx, sqldb); err != nil {
+	if err := migrations.DownTo(ctx, sqldb, 0); err != nil {
 		t.Fatal(err)
 	}
 	if err := sqldb.QueryRowContext(ctx, "SELECT count(*) FROM pg_tables WHERE schemaname='public' AND tablename <> 'goose_db_version'").Scan(&count); err != nil || count != 0 {

@@ -29,3 +29,13 @@ func Down(ctx context.Context, db *sql.DB) error {
 	_, err = p.Down(ctx)
 	return err
 }
+
+// DownTo rolls back to an explicit migration version; integration tests use zero on their empty disposable databases.
+func DownTo(ctx context.Context, db *sql.DB, version int64) error {
+	p, err := goose.NewProvider(goose.DialectPostgres, db, files)
+	if err != nil {
+		return err
+	}
+	_, err = p.DownTo(ctx, version)
+	return err
+}
