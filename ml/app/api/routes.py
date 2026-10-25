@@ -3,7 +3,7 @@ from contextlib import ExitStack
 import numpy as np
 from fastapi import APIRouter, Depends, Request
 
-from app.adapters.base import MediaInput, TextInput
+from app.adapters.base import ImageInput, MediaInput, TextInput
 from app.api.auth import authenticate
 from app.api.errors import MLError
 from app.api.schemas import (
@@ -54,11 +54,16 @@ async def embed(body: EmbedRequest, request: Request):
                 if item.text is not None:
                     inputs.append(TextInput(item.text))
                     continue
-                media = item.video or item.audio
+                media = item.video or item.audio or item.image
                 if media.uri not in files:
-                    path = stack.enter_context(request.app.state.cache.acquire(media.uri))
-                    files[media.uri] = path, duration_ms(path)
-                path, duration = files[media.uri]
+                    files[media.uri] = stack.enter_context(
+                        request.app.state.cache.acquire(media.uri)
+                    )
+                path = files[media.uri]
+                if item.image is not None:
+                    inputs.append(ImageInput(path))
+                    continue
+                duration = duration_ms(path)
                 end_ms = min(media.end_ms, duration)
                 if media.start_ms >= end_ms:
                     raise MLError(422, "media_unreadable", "No media in requested window")

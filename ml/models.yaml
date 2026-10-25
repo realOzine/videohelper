@@ -9,7 +9,7 @@ models:
     dim: 1024
     metric: cosine
     query_inputs: [text]
-    doc_inputs: [video, text]
+    doc_inputs: [video, text, image]
     max_batch: 64
     max_span_ms: 30000
     max_concurrency: 1

@@ -13,6 +13,11 @@ class TextInput:
 
 
 @dataclass(frozen=True)
+class ImageInput:
+    path: Path
+
+
+@dataclass(frozen=True)
 class MediaInput:
     kind: Literal["video", "audio"]
     path: Path
@@ -24,7 +29,9 @@ class Embedder(Protocol):
     info: SpaceInfo
 
     def load(self) -> None: ...
-    def embed(self, inputs: list[TextInput | MediaInput], role: Role) -> np.ndarray: ...
+    def embed(
+        self, inputs: list[TextInput | MediaInput | ImageInput], role: Role
+    ) -> np.ndarray: ...
 
 
 class Transcriber(Protocol):

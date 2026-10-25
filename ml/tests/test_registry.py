@@ -21,7 +21,7 @@ def test_fingerprint_is_stable_and_fake_is_distinct():
 
 
 def test_fake_must_be_explicit_and_settings_require_token(tmp_path):
-    with pytest.raises(ValueError, match="ML_FAKE=1"):
+    with pytest.raises(ValueError, match="reviewed, pinned"):
         Registry(Settings.models_file, fake=False)
     with pytest.raises(ValueError, match="ML_INTERNAL_TOKEN"):
         Settings(token="")
