@@ -65,6 +65,47 @@ func (q *Queries) InsertStage(ctx context.Context, arg InsertStageParams) error 
 	return err
 }
 
+const listStages = `-- name: ListStages :many
+SELECT s.video_id, s.stage, s.version, s.status, s.required, s.attempt, s.error, s.output, s.updated_at FROM stage_run s JOIN video v ON v.id = s.video_id
+WHERE s.video_id = $1 AND v.workspace_id = $2 AND v.deleted_at IS NULL
+ORDER BY s.stage
+`
+
+type ListStagesParams struct {
+	VideoID     int64
+	WorkspaceID int64
+}
+
+func (q *Queries) ListStages(ctx context.Context, arg ListStagesParams) ([]StageRun, error) {
+	rows, err := q.db.Query(ctx, listStages, arg.VideoID, arg.WorkspaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []StageRun{}
+	for rows.Next() {
+		var i StageRun
+		if err := rows.Scan(
+			&i.VideoID,
+			&i.Stage,
+			&i.Version,
+			&i.Status,
+			&i.Required,
+			&i.Attempt,
+			&i.Error,
+			&i.Output,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const lockStage = `-- name: LockStage :one
 SELECT video_id, stage, version, status, required, attempt, error, output, updated_at FROM stage_run WHERE video_id = $1 AND stage = $2 AND version = $3 FOR UPDATE
 `
@@ -129,10 +170,18 @@ func (q *Queries) ReadStage(ctx context.Context, arg ReadStageParams) (StageRun,
 
 const reconcileStages = `-- name: ReconcileStages :many
 SELECT s.video_id, s.stage, s.version, s.status, s.required, s.attempt, s.error, s.output, s.updated_at, v.workspace_id FROM stage_run s JOIN video v ON v.id = s.video_id
-WHERE s.status IN ('queued', 'running') AND s.updated_at < $1
+WHERE ((s.status = 'queued' AND s.updated_at < $1::timestamptz)
+  OR (s.status = 'running' AND s.updated_at + interval '10 minutes'
+      + interval '1 second' * ((s.output->'plan'->>'timeout')::double precision / 1000000000)
+      < $2::timestamptz))
   AND v.deleted_at IS NULL AND v.status IN ('indexing', 'ready')
 ORDER BY s.updated_at LIMIT 100
 `
+
+type ReconcileStagesParams struct {
+	BeforeTime pgtype.Timestamptz
+	NowTime    pgtype.Timestamptz
+}
 
 type ReconcileStagesRow struct {
 	VideoID     int64
@@ -147,8 +196,8 @@ type ReconcileStagesRow struct {
 	WorkspaceID int64
 }
 
-func (q *Queries) ReconcileStages(ctx context.Context, beforeTime pgtype.Timestamptz) ([]ReconcileStagesRow, error) {
-	rows, err := q.db.Query(ctx, reconcileStages, beforeTime)
+func (q *Queries) ReconcileStages(ctx context.Context, arg ReconcileStagesParams) ([]ReconcileStagesRow, error) {
+	rows, err := q.db.Query(ctx, reconcileStages, arg.BeforeTime, arg.NowTime)
 	if err != nil {
 		return nil, err
 	}
