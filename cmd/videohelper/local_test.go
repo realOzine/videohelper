@@ -24,7 +24,7 @@ func TestLocalCommandArguments(t *testing.T) {
 		args []string
 		role config.Role
 	}{
-		{[]string{"worker"}, config.RoleWorker}, {[]string{"local-upload", "a b.mp4"}, config.RoleWorker},
+		{[]string{"api"}, config.RoleAPI}, {[]string{"worker"}, config.RoleWorker}, {[]string{"local-upload", "a b.mp4"}, config.RoleWorker},
 		{[]string{"local-search", "red screen"}, config.RoleEval}, {[]string{"local-video", "42"}, config.RoleMigrate},
 	} {
 		role, err := commandRole(item.args)
