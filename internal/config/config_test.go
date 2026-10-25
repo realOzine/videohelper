@@ -25,24 +25,20 @@ func TestExampleLoadsEnvironmentAndChannels(t *testing.T) {
 	if c.ML.QueryTimeout != 5*time.Second || c.Limits.SoftDeletePurgeAfter != 720*time.Hour || c.Import.Timeout != 2*time.Hour {
 		t.Fatal("duration fields were not parsed")
 	}
-	if len(c.Channels) != 3 || c.Channels["visual"].Active[0] != "wemm-2b@r1" || len(c.Import.Platforms["youtube"].Hosts) != 4 {
+	if len(c.Channels) != 2 || c.Channels["visual"].Active[0] != "wemm-2b@r1" || c.Channels["speech"].Doc != "text" || len(c.Import.Platforms["youtube"].Hosts) != 4 {
 		t.Fatal("nested channel/platform configuration was lost")
 	}
 	if err := c.Validate(RoleWorker); err != nil {
 		t.Fatalf("worker must not require auth or LLM credentials: %v", err)
 	}
 	if err := c.Validate(RoleAPI); err == nil {
-		t.Fatal("API must require auth and LLM credentials")
+		t.Fatal("API must require auth credentials")
 	}
 	c.Auth = AuthConfig{Issuer: "https://auth.example.com", Audience: "videohelper", JWKSURL: "https://auth.example.com/jwks"}
-	c.LLM.APIKey = "llm-secret"
-	c.LLM.VisionModel = ""
+	c.LLM = LLMConfig{}
+	c.Database.ADKSchema = ""
 	if err := c.Validate(RoleAPI); err != nil {
-		t.Fatalf("disabled inspection must not require a vision model: %v", err)
-	}
-	c.LLM.InspectClipEnabled = true
-	if err := c.Validate(RoleAPI); err == nil {
-		t.Fatal("enabled inspection must require a vision model")
+		t.Fatalf("core search API must run without LLM or ADK configuration: %v", err)
 	}
 	c.Worker.WorkspaceGPULimit = c.Worker.GPUConcurrency
 	if err := c.Validate(RoleWorker); err == nil {

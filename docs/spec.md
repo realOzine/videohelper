@@ -7,6 +7,10 @@
 
 **范围**：Go 后端、Python 模型服务、数据库、所有接口，以及模块之间怎么交互。前端暂缓，只在[第 16 章](#16-前端暂缓)列出它依赖的接口。
 
+## 当前实施范围（2026-10-25）
+
+先在本地跑通「视频 → 标准化视频 → WeMM 画面编码 + ASR → WeMM 转录文本编码 → 文字检索 → 时间片段与证据」。WeMM-Embedding-2B 统一支持视频、文字、图片编码；图片是编码输入，本轮搜索入口只接受文字。启用 `visual` 与 `speech`，保留音轨供 ASR 使用，不启用声音召回通道 `audio` 或 CLAP。前端、LLM/Agent、AWS 部署与验收暂缓；下文相关章节保留为后续设计，不构成本轮实现要求。真实模型验证与显式 fake 的协议/流程测试分开。
+
 **写到哪一层**：写到「目录与文件职责、类型与函数签名、表结构、协议字段、处理步骤」。不写函数实现。签名用来说明模块边界，实现时可以调整名字，但边界和职责不变。
 
 **标注约定**：
@@ -43,7 +47,7 @@
 6. [异步任务](#6-异步任务)
 7. [S3 存储布局](#7-s3-存储布局)
 8. [检索内核](#8-检索内核)
-9. [Agent](#9-agent)
+9. [Agent（暂缓）](#9-agent暂缓)
 10. [Python 模型服务](#10-python-模型服务)
 11. [换模型与评估](#11-换模型与评估)
 12. [安全](#12-安全)
@@ -580,8 +584,8 @@ func (r *Registry) Resolve(id string) (endpoint string, ok bool) // 传给 mlcli
 func (r *Registry) Transcriber() (id, endpoint string, ok bool)
 
 type Channel struct {
-    Name   string   // visual | speech | audio
-    Doc    string   // video | audio | text
+    Name   string   // visual | speech；audio 暂缓
+    Doc    string   // video | text
     Seg    string   // grid@v1 | sentence@v1
     Weight float64
     Active []string // 查询用
@@ -752,7 +756,7 @@ type Query struct {
     Text           string
     Scope          library.Scope
     TimeRange      *timeline.Span
-    ChannelWeights map[string]float64 // visual / speech / audio
+    ChannelWeights map[string]float64 // visual / speech
     ChannelQueries map[string]string  // 为某个通道单独指定查询文字
     Limit          int
     // 只给 eval 用：
@@ -860,7 +864,6 @@ server:
 database:
   url_env: VH_DB_URL               # 环境变量名：postgres://...
   max_conns: 20
-  adk_schema: adk                  # ADK 会话表放在单独的 schema，与业务表隔离（已定）
 
 redis:
   addr_env: VH_REDIS_ADDR
@@ -885,16 +888,6 @@ ml:
   transcribe_chunk_ms: 600000      # 转录分段调用（已定）：每段 10 分钟
   transcribe_overlap_ms: 30000     # 每段前后各多取 30 秒，保证句子不被切断
   transcribe_timeout: 10m          # 每段的超时
-
-llm:
-  base_url: https://api.deepseek.com   # 以后改成 LLM gateway 的地址
-  api_key_env: VH_LLM_API_KEY
-  chat_model: deepseek-flash
-  vision_model: deepseek-flash
-  thinking: false                      # 首版用非思考模式（参数待验证）
-  max_tool_calls_per_turn: 6
-  turn_timeout: 90s
-  inspect_clip_enabled: false          # 看图复核（见设计文档问题 9）
 
 worker:
   cpu_concurrency: 8
@@ -960,12 +953,6 @@ channels:
     seg: sentence@v1
     weight: 1.0
     active: [wemm-2b@r1]
-    shadow: []
-  audio:
-    doc: audio
-    seg: grid@v1
-    weight: 1.0
-    active: [clap-htsat@r1]
     shadow: []
 ```
 
@@ -1604,7 +1591,7 @@ SSE 事件：
 - **核心原则**：
   - 请求里只出现 space id、模型 id、S3 地址和时间段。
   - Python 不知道工作区，也不知道数据库 id。
-  - Python 不连数据库、不碰队列，只读 S3 上的标准化视频和模型权重。
+  - Python 不连数据库、不碰队列，读取 S3 上的标准化视频、编码图片及模型权重。
 
 ### 5.2 `GET /v1/spaces`
 
@@ -1619,20 +1606,10 @@ Python 报告本实例加载的向量空间和转录模型。Go 启动时调用�
       "dim": 1024,
       "metric": "cosine",
       "query_inputs": ["text"],
-      "doc_inputs": ["video", "text"],
+      "doc_inputs": ["video", "text", "image"],
       "max_span_ms": 30000,          // 视频、音频输入的单段最长时长（待验证）
       "max_batch": 64,               // 单次请求最多多少个 input
       "fingerprint": "sha256:ab12…"
-    },
-    {
-      "id": "clap-htsat@r1",
-      "dim": 512,
-      "metric": "cosine",
-      "query_inputs": ["text"],
-      "doc_inputs": ["audio"],
-      "max_span_ms": 10000,
-      "max_batch": 64,
-      "fingerprint": "sha256:cd34…"
     }
   ],
   "transcribers": [
@@ -1654,7 +1631,8 @@ Python 报告本实例加载的向量空间和转录模型。Go 启动时调用�
   "role": "document",                                   // query | document
   "inputs": [
     { "video": { "uri": "s3://videohelper/workspaces/1/videos/42/normalized_video.mp4", "start_ms": 0, "end_ms": 2500 } },
-    { "text": "接下来我们看一下滚动更新是怎么做的" }
+    { "text": "接下来我们看一下滚动更新是怎么做的" },
+    { "image": { "uri": "s3://videohelper/encoding/sample.jpg" } }
   ]
 }
 // 200
@@ -1662,7 +1640,7 @@ Python 报告本实例加载的向量空间和转录模型。Go 启动时调用�
   "space": "wemm-2b@r1",
   "fingerprint": "sha256:ab12…",
   "dim": 1024,
-  "vectors": [ [0.0123, -0.0456, …], [ … ] ]            // 顺序与 inputs 一致
+  "vectors": [ [0.0123, -0.0456, …], [ … ], [ … ] ]    // 顺序与 inputs 一致
 }
 ```
 
@@ -1670,9 +1648,9 @@ Python 报告本实例加载的向量空间和转录模型。Go 启动时调用�
 
 | 规则 | 不满足时 |
 |---|---|
-| 每个 input 有且只有 `text`、`video`、`audio` 之一 | 400 `invalid_input` |
+| 每个 input 有且只有 `text`、`video`、`image` 之一；`audio` 为保留协议类型，本轮无可用编码空间 | 400 `invalid_input` |
 | `role=query` 时 input 类型必须在 `query_inputs` 里；`role=document` 时必须在 `doc_inputs` 里 | 400 |
-| `0 ≤ start_ms < end_ms`，且 `end_ms - start_ms ≤ max_span_ms` | 400 |
+| 视频输入满足 `0 ≤ start_ms < end_ms`，且 `end_ms - start_ms ≤ max_span_ms`；图片仅有 `uri` | 400 |
 | `end_ms` 超过媒体时长 | 截到媒体结尾，不报错 |
 | inputs 数量 ≤ `max_batch` | 400 |
 | space 不在本实例 | 404 `unknown_space` |
@@ -1702,10 +1680,10 @@ Python 报告本实例加载的向量空间和转录模型。Go 启动时调用�
   "duration_ms": 3480000,
   "sentences": [
     {
-      "start_ms": 12300,
-      "end_ms": 16800,
+      "start_ms": 582300,
+      "end_ms": 586800,
       "text": "接下来我们看一下滚动更新是怎么做的",
-      "words": [ { "w": "接下来", "s": 12300, "e": 12900 }, { "w": "我们", "s": 12900, "e": 13100 } ]
+      "words": [ { "w": "接下来", "s": 582300, "e": 582900 }, { "w": "我们", "s": 582900, "e": 583100 } ]
     }
   ]
 }
@@ -1830,7 +1808,7 @@ sequenceDiagram
 | `prepare_media` | cpu | probe | 总是 | S3 原片 | S3 `normalized_video.mp4`、`sprites/*.jpg`；`video.normalized_video_key`、`video.thumbs` | 3 小时 | 是 |
 | `asr` | gpu | prepare_media | `has_audio` | 标准化视频 | S3 `raw/asr-{model}/chunk-{i}.json`（每段一个）；`text_span` | 2 小时 | 是 |
 | `embed:visual:{space}` | gpu；shadow 空间走 gpu_low | prepare_media | `has_video`；每个 active 和 shadow 空间一个 | 标准化视频 | `embedding`（visual） | 3 小时 | 只有 active 的是 |
-| `embed:audio:{space}` | gpu；shadow 空间走 gpu_low | prepare_media | `has_audio`；同上 | 标准化视频 | `embedding`（audio） | 3 小时 | 只有 active 的是 |
+| `embed:audio:{space}`（暂缓，不生成） | gpu；shadow 空间走 gpu_low | prepare_media | `has_audio`；同上 | 标准化视频 | `embedding`（audio） | 3 小时 | 只有 active 的是 |
 | `embed:speech:{space}` | gpu；shadow 空间走 gpu_low | asr | `has_audio`；同上 | `text_span` | `embedding`（speech） | 1 小时 | 只有 active 的是 |
 | `finalize` | cpu | prepare_media 和所有必需的阶段 | 总是 | `stage_run` | `video.status = ready`；计量 | 1 分钟 | — |
 
@@ -2059,7 +2037,7 @@ Redis 里没有任何不能丢的数据。Redis 清空后，reconciler 会根据
 
 ---
 
-## 9. Agent
+## 9. Agent（暂缓）
 
 ### 9.1 组成
 
@@ -2221,8 +2199,7 @@ ml/
 │   ├── adapters/
 │   │   ├── __init__.py
 │   │   ├── base.py         # 接口定义：Embedder、Transcriber；输入类型 TextInput、MediaInput；SpaceInfo
-│   │   ├── wemm.py         # WeMM：文本、视频；查询指令前缀、每段抽帧数、分辨率、批量推理
-│   │   ├── clap.py         # CLAP：文本、音频；48kHz 单声道；不足 10 秒的片段按模型要求补齐
+│   │   ├── wemm.py         # WeMM：文本、视频、图片；查询指令前缀、每段抽帧数、分辨率、批量推理
 │   │   ├── funasr.py       # ASR（阿里 FunASR，已定）：中文识别 + 语音活动检测 + 标点分句，输出句子和逐字时间戳
 │   │   └── fake.py         # 假模型：输入的 hash → 确定性向量；固定的转录结果；用于测试和没有 GPU 的本地开发
 │   └── media/
@@ -2267,7 +2244,7 @@ models:
   - id: wemm-2b@r1
     kind: embedder                 # embedder | transcriber
     adapter: wemm                  # 对应 adapters/wemm.py
-    weights: Tencent/WeMM-Embedding-2B   # 上游仓库名（以实际为准）；同步脚本按它和 revision 把权重拷到 S3 的 models/
+    weights: tencent/WeMM-Embedding-2B   # 上游仓库名（以实际为准）；同步脚本按它和 revision 把权重拷到 S3 的 models/
     revision: "<commit sha>"       # 必须钉死版本；fingerprint 依赖它
     device: cuda:0
     dtype: float16
@@ -2279,20 +2256,6 @@ models:
       frames_per_clip: 8
       image_size: 448
       query_instruction: ""        # 查询要加的指令前缀（如果模型要求）
-
-  - id: clap-htsat@r1
-    kind: embedder
-    adapter: clap
-    weights: laion/clap-htsat-unfused
-    revision: "<commit sha>"
-    device: cuda:0
-    dtype: float32
-    max_batch: 64
-    max_concurrency: 1
-    queue_limit: 64
-    max_span_ms: 10000
-    preprocess:
-      sample_rate: 48000
 
   - id: paraformer-zh@r1
     kind: transcriber
@@ -2343,10 +2306,14 @@ class SpaceInfo(BaseModel):
     max_batch: int
     fingerprint: str
 
+@dataclass(frozen=True)
+class ImageInput:
+    path: Path
+
 class Embedder(Protocol):
     info: SpaceInfo
     def load(self) -> None: ...                     # 启动时加载权重
-    def embed(self, inputs: list[TextInput | MediaInput], role: Role) -> np.ndarray: ...
+    def embed(self, inputs: list[TextInput | MediaInput | ImageInput], role: Role) -> np.ndarray: ...
     # 返回形状 (len(inputs), dim) 的 float32；metric=cosine 时已做 L2 归一化
 
 class Word(BaseModel):
@@ -2381,7 +2348,7 @@ class Transcriber(Protocol):
 **`/v1/embed`**：
 
 1. `routes.embed`：按 `registry.get(space).info` 校验 input 类型、时间段、数量。不通过就返回 400 或 404。
-2. 对每个 video、audio 输入：`cache.fetch(uri)` 拿到本地路径。多个 input 引用同一个 URI 时只下载一次。
+2. 对每个 video、image 输入：`cache.fetch(uri)` 拿到本地路径。多个 input 引用同一个 URI 时只下载一次。
 3. `gate.run(space, role, 推理函数)`：`role=query` 走这个模型的查询闸门，`role=document` 走批量闸门（提议，10.7 节）。等待队列满了就抛 Busy，返回 503；从队列出来时已经超过 `X-Timeout-Ms`，就直接返回 504，不推理。
 4. 推理函数在线程池里执行 `adapter.embed(inputs, role)`。adapter 内部调用 `media.video.sample_frames` 或 `media.audio.load` 解码，然后批量推理。
 5. 检查结果形状，转成列表，带上 fingerprint 返回。
@@ -2408,8 +2375,10 @@ class Transcriber(Protocol):
 
 ### 10.7 并发与背压
 
+当前真实 WeMM 的模型实现会修改共享推理状态，查询与文档必须共用一个串行闸门；只有验证 adapter 可并发调用后才启用下述查询独立闸门。
+
 - 每个模型一个闸门：同时最多 `max_concurrency` 个推理，最多 `queue_limit` 个请求排队，再多就立刻返回 503，并带 `Retry-After: 2`。
-- **查询单独一个小闸门**（提议）：embedder 另有一个只给 `role=query` 用的闸门（`models.yaml` 里的 `query_concurrency`、`query_queue_limit`，初始 1 和 8），和批量编码共用同一份权重，但不排在批量编码后面。否则索引一忙，搜索的查询编码就会超过 5 秒的超时。代价是查询和批量编码会同时用 GPU，批量编码会慢一点；文本查询估计只要几十毫秒，影响很小。前提是 adapter 的模型能被两个线程同时调用；不能的话，退回到同一个闸门里让查询优先。
+- **查询单独一个小闸门**（后续可选）：embedder 另有一个只给 `role=query` 用的闸门（`models.yaml` 里的 `query_concurrency`、`query_queue_limit`，初始 1 和 8），和批量编码共用同一份权重，但不排在批量编码后面。否则索引一忙，搜索的查询编码就会超过 5 秒的超时。代价是查询和批量编码会同时用 GPU，批量编码会慢一点；文本查询估计只要几十毫秒，影响很小。前提是 adapter 的模型能被两个线程同时调用；不能的话，退回到同一个闸门里让查询优先。
 - 推理在线程池里跑，不阻塞事件循环。PyTorch 的 CUDA 计算会释放 GIL，所以用线程就够了。
 - 背压一路传回 Go：Go 收到 503 后按 `Retry-After` 退避；还不行就返回 `ErrThrottled`，交给 Asynq 稍后重试，不计入失败次数（5.6 节）。GPU 忙的时候，任务只是排队变慢，不会失败。
 
@@ -2560,28 +2529,27 @@ fused    (active)       0.51      0.80      0.88       0.63   —
 
 ### 14.1 docker compose（`deploy/docker-compose.yml`）
 
-| 服务 | 镜像 | 说明 |
+当前 compose 只启动本地基础服务，端口均绑定 `127.0.0.1`。Go 与 Python 进程在宿主机运行，便于使用本机 MPS/CPU。
+
+| 服务 | 镜像 | 本机端口 |
 |---|---|---|
-| `postgres` | 现成镜像，不自建（已定），用 pgvector 官方镜像 `pgvector/pgvector` | 端口 5432 |
-| `redis` | `redis:7` | 端口 6379 |
-| `minio` | `minio/minio` | 端口 9000/9001；启动时创建 bucket |
-| `ml` | `ml/Dockerfile` | 本地默认 `ML_FAKE=1`，不需要 GPU；有 GPU 时关掉 |
-| `migrate` | 根目录 `Dockerfile`，子命令 `migrate` | 先于 api、worker 执行一次 |
-| `api` | 同上，子命令 `api` | 端口 8080 |
-| `worker` | 同上，子命令 `worker` | — |
+| `postgres` | `pgvector/pgvector:pg16` | 55432 |
+| `redis` | `redis:7-alpine` | 56379 |
+| `minio` | `deploy/minio.Dockerfile` 从固定官方源码版本构建 | 59000 / 59001 |
 
-这套 compose 同时也是集成测试环境（已定）。
+MinIO 源码固定为 `v0.0.0-20251015172955-9e49d5e7a648`。本地默认凭证仅用于本机测试；可通过 `VH_LOCAL_DB_PASSWORD`、`VH_LOCAL_S3_USER`、`VH_LOCAL_S3_PASSWORD` 覆盖。`deps-down` 保留数据库和对象存储卷。
 
-### 14.2 Makefile 目标（可选）
+### 14.2 Makefile 目标
 
 | 目标 | 作用 |
 |---|---|
-| `make up` / `make down` | 启动 / 停止 compose |
-| `make test` | Go 测试 + Python 测试 |
-| `make lint` | go vet、staticcheck、ruff |
-| `make migrate` | 执行迁移 |
+| `make deps-up` / `make deps-down` | 启动 / 停止本地基础服务 |
+| `make test-go` | 已实现 Go 包的 race 测试，排除 `model-test/` |
+| `make vet` / `make fmt` | Go 静态检查 / 格式化 |
+| `cd ml && uv run pytest` | Python 协议与 fake 测试 |
+| `cd ml && uv run ruff check .` | Python 静态检查 |
 
-### 14.3 AWS 资源（提议）
+### 14.3 AWS 资源（暂缓）
 
 | 组件 | AWS 资源 |
 |---|---|
@@ -2593,7 +2561,7 @@ fused    (active)       0.51      0.80      0.88       0.63   —
 | 文件 | S3 |
 | 入口 | ALB + HTTPS |
 
-### 14.4 发布流程（GitHub Actions）
+### 14.4 发布流程（GitHub Actions，暂缓）
 
 代码放在私有 GitHub 仓库，用 GitHub Actions 自动部署到 AWS（已定）。
 

@@ -6,7 +6,6 @@ server:
 database:
   url_env: VH_DB_URL               # 环境变量名：postgres://...
   max_conns: 20
-  adk_schema: adk                  # ADK 会话表放在单独的 schema，与业务表隔离（已定）
 
 redis:
   addr_env: VH_REDIS_ADDR
@@ -31,16 +30,6 @@ ml:
   transcribe_chunk_ms: 600000      # 转录分段调用（已定）：每段 10 分钟
   transcribe_overlap_ms: 30000     # 每段前后各多取 30 秒，保证句子不被切断
   transcribe_timeout: 10m          # 每段的超时
-
-llm:
-  base_url: https://api.deepseek.com   # 以后改成 LLM gateway 的地址
-  api_key_env: VH_LLM_API_KEY
-  chat_model: deepseek-flash
-  vision_model: deepseek-flash
-  thinking: false                      # 首版用非思考模式（参数待验证）
-  max_tool_calls_per_turn: 6
-  turn_timeout: 90s
-  inspect_clip_enabled: false          # 看图复核（见设计文档问题 9）
 
 worker:
   cpu_concurrency: 8

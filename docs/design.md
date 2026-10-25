@@ -13,6 +13,10 @@
 
 ---
 
+## 当前实施范围（2026-10-25）
+
+先在本地跑通「视频 → 标准化视频 → WeMM 画面编码 + ASR → WeMM 转录文本编码 → 文字检索 → 时间片段与证据」。WeMM-Embedding-2B 统一支持视频、文字、图片编码；图片是编码输入，本轮搜索入口只接受文字。启用 `visual` 与 `speech`，保留音轨供 ASR 使用，不启用声音召回通道 `audio` 或 CLAP。前端、LLM/Agent、AWS 部署与验收暂缓；下文相关章节保留为后续设计，不构成本轮实现要求。真实模型验证与显式 fake 的协议/流程测试分开。
+
 ## 目录
 
 1. [产品定位](#1-产品定位)
@@ -24,7 +28,7 @@
 7. [数据设计概览](#7-数据设计概览)
 8. [关键设计决策](#8-关键设计决策)
 9. [质量属性](#9-质量属性)
-10. [部署视图](#10-部署视图)
+10. [部署视图（云端暂缓）](#10-部署视图云端暂缓)
 11. [风险与验证计划](#11-风险与验证计划)
 12. [待确认问题](#12-待确认问题)
 
@@ -38,9 +42,9 @@
 |---|---|---|
 | 首版重点 | 根据描述找到对应画面 | 已定 |
 | 产品形态 | SaaS，按工作区隔离数据 | 已定 |
-| 交互方式 | 搜索框（不经过 LLM）+ Agent 对话（多轮细化） | 已定 |
+| 交互方式 | 文字搜索（不经过 LLM）；Agent 对话暂缓 | 已定 |
 | 视频来源 | 上传文件；导入 YouTube、哔哩哔哩链接（用开源工具 yt-dlp 下载） | 已定 |
-| 召回通道 | 画面、转录、音频三个向量通道 | 已定 |
+| 召回通道 | 当前启用画面 `visual`、转录 `speech`；声音 `audio` 暂缓 | 已定 |
 | 以后再做 | 章节摘要、OCR | 已定 |
 | 以后再做 | 笔记、问答、人物与物体识别（Detection）、跨视频分析 | 提议 |
 
@@ -61,8 +65,8 @@ flowchart LR
 
 - 「海边有人弹吉他的画面」：主要靠画面通道。
 - 「他讲到滚动更新的地方」：主要靠转录通道。
-- 「有掌声的片段」：主要靠音频通道。
-- 「张老师在白板前讲 maxSurge」：由 Agent 拆开，「张老师在白板前」交给画面通道，「maxSurge」交给转录通道。
+- 「有掌声的片段」：依赖暂缓的声音通道，当前不承诺声音识别。
+- 后续 Agent 场景「张老师在白板前讲 maxSurge」：由 Agent 拆开，「张老师在白板前」交给画面通道，「maxSurge」交给转录通道。
 
 ---
 
@@ -147,7 +151,7 @@ flowchart LR
 | 媒体预处理（prepare_media） | 生成标准化视频和缩略图的处理阶段：转码、生成缩略图雪碧图，再上传处理结果 |
 | 格子（cell） | 画面、音频的切片单位：视频不短于 90 秒时每 2.5 秒一格，短于 90 秒时每 1 秒一格。边界由时长算出，不存储 |
 | 句子（sentence） | 转录的切片单位：ASR 输出的一句话，过短的与相邻句合并 |
-| 通道（channel） | 一路向量召回：visual（画面）、speech（转录语义）、audio（声音） |
+| 通道（channel） | 一路向量召回：visual（画面）、speech（ASR 转录语义）；audio（声音）暂缓 |
 | 向量空间（space） | 一个模型的一个版本产生的向量空间，如 `wemm-2b@r1`。只有同一空间的向量才能互相比较 |
 | active / shadow | 某通道当前用于查询的空间是 active；正在回填、等待评估的候选空间是 shadow |
 | 切片版本（seg） | 切片规则的版本号，如 `grid@v1`、`sentence@v1`。规则一变，版本号就变 |
@@ -323,7 +327,7 @@ sequenceDiagram
   W->>R: 投递 prepare_media
   R->>W: prepare_media
   W->>S: 写 normalized_video.mp4 和缩略图雪碧图
-  W->>R: 投递 3 个 gpu 任务
+  W->>R: 投递画面编码与 ASR 任务
 
   par 画面
     R->>W: embed:visual
@@ -333,11 +337,6 @@ sequenceDiagram
       P-->>W: 向量
       W->>G: 写 embedding（visual）
     end
-  and 音频
-    R->>W: embed:audio
-    W->>P: /v1/embed（CLAP，流程同画面）
-    P-->>W: 向量
-    W->>G: 写 embedding（audio）
   and 转录
     R->>W: asr
     loop 每 10 分钟一段（前后各多取 30 秒）
@@ -409,17 +408,15 @@ flowchart LR
   F["fetch<br/>仅导入：yt-dlp 下载"]:::opt --> PR["probe<br/>读时长、音视频流"]
   PR --> PM["prepare_media<br/>媒体预处理：转码 + 缩略图"]
   PM --> V["embed:visual:{space}"]
-  PM --> AU["embed:audio:{space}"]
   PM --> ASR["asr<br/>转录成句子"]
   ASR --> SP["embed:speech:{space}"]
   V --> FIN["finalize"]
-  AU --> FIN
   SP --> FIN
   FIN --> RDY(["ready：可以搜索"])
   classDef opt stroke-dasharray: 5 5
 ```
 
-- 只有 probe 之前的阶段在一开始就创建。**probe 完成时**，根据探测结果和 channels 配置生成后续阶段：没有音轨就不建 asr 和音频阶段，没有画面就不建画面阶段。
+- 只有 probe 之前的阶段在一开始就创建。**probe 完成时**，根据探测结果和 channels 配置生成后续阶段：没有音轨就不建 asr 和 speech 阶段，没有画面就不建画面阶段。
 - 每个通道的每个空间（active 和 shadow）各有一个 embed 阶段；**finalize 只等 active 的阶段**，shadow 的回填不影响视频变成 ready。哪些阶段是必需的，在生成计划时就记进 `stage_run`，之后改 channels 配置不影响已经在索引中的视频。
 - cpu 阶段（fetch、probe、prepare_media、finalize）由 Go 自己调用外部命令完成（yt-dlp、ffmpeg）；gpu 阶段（asr、embed）由 Go 调用 Python。
 
@@ -500,16 +497,11 @@ sequenceDiagram
   par 按 space 去重后并行编码
     S->>P: /v1/embed role=query（wemm-2b@r1）
     P-->>S: 查询向量
-  and
-    S->>P: /v1/embed role=query（clap-htsat@r1）
-    P-->>S: 查询向量
   end
-  par 三路召回，每路前 50
+  par 两路召回，每路前 50
     S->>G: 画面向量 Top-K
   and
     S->>G: 转录向量 Top-K
-  and
-    S->>G: 音频向量 Top-K
   end
   S->>S: 映射到时间格子 → RRF → 合并成片段 → 定跳转点
   S-->>A: moments
@@ -523,23 +515,21 @@ flowchart LR
   Q["描述"] --> E["按 active space 编码<br/>同一 space 只编码一次"]
   E --> R1["visual Top-K"]
   E --> R2["speech Top-K"]
-  E --> R3["audio Top-K"]
   R1 --> M["命中映射到时间格子"]
   R2 --> M
-  R3 --> M
   M --> F["RRF：每格得分 = Σ 权重 /（60 + 名次）"]
   F --> G["同一视频的相邻格子合并成片段"]
   G --> J["跳转点：命中句子的开头"]
   J --> O["按分数排序，附证据返回"]
 ```
 
-- 画面和音频的命中本身就是格子；转录的命中是句子，**一句话覆盖到的每个格子都记上这句话的名次**。
+- 画面的命中本身就是格子；转录的命中是句子，**一句话覆盖到的每个格子都记上这句话的名次**。
 - RRF 只看名次、不看分值，不同空间的分数不需要互相校准。
 - 某一路编码或召回失败时，跳过这一路继续，结果里标明缺了哪一路；所有通道都失败才报错（提议）。
 - 搜索不能被索引拖慢：Python 给查询编码单独一个小闸门，不排在批量编码后面；请求带上超时，排队已经超时的请求 Python 不再推理（提议）。
 - 每路取多少名、RRF 常数、权重、合并间隔都是参数，要用评估集来调。
 
-### 6.6 Agent 对话
+### 6.6 Agent 对话（暂缓）
 
 ```mermaid
 sequenceDiagram
@@ -721,7 +711,7 @@ erDiagram
 
 ---
 
-## 10. 部署视图
+## 10. 部署视图（云端暂缓）
 
 **本地开发**：一个 docker compose 起全套服务：api、worker、ml（可用假模型，不需要 GPU）、postgres、redis、minio。
 
