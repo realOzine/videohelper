@@ -171,10 +171,11 @@ func attachSnippets(moments []Moment, sentences []index.TextSpan) {
 	}
 	for i := range moments {
 		moment := &moments[i]
+		bestStart := -1
 		for _, sentence := range byVideo[moment.VideoID] {
-			if sentence.Span.StartMs <= moment.JumpMs && moment.JumpMs < sentence.Span.EndMs {
+			if sentence.Span.StartMs > bestStart && sentence.Span.StartMs <= moment.JumpMs && moment.JumpMs < sentence.Span.EndMs {
 				moment.Snippet = sentence.Text
-				break
+				bestStart = sentence.Span.StartMs
 			}
 		}
 	}

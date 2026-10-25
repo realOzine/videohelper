@@ -32,9 +32,9 @@ func TestSpeechPostgresIntegration(t *testing.T) {
 	if err := UpsertVectors(ctx, pool, vectors); err != nil {
 		t.Fatal(err)
 	}
-	duplicate := []TextSpan{{Span: old[0].Span, Text: "new"}, {Span: old[0].Span, Text: "duplicate"}}
-	if err := db.WithTx(ctx, pool, func(tx pgx.Tx) error { return ReplaceSpeech(ctx, tx, w1, v1, "new-model", duplicate) }); err == nil {
-		t.Fatal("duplicate sentences unexpectedly succeeded")
+	invalid := []TextSpan{{Span: old[0].Span, Text: "new"}, {Span: timeline.Span{StartMs: 0, EndMs: 0}, Text: "invalid"}}
+	if err := db.WithTx(ctx, pool, func(tx pgx.Tx) error { return ReplaceSpeech(ctx, tx, w1, v1, "new-model", invalid) }); err == nil {
+		t.Fatal("invalid same-start sentence unexpectedly succeeded")
 	}
 	assertOldSpeech := func() {
 		t.Helper()
@@ -124,6 +124,33 @@ func TestSpeechPostgresIntegration(t *testing.T) {
 	}
 	if got, err := SpeechSentences(ctx, pool, v2); err != nil || len(got) != 0 {
 		t.Fatalf("deleted text exposed: %+v error=%v", got, err)
+	}
+}
+
+func TestSpeechOverlapPostgresIntegration(t *testing.T) {
+	ctx, pool := indexTestDB(t)
+	workspace := insertWorkspace(t, ctx, pool, "overlap")
+	video := insertVideo(t, ctx, pool, workspace, "ready", false)
+	words := []Word{{W: "原", S: 0, E: 20}, {W: "保留", S: 0, E: 1}}
+	sents := []TextSpan{
+		{Span: timeline.Span{StartMs: 0, EndMs: 30}, Text: "原", Words: words[:1]},
+		{Span: timeline.Span{StartMs: 0, EndMs: 20}, Text: "文 ", Words: []Word{{W: "文", S: 0, E: 20}}},
+		{Span: timeline.Span{StartMs: 0, EndMs: 40}, Text: "。", Words: []Word{{W: "。", S: 10, E: 40}}},
+		{Span: timeline.Span{StartMs: 10, EndMs: 15}, Text: "嵌套"},
+		{Span: timeline.Span{StartMs: 20, EndMs: 50}, Text: "重叠"},
+	}
+	if err := db.WithTx(ctx, pool, func(tx pgx.Tx) error {
+		return ReplaceSpeech(ctx, tx, workspace, video, "overlap-model", sents)
+	}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := SpeechSentences(ctx, pool, video)
+	wantWords := []Word{{W: "原", S: 0, E: 20}, {W: "文", S: 0, E: 20}, {W: "。", S: 10, E: 40}}
+	if err != nil || len(got) != 3 || got[0].Span != (timeline.Span{StartMs: 0, EndMs: 40}) || got[0].Text != "原文 。" || !reflect.DeepEqual(got[0].Words, wantWords) || got[1].Span != sents[3].Span || got[2].Span != sents[4].Span {
+		t.Fatalf("overlap round trip=%+v error=%v", got, err)
+	}
+	if words[1].W != "保留" || sents[0].Text != "原" || sents[0].Span.EndMs != 30 {
+		t.Fatalf("caller data mutated: words=%+v sentences=%+v", words, sents)
 	}
 }
 

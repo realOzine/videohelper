@@ -72,3 +72,20 @@ func TestFuseStableTiesAndVisualOnlySnippet(t *testing.T) {
 		t.Fatalf("snippet evidence: %+v", got)
 	}
 }
+
+func TestAttachSnippetsOverlappingSentences(t *testing.T) {
+	sentences := []index.TextSpan{
+		{VideoID: 1, Span: timeline.Span{StartMs: 1000, EndMs: 2000}, Text: "嵌套句"},
+		{VideoID: 1, Span: timeline.Span{StartMs: 0, EndMs: 3000}, Text: "前句"},
+		{VideoID: 1, Span: timeline.Span{StartMs: 1800, EndMs: 2500}, Text: "重叠句"},
+		{VideoID: 1, Span: timeline.Span{StartMs: 1800, EndMs: 2400}, Text: "同起点保留首句"},
+		{VideoID: 2, Span: timeline.Span{StartMs: 1900, EndMs: 4000}, Text: "其他视频"},
+	}
+	moments := []Moment{{VideoID: 1, JumpMs: 0}, {VideoID: 1, JumpMs: 1000}, {VideoID: 1, JumpMs: 1800}, {VideoID: 1, JumpMs: 2000}, {VideoID: 1, JumpMs: 2500}, {VideoID: 1, JumpMs: 3000}}
+	attachSnippets(moments, sentences)
+	for i, want := range []string{"前句", "嵌套句", "重叠句", "重叠句", "前句", ""} {
+		if moments[i].Snippet != want {
+			t.Errorf("jump=%d snippet=%q want=%q", moments[i].JumpMs, moments[i].Snippet, want)
+		}
+	}
+}

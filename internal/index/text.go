@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"math"
+	"slices"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/ozine/videohelper/internal/apperr"
@@ -43,9 +44,21 @@ func ReplaceSpeech(ctx context.Context, tx pgx.Tx, workspaceID, videoID int64, m
 	if err := q.DeleteSpeechVectors(ctx, indexdb.DeleteSpeechVectorsParams{VideoID: videoID, WorkspaceID: workspaceID}); err != nil {
 		return err
 	}
-	for _, sent := range sents {
+	for i := 0; i < len(sents); i++ {
+		sent := sents[i]
 		if err := validSpan(sent.Span); err != nil {
 			return err
+		}
+		// Speech rows and vectors share start_ms as their identity.
+		for i+1 < len(sents) && sents[i+1].Span.StartMs == sent.Span.StartMs {
+			i++
+			next := sents[i]
+			if err := validSpan(next.Span); err != nil {
+				return err
+			}
+			sent.Span.EndMs = max(sent.Span.EndMs, next.Span.EndMs)
+			sent.Text += next.Text
+			sent.Words = append(slices.Clone(sent.Words), next.Words...)
 		}
 		var words []byte
 		if sent.Words != nil {
