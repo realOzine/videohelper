@@ -25,7 +25,7 @@ def transcript_from_result(
         raise MLError(500, "internal", "ASR token timestamps are incomplete")
     sentences = []
     cursor = 0
-    previous = start_ms
+    previous_start = start_ms
     for source in result.get("sentence_info", []):
         stamps = source["timestamp"]
         count = len(stamps)
@@ -36,14 +36,14 @@ def transcript_from_result(
             # Frame-based ASR boundaries may extend slightly beyond the decoded window.
             start = min(end_ms, max(start_ms, start_ms + int(start)))
             end = min(end_ms, max(start_ms, start_ms + int(end)))
-            if not previous <= start < end:
+            if not previous_start <= start < end:
                 raise MLError(500, "internal", "ASR word timestamps are invalid")
             words.append(Word(w=token, s=start, e=end))
-            previous = end
+            previous_start = start
         sentences.append(
             Sentence(
-                start_ms=words[0].s,
-                end_ms=words[-1].e,
+                start_ms=min(word.s for word in words),
+                end_ms=max(word.e for word in words),
                 text=source["text"],
                 words=words,
             )
