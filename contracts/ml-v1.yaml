@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: VideoHelper ML
   version: 1.0.0
-  description: 内部 ML 契约 v1。仅传 S3 引用和绝对毫秒窗口；模型专属限制由 /v1/spaces 报告。
+  description: 内部 ML 契约 v1。仅传 S3 引用和绝对毫秒窗口；模型专属限制由 /v1/spaces 报告。WeMM 编码文字、视频、图片；CLAP 编码声音，查询文字原样传入，不做翻译。
 paths:
   /healthz:
     get:

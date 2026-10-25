@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-VideoHelper combines a Go backend (`cmd/videohelper/`, `internal/`) with a Python model service (`ml/app/`). Go tests sit beside their packages; Python tests live in `ml/tests/`. Database migrations are in `migrations/`; configuration and the shared ML contract are in `config/` and `contracts/`. Keep the Chinese architecture documents, `docs/design.md` and `docs/spec.md`, aligned with contract changes. Runtime media belongs in object storage; local temporary files use `.local/`.
+VideoHelper combines a Go backend (`cmd/videohelper/`, `internal/`) with a Python model service (`ml/app/`). Tests live beside Go packages and in `ml/tests/`. Database migrations are in `migrations/`; configuration and the shared ML contract are in `config/` and `contracts/`. Keep the Chinese architecture documents, `docs/design.md` and `docs/spec.md`, aligned with contract changes. Runtime media belongs in object storage; local temporary files use `.local/`.
 
 ## Agent Scope: Ignore `model-test/`
 

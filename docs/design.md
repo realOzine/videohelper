@@ -15,9 +15,9 @@
 
 ## 当前实施范围（2026-10-25）
 
-先在本地跑通「视频 → 标准化视频 → WeMM 画面编码 + ASR → WeMM 转录文本编码 → 文字检索 → 时间片段与证据」。WeMM-Embedding-2B 统一支持视频、文字、图片编码；图片是编码输入，本轮搜索入口只接受文字。启用 `visual` 与 `speech`，保留音轨供 ASR 使用，不启用声音召回通道 `audio` 或 CLAP。前端、LLM/Agent、AWS 部署与验收暂缓；下文相关章节保留为后续设计，不构成本轮实现要求。真实模型验证与显式 fake 的协议/流程测试分开。
+本地处理链路为「视频 → 标准化视频 → WeMM 画面编码 / CLAP 声音编码 / ASR → WeMM 转录文本编码 → 文字检索 → 时间片段与证据」。WeMM-Embedding-2B 统一支持视频、文字、图片编码；图片是编码输入，本轮搜索入口只接受文字。启用 `visual`、`speech` 与 `audio`，保留音轨供 ASR 和 CLAP 使用。声音通道采用 edit-mind 同款 CLAP HTSAT unfused；查询文字原样传入，英文转换后续再做。前端、LLM/Agent、AWS 部署与验收暂缓；下文相关章节保留为后续设计，不构成本轮实现要求。真实模型验证与显式 fake 的协议/流程测试分开。
 
-本轮提供本地上传、阶段状态/重试、项目范围和文字搜索。URL 导入、上传分片续签、SSE 事件、存量回填、到期 purge、配额计费和离线质量评估仍是后续设计；软删除保留原片和处理文件。当前只记录索引时长。操作入口见 [README](../README.md)。
+本轮提供本地上传、阶段状态/重试、项目范围和文字搜索。已就绪视频可自动补建新通道/空间缺失的编码阶段；URL 导入、上传分片续签、SSE 事件、到期 purge、配额计费和离线质量评估仍是后续设计；软删除保留原片和处理文件。当前只记录索引时长。操作入口见 [README](../README.md)。
 
 ## 目录
 
@@ -46,7 +46,7 @@
 | 产品形态 | SaaS，按工作区隔离数据 | 已定 |
 | 交互方式 | 文字搜索（不经过 LLM）；Agent 对话暂缓 | 已定 |
 | 视频来源 | 上传文件；导入 YouTube、哔哩哔哩链接（用开源工具 yt-dlp 下载） | 已定 |
-| 召回通道 | 当前启用画面 `visual`、转录 `speech`；声音 `audio` 暂缓 | 已定 |
+| 召回通道 | 画面 `visual`、转录 `speech`、声音 `audio` | 已定 |
 | 以后再做 | 章节摘要、OCR | 已定 |
 | 以后再做 | 笔记、问答、人物与物体识别（Detection）、跨视频分析 | 提议 |
 
@@ -67,7 +67,7 @@ flowchart LR
 
 - 「海边有人弹吉他的画面」：主要靠画面通道。
 - 「他讲到滚动更新的地方」：主要靠转录通道。
-- 「有掌声的片段」：依赖暂缓的声音通道，当前不承诺声音识别。
+- 「有掌声的片段」：走 CLAP 声音召回；当前不翻译查询，可先使用英文描述验证，中文查询质量另行评估。
 - 后续 Agent 场景「张老师在白板前讲 maxSurge」：由 Agent 拆开，「张老师在白板前」交给画面通道，「maxSurge」交给转录通道。
 
 ---
@@ -153,7 +153,7 @@ flowchart LR
 | 媒体预处理（prepare_media） | 生成标准化视频和缩略图的处理阶段：转码、生成缩略图雪碧图，再上传处理结果 |
 | 格子（cell） | 画面、音频的切片单位：视频不短于 90 秒时每 2.5 秒一格，短于 90 秒时每 1 秒一格。边界由时长算出，不存储 |
 | 句子（sentence） | 转录的切片单位：ASR 输出的一句话，过短的与相邻句合并 |
-| 通道（channel） | 一路向量召回：visual（画面）、speech（ASR 转录语义）；audio（声音）暂缓 |
+| 通道（channel） | 一路向量召回：visual（画面）、speech（ASR 转录语义）、audio（环境声音与音乐） |
 | 向量空间（space） | 一个模型的一个版本产生的向量空间，如 `wemm-2b@r1`。只有同一空间的向量才能互相比较 |
 | active / shadow | 某通道当前用于查询的空间是 active；正在回填、等待评估的候选空间是 shadow |
 | 切片版本（seg） | 切片规则的版本号，如 `grid@v1`、`sentence@v1`。规则一变，版本号就变 |
@@ -410,15 +410,17 @@ flowchart LR
   F["fetch<br/>仅导入：yt-dlp 下载"]:::opt --> PR["probe<br/>读时长、音视频流"]
   PR --> PM["prepare_media<br/>媒体预处理：转码 + 缩略图"]
   PM --> V["embed:visual:{space}"]
+  PM --> AU["embed:audio:{space}<br/>CLAP"]
   PM --> ASR["asr<br/>转录成句子"]
   ASR --> SP["embed:speech:{space}"]
   V --> FIN["finalize"]
+  AU --> FIN
   SP --> FIN
   FIN --> RDY(["ready：可以搜索"])
   classDef opt stroke-dasharray: 5 5
 ```
 
-- 只有 probe 之前的阶段在一开始就创建。**probe 完成时**，根据探测结果和 channels 配置生成后续阶段：没有音轨就不建 asr 和 speech 阶段，没有画面就不建画面阶段。
+- 只有 probe 之前的阶段在一开始就创建。**probe 完成时**，根据探测结果和 channels 配置生成后续阶段：没有音轨就不建 asr、speech 和 audio 阶段，没有画面就不建画面阶段。
 - 每个通道的每个空间（active 和 shadow）各有一个 embed 阶段；**finalize 只等 active 的阶段**，shadow 的回填不影响视频变成 ready。哪些阶段是必需的，在生成计划时就记进 `stage_run`，之后改 channels 配置不影响已经在索引中的视频。
 - cpu 阶段（fetch、probe、prepare_media、finalize）由 Go 自己调用外部命令完成（yt-dlp、ffmpeg）；gpu 阶段（asr、embed）由 Go 调用 Python。
 
@@ -445,7 +447,7 @@ flowchart TD
 
 1. 补投「状态是待执行、但队列里没有对应任务」的阶段，比如投递失败或 Redis 丢了数据。
 2. 收回「执行中，但 worker 已经崩溃」的阶段。
-3. 发现 channels 配置里新增了候选空间时，为存量视频补建 embed 阶段，开始回填。
+3. 发现 channels 配置新增了通道或 active/shadow 空间时，为已就绪且前置阶段完成的视频补建缺失的 embed 阶段。回填走 gpu_low、required=false，保留既有索引和 ready 状态。
 
 Redis 里只放丢了也能重建的东西：任务通知、并发名额、进度事件。阶段能不能执行、执行完没有，一律以 `stage_run` 为准，Redis 只负责通知，不做判断；以后加缓存、限流也照这个规则。所以 Redis 的数据就算全丢，reconciler 也能把任务补回来。
 
@@ -499,11 +501,16 @@ sequenceDiagram
   par 按 space 去重后并行编码
     S->>P: /v1/embed role=query（wemm-2b@r1）
     P-->>S: 查询向量
+  and
+    S->>P: /v1/embed role=query（clap-htsat-unfused@r1，原样文字）
+    P-->>S: 声音查询向量
   end
-  par 两路召回，每路前 50
+  par 三路召回，每路前 50
     S->>G: 画面向量 Top-K
   and
     S->>G: 转录向量 Top-K
+  and
+    S->>G: 声音向量 Top-K
   end
   S->>S: 映射到时间格子 → RRF → 合并成片段 → 定跳转点
   S-->>A: moments
@@ -517,8 +524,10 @@ flowchart LR
   Q["描述"] --> E["按 active space 编码<br/>同一 space 只编码一次"]
   E --> R1["visual Top-K"]
   E --> R2["speech Top-K"]
+  E --> R3["audio Top-K"]
   R1 --> M["命中映射到时间格子"]
   R2 --> M
+  R3 --> M
   M --> F["RRF：每格得分 = Σ 权重 /（60 + 名次）"]
   F --> G["同一视频的相邻格子合并成片段"]
   G --> J["跳转点：命中句子的开头"]
@@ -561,7 +570,7 @@ sequenceDiagram
 
 Agent 的价值是**把用户的描述变成更好的检索**：
 
-- 把一句话拆成画面描述、讲到的内容、声音描述，分别填进不同通道。CLAP 只懂英文，所以声音描述要给一句英文。
+- 把一句话拆成画面描述、讲到的内容、声音描述，分别填进不同通道。CLAP 的声音描述优先使用英文；这是后续 Agent 的职责，当前普通搜索不翻译查询。
 - 根据问题调整通道权重，比如问声音时调高音频权重。
 - 多轮细化，比如「只要室外的」「再找几个类似的」。
 - 可选：把排名靠前的候选各抽几帧交给 deepseek-flash 看图复核，再重新排序。
@@ -715,7 +724,7 @@ erDiagram
 
 ## 10. 部署视图（云端暂缓）
 
-**本地开发**：docker compose 启动 postgres、redis、minio；Go api/worker 和 Python ML 在宿主机运行。本地组合使用 MPS 上的 WeMM 与 CPU 上的 ASR；显式 fake 仅用于协议和流程测试。
+**本地开发**：docker compose 启动 postgres、redis、minio；Go api/worker 和 Python ML 在宿主机运行。本地组合使用 MPS 上的 WeMM 与 CPU 上的 ASR、CLAP；显式 fake 仅用于协议和流程测试。
 
 **AWS**：代码放在私有 GitHub 仓库，用 GitHub Actions 自动部署（已定）。下图的资源形态是提议：
 
@@ -782,7 +791,7 @@ flowchart LR
 | 风险 | 怎么验证 | 不行怎么办 |
 |---|---|---|
 | WeMM 画面检索效果（1~2.5 秒短片段、中文描述、显存与速度） | 3~5 个真实视频，30~50 条「描述 → 期望时间段」，算 recall@10 | 换模型（契约不变），或调整格子时长 |
-| CLAP 音频检索（2.5 秒片段、中文查询） | 同一批视频，用中文和英文的声音描述各查一遍 | 在 CLAP adapter 里加翻译；或调整片段时长 |
+| CLAP 音频检索（2.5 秒片段、中文查询） | 同一批视频，用中文和英文的声音描述各查一遍 | 后续在查询编排中处理英文转换；或根据实测调整片段时长 |
 | FunASR 的分句与时间戳（ASR 已定用阿里 FunASR） | 抽查句子边界和时间戳准确度 | 调整语音活动检测和标点模型；或换模型，契约不变 |
 | DeepSeek + ADK `openaimodel` | 跑通工具调用、流式输出、非思考模式、图片输入 | 图片不行就让 inspect_clip 绕开 ADK 直接调用；工具调用不稳就自己实现 `model.LLM` |
 | 按工作区过滤的 HNSW 查询 | 压测：小工作区、大工作区、大量 video_id 过滤 | 小范围直接精确扫描；开 iterative scan；规模大了换 Qdrant |

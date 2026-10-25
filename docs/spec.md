@@ -9,9 +9,9 @@
 
 ## 当前实施范围（2026-10-25）
 
-先在本地跑通「视频 → 标准化视频 → WeMM 画面编码 + ASR → WeMM 转录文本编码 → 文字检索 → 时间片段与证据」。WeMM-Embedding-2B 统一支持视频、文字、图片编码；图片是编码输入，本轮搜索入口只接受文字。启用 `visual` 与 `speech`，保留音轨供 ASR 使用，不启用声音召回通道 `audio` 或 CLAP。前端、LLM/Agent、AWS 部署与验收暂缓；下文相关章节保留为后续设计，不构成本轮实现要求。真实模型验证与显式 fake 的协议/流程测试分开。
+本地处理链路为「视频 → 标准化视频 → WeMM 画面编码 / CLAP 声音编码 / ASR → WeMM 转录文本编码 → 文字检索 → 时间片段与证据」。WeMM-Embedding-2B 统一支持视频、文字、图片编码；图片是编码输入，本轮搜索入口只接受文字。启用 `visual`、`speech` 与 `audio`，保留音轨供 ASR 和 CLAP 使用。声音通道采用 edit-mind 同款 CLAP HTSAT unfused；查询文字原样传入，英文转换后续再做。前端、LLM/Agent、AWS 部署与验收暂缓；下文相关章节保留为后续设计，不构成本轮实现要求。真实模型验证与显式 fake 的协议/流程测试分开。
 
-本轮提供本地上传、阶段状态/重试、项目范围和文字搜索。URL 导入、上传分片续签、SSE 事件、存量回填、到期 purge、配额计费和离线质量评估仍是后续设计；软删除保留原片和处理文件。当前只记录索引时长。操作入口见 [README](../README.md)。
+本轮提供本地上传、阶段状态/重试、项目范围和文字搜索。已就绪视频可自动补建新通道/空间缺失的编码阶段；URL 导入、上传分片续签、SSE 事件、到期 purge、配额计费和离线质量评估仍是后续设计；软删除保留原片和处理文件。当前只记录索引时长。操作入口见 [README](../README.md)。
 
 **写到哪一层**：写到「目录与文件职责、类型与函数签名、表结构、协议字段、处理步骤」。不写函数实现。签名用来说明模块边界，实现时可以调整名字，但边界和职责不变。
 
@@ -590,8 +590,8 @@ func (r *Registry) Resolve(id string) (endpoint string, ok bool) // 传给 mlcli
 func (r *Registry) Transcriber() (info mlclient.TranscriberInfo, endpoint string, ok bool)
 
 type Channel struct {
-    Name   string   // visual | speech；audio 暂缓
-    Doc    string   // video | text
+    Name   string   // visual | speech | audio
+    Doc    string   // video | text | audio
     Seg    string   // grid@v1 | sentence@v1
     Weight float64
     Active []string // 查询用
@@ -772,7 +772,7 @@ type Query struct {
     Text           string
     Scope          library.Scope
     TimeRange      *timeline.Span
-    ChannelWeights map[string]float64 // visual / speech
+    ChannelWeights map[string]float64 // visual / speech / audio
     ChannelQueries map[string]string  // 为某个通道单独指定查询文字
     Limit          int
     // 只给 eval 用：
@@ -970,6 +970,12 @@ channels:
     seg: sentence@v1
     weight: 1.0
     active: [wemm-2b@r1]
+    shadow: []
+  audio:
+    doc: audio              # 标准化视频中的音轨，与 ASR 转录独立
+    seg: grid@v1
+    weight: 1.0
+    active: [clap-htsat-unfused@r1]
     shadow: []
 ```
 
@@ -1506,7 +1512,7 @@ LIMIT $2;                                      -- 每轮最多回填多少个视
 
 #### `POST /v1/videos/{id}/retry`
 
-返回 202。保留已完成阶段与已提交断点；所有未完成阶段换一个执行代次，依赖已满足的改为 queued 并投递，其余为 pending。清理旧的非 active 队列记录；旧 active 任务被代次检查隔离。视频改回 indexing；视频不是 failed 时返回 409。
+返回 202。保留已完成阶段与已提交断点；所有未完成阶段换一个执行代次，依赖已满足的改为 queued 并投递，其余为 pending。清理旧的非 active 队列记录；旧 active 任务被代次检查隔离。failed 视频改回 indexing。ready 视频仅在存在失败的非必需阶段时允许重试，保持 ready 且不重跑 finalize；其余状态返回 409。
 
 #### `GET /v1/videos/{id}/playback`
 
@@ -1625,6 +1631,16 @@ Python 报告本实例加载的向量空间和转录模型。Go 启动时调用�
       "max_span_ms": 30000,          // 视频、音频输入的单段最长时长（待验证）
       "max_batch": 64,               // 单次请求最多多少个 input
       "fingerprint": "sha256:ab12…"
+    },
+    {
+      "id": "clap-htsat-unfused@r1",
+      "dim": 512,
+      "metric": "cosine",
+      "query_inputs": ["text"],
+      "doc_inputs": ["audio"],
+      "max_span_ms": 10000,
+      "max_batch": 32,
+      "fingerprint": "sha256:cd34…"
     }
   ],
   "transcribers": [
@@ -1663,9 +1679,9 @@ Python 报告本实例加载的向量空间和转录模型。Go 启动时调用�
 
 | 规则 | 不满足时 |
 |---|---|
-| 每个 input 有且只有 `text`、`video`、`image` 之一；`audio` 为保留协议类型，本轮无可用编码空间 | 400 `invalid_input` |
+| 每个 input 有且只有 `text`、`video`、`image`、`audio` 之一；WeMM 支持前三者，CLAP 的文档输入为 audio | 400 `invalid_input` |
 | `role=query` 时 input 类型必须在 `query_inputs` 里；`role=document` 时必须在 `doc_inputs` 里 | 400 |
-| 视频输入满足 `0 ≤ start_ms < end_ms`，且 `end_ms - start_ms ≤ max_span_ms`；图片仅有 `uri` | 400 |
+| 视频/音频输入满足 `0 ≤ start_ms < end_ms`，且 `end_ms - start_ms ≤ max_span_ms`；图片仅有 `uri` | 400 |
 | `end_ms` 超过媒体时长 | 截到媒体结尾，不报错 |
 | inputs 数量 ≤ `max_batch` | 400 |
 | space 不在本实例 | 404 `unknown_space` |
@@ -1674,7 +1690,13 @@ Python 报告本实例加载的向量空间和转录模型。Go 启动时调用�
 
 `role` 存在的原因：有些模型对查询和文档的编码方式不同，比如查询要加指令前缀。这个差异由 Python 的 adapter 处理，Go 不需要知道。
 
-`metric=cosine` 时返回 L2 归一化后的向量。
+`metric=cosine` 时返回 L2 归一化后的向量。声音编码使用独立空间，例如：
+
+```json
+{"space":"clap-htsat-unfused@r1","role":"document","inputs":[{"audio":{"uri":"s3://videohelper/workspaces/1/videos/42/runs/v1.example/1/normalized_video.mp4","start_ms":1000,"end_ms":2000}}]}
+```
+
+声音查询仍为 `role=query`、`inputs=[{"text":"a dog barking"}]`。中文等输入也原样传入，不做自动翻译。
 
 ### 5.4 `POST /v1/transcribe`
 
@@ -1823,7 +1845,7 @@ sequenceDiagram
 | `prepare_media` | cpu | probe | 总是 | S3 原片 | S3 `normalized_video.mp4`、`sprites/*.jpg`；`video.normalized_video_key`、`video.thumbs` | 3 小时 | 是 |
 | `asr` | gpu | prepare_media | `has_audio` | 标准化视频 | S3 `raw/asr-{model}/chunk-{i}.json`（每段一个）；`text_span` | 2 小时 | 是 |
 | `embed:visual:{space}` | gpu；shadow 空间走 gpu_low | prepare_media | `has_video`；每个 active 和 shadow 空间一个 | 标准化视频 | `embedding`（visual） | 3 小时 | 只有 active 的是 |
-| `embed:audio:{space}`（暂缓，不生成） | gpu；shadow 空间走 gpu_low | prepare_media | `has_audio`；同上 | 标准化视频 | `embedding`（audio） | 3 小时 | 只有 active 的是 |
+| `embed:audio:{space}` | gpu；shadow 空间走 gpu_low | prepare_media | `has_audio`；同上 | 标准化视频 | `embedding`（audio） | 3 小时 | 只有 active 的是 |
 | `embed:speech:{space}` | gpu；shadow 空间走 gpu_low | asr | `has_audio`；同上 | `text_span` | `embedding`（speech） | 1 小时 | 只有 active 的是 |
 | `finalize` | cpu | prepare_media 和所有必需的阶段 | 总是 | `stage_run` | `video.status = ready`；计量 | 1 分钟 | — |
 
@@ -1918,7 +1940,7 @@ sequenceDiagram
 **embed:{channel}:{space}**
 
 1. 生成输入列表：
-   - visual：`timeline.Cells(duration)`，每格一个 video 输入，URI 指向标准化视频。audio 暂缓，不生成输入。
+   - visual / audio：`timeline.Cells(duration)`，每格一个 video / audio 输入，URI 指向标准化视频；audio 使用 CLAP，与 ASR 独立。
    - speech：`index.SpeechSentences` → `timeline.MergeSentences`，每句一个 text 输入。
 2. 从断点 `Progress.next`（没有就是 0）开始，每批 `min(ml.embed_batch, max_batch)` 个：
    1. 调用 `mlclient.Embed`，`role=document`。
@@ -1962,13 +1984,13 @@ sequenceDiagram
 
 ### 6.7 reconciler
 
-每 5 分钟执行一次。当前执行 R1、R2、R4；R3 回填和 R5 purge 暂缓。R2 回收时更换执行代次、保留已提交断点，防止旧任务发布结果。每条规则单独限量，防止一次投递太多。
+每 5 分钟执行一次。当前执行 R1、R2、R3、R4；R5 purge 暂缓。R2 回收时更换执行代次、保留已提交断点，防止旧任务发布结果。每条规则单独限量，防止一次投递太多。
 
 | 规则 | 找什么 | 怎么处理 |
 |---|---|---|
 | R1 投递丢失 | `status = queued` 且超过 10 分钟没更新，并且 Asynq 里查不到这个任务 id | 重新投递 |
 | R2 worker 崩溃 | `status = running` 且超过「阶段超时 + 10 分钟」没更新，并且 Asynq 里这个任务不在执行中 | 改回 queued，重新投递 |
-| R3 回填 | channels 配置里某个 (channel, space) 在 ready 视频上还没有对应阶段（3.4 节的回填扫描） | 插入阶段（`required = false`，走 gpu_low），状态 queued，投递；每轮最多 100 个视频 |
+| R3 回填 | channels 的 active/shadow (channel, space) 在非删除 ready 视频上缺少阶段，已具备标准化视频且前置阶段完成 | 锁视频后复核，插入缺失阶段（`required = false`，走 gpu_low）并投递；每轮合计最多 100 个视频，不重跑原有阶段 |
 | R4 未启动 | `status = uploading`，`source_key` 已有值，但没有任何阶段，说明上传完成后启动失败 | 调用 Start |
 | R5 彻底清除 | `deleted_at` 早于「现在 − `limits.soft_delete_purge_after`」的视频 | 投递 purge 任务；每轮最多 100 个 |
 
@@ -2083,7 +2105,7 @@ flowchart LR
 3. 拆解描述：
    - 画面内容写进 `query`。
    - 讲到的内容（台词、话题）写进 `channel_queries.speech`。
-   - 声音描述用英文写进 `channel_queries.audio`，因为 CLAP 只懂英文。
+   - 声音描述用英文写进 `channel_queries.audio`，这是后续查询编排的职责；当前普通搜索原样传入文字，不做英文转换。
    - 问的是声音时调高 `channel_weights.audio`。
 4. 结果不理想时换一种说法再检索一次，每轮最多 3 次检索；还是没有就如实告诉用户。
 5. 范围不清楚时先问用户，比如项目里有两个「第二节课」。
@@ -2216,7 +2238,8 @@ ml/
 │   ├── adapters/
 │   │   ├── __init__.py
 │   │   ├── base.py         # 接口定义：Embedder、Transcriber；输入类型 TextInput、MediaInput；SpaceInfo
-│   │   ├── wemm.py         # WeMM：文本、视频、图片；查询指令前缀、每段抽帧数、分辨率、批量推理
+│   │   ├── wemm.py         # WeMM：文本、视频、图片；抽帧、分辨率、批量推理
+│   │   ├── clap.py         # CLAP HTSAT unfused：原样文字查询、48 kHz 单声道音频编码
 │   │   ├── funasr.py       # ASR（阿里 FunASR，已定）：中文识别 + 语音活动检测 + 标点分句，输出句子和逐字时间戳
 │   │   └── fake.py         # 假模型：输入的 hash → 确定性向量；固定的转录结果；用于测试和没有 GPU 的本地开发
 │   └── media/
@@ -2255,9 +2278,9 @@ flowchart TB
 
 ### 10.3 `models.yaml`
 
-当前 `ml/models.yaml` 是显式 fake 清单（仅 `ML_FAKE=1`）；真实本地组合使用 `ml/models.local.yaml`（WeMM + FunASR），WeMM 单独验证使用 `ml/models.wemm.yaml`，以仓库实际清单为准。已固定官方 `tencent/WeMM-Embedding-2B` revision `bbd6cd4bf52cfc6716f752a2df80b2706720bd95`、transformers 5.2.0，检查远程模型代码 SHA256 后加载。全维输出为 2048，当前按官方 MRL 截到 1024 后再次归一化，维度参与 fingerprint。查询只接受文字；文档支持文字、视频和图片。
+当前 `ml/models.yaml` 是显式 fake 清单（仅 `ML_FAKE=1`）；真实本地组合使用 `ml/models.local.yaml`（WeMM + FunASR + CLAP），WeMM 单独验证使用 `ml/models.wemm.yaml`，以仓库实际清单为准。已固定官方 `tencent/WeMM-Embedding-2B` revision `bbd6cd4bf52cfc6716f752a2df80b2706720bd95`、transformers 5.2.0，检查远程模型代码 SHA256 后加载。全维输出为 2048，当前按官方 MRL 截到 1024 后再次归一化，维度参与 fingerprint。查询只接受文字；文档支持文字、视频和图片。
 
-本地使用 MPS float16、每片段均匀抽 4 帧，按官方 processor 保持宽高比缩放；图片像素范围 65536–262144，视频每帧 4096–262144，输入 token 上限 4096，单批最多 32 项、逐项推理控制内存。运行入口使用 `uv sync --extra wemm --extra asr`，设置 `ML_FAKE=0 ML_MODELS_FILE=models.local.yaml`。ASR 使用 CPU float32、FunASR 1.3.14，Paraformer、VAD、标点模型均固定 revision（见清单）；返回原始转录和绝对毫秒时间戳，不引入 LLM 校对。下方为整体模型配置形态，真实参数以固定清单为准。
+本地使用 MPS float16、每片段均匀抽 4 帧，按官方 processor 保持宽高比缩放；图片像素范围 65536–262144，视频每帧 4096–262144，输入 token 上限 4096，单批最多 32 项、逐项推理控制内存。运行入口使用 `uv sync --extra wemm --extra asr --extra clap`，设置 `ML_FAKE=0 ML_MODELS_FILE=models.local.yaml`。ASR 使用 CPU float32、FunASR 1.3.14，Paraformer、VAD、标点模型均固定 revision（见清单）；返回原始转录和绝对毫秒时间戳，不引入 LLM 校对。下方为整体模型配置形态，真实参数以固定清单为准。
 
 ```yaml
 # 本实例加载哪些模型。id 就是契约里的 space id（或转录模型 id）。
@@ -2298,6 +2321,8 @@ models:
 同一个镜像靠不同的 `models.yaml` 决定加载哪些模型。「所有模型放在一张卡上」和「每个模型一个容器」只是部署方式不同，代码完全一样。
 
 **权重从哪里来**（提议，见问题 32）：线上只从 S3 的 `models/{model_id}/` 加载。权重先由一个同步脚本，按 `weights` 和 `revision` 从 HF 或 ModelScope 拷到 S3；ml 启动时下载到本地缓存目录再加载，不访问外网。本地开发可以直接从 HF、ModelScope 下载，或者用假模型。
+
+CLAP 使用 `clap-htsat-unfused@r1`，512 维、cosine。edit-mind [固定源码中的模型名](https://github.com/IliasHad/edit-mind/blob/39ac8460e21f5140b88abc7a6f116c71d9011f7f/packages/shared/src/constants/embedding.ts) 是 `Xenova/clap-htsat-unfused`；其 [模型卡](https://huggingface.co/Xenova/clap-htsat-unfused) 说明它是 LAION 原版的 ONNX 转换。Python 使用 `laion/clap-htsat-unfused`，固定 revision `8fa0f1c6d0433df6e97c127f64b2a1d6c0dcda8a`，不加载远程 Python 代码。音频按绝对毫秒窗口取 48 kHz 单声道，最长 10 秒，短输入采用固定 repeatpad；输出 L2 归一化。查询只收文字，原样送入模型，不翻译或增加 LLM。CLAP 空间与 WeMM 分开登记和建索引，不能混用向量。
 
 ### 10.4 adapter 接口（`adapters/base.py`）
 
