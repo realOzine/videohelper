@@ -3,7 +3,9 @@ import argparse
 import fcntl
 import hashlib
 import json
+import math
 import os
+import selectors
 import signal
 import subprocess
 import time
@@ -75,6 +77,19 @@ def build():
     (ROOT / "bin").mkdir(exist_ok=True)
     for name, package in (("videohelper", "./cmd/videohelper"), ("evalbridge", "./Eval/cmd/evalbridge")):
         subprocess.run(["go", "build", "-o", str(ROOT / "bin" / name), package], cwd=REPO, check=True)
+    write_json(ROOT / "bin/build.json", {"code_revision": revision(), "binaries": {
+        name: digest(ROOT / "bin" / name) for name in ("videohelper", "evalbridge")}})
+
+
+def binary_provenance(name):
+    try:
+        sha256 = digest(ROOT / "bin" / name)
+    except FileNotFoundError:
+        return {"sha256": None, "build_revision": None}
+    manifest = ROOT / "bin/build.json"
+    built = read_json(manifest) if manifest.exists() else {}
+    return {"sha256": sha256, "build_revision": built.get("code_revision")
+            if built.get("binaries", {}).get(name) == sha256 else None}
 
 
 def config_for(state):
@@ -86,6 +101,7 @@ def config_for(state):
     if (config["database"]["url_env"] != "VH_EVAL_DB_URL"
             or config["redis"]["addr_env"] != "VH_EVAL_REDIS_ADDR"
             or config["s3"]["bucket"] != state["bucket"]
+            or config["s3"]["endpoint"] != state["s3_endpoint"]
             or config["ml"]["token_env"] != "VH_EVAL_ML_TOKEN"
             or config["ml"]["endpoints"] != [state["ml_endpoint"]]):
         raise ValueError("runtime config no longer matches isolated state")
@@ -145,7 +161,7 @@ def archive_objects(state, directory, inspection, manifest, mapping):
         record = by_id[mapping[media["id"]]]
         if by_key[record["source_key"]]["sha256"] != media["sha256"]:
             raise ValueError("uploaded source differs from frozen video")
-        normalized = objects / record["normalized_video_key"]
+        normalized = objects / by_key[record["normalized_video_key"]]["key"]
         info = json.loads(subprocess.check_output(["ffprobe", "-v", "error", "-show_streams", "-show_format",
                                                   "-of", "json", str(normalized)]))
         if abs(float(info["format"]["duration"]) * 1000 - media["duration_ms"]) > 100:
@@ -162,7 +178,8 @@ def index_run(run_id, timeout_seconds):
     output = fresh(ROOT / "runs", run_id + "-index")
     started = time.monotonic()
     summary = {"run_id": run_id, "started_at": datetime.now(UTC).isoformat(),
-               "code_revision": revision(), "model_mode": "real", "status": "running"}
+               "code_revision": revision(), "model_mode": "real", "status": "running",
+               "build_provenance": {name: binary_provenance(name) for name in ("videohelper", "evalbridge")}}
     write_json(output / "index-run.json", summary)
     worker = None
     try:
@@ -209,6 +226,7 @@ def index_run(run_id, timeout_seconds):
                     "dataset_sha256": digest(ROOT / "manifest.json"),
                     "labels_sha256": digest(ROOT / "annotations/queries.jsonl"),
                     "code_revision": summary["code_revision"], "model_mode": "real",
+                    "build_provenance": summary["build_provenance"],
                     "models_config_sha256": digest(REPO / "ml/models.local.yaml"),
                     "model_fingerprints": {m["id"]: m["fingerprint"] for group in state["models"].values() for m in group}}
         inspection = inspect(state, scope(snapshot))
@@ -233,8 +251,9 @@ def index_run(run_id, timeout_seconds):
                        snapshot=str(directory.relative_to(ROOT)), index_sha256=snapshot["index_sha256"],
                        object_count=len(inventory), video_count=len(mapping), uploads=uploads)
         print(f"index acceptance passed; frozen snapshot: {directory}", flush=True)
-    except Exception as error:
-        summary.update(status="failed", error=type(error).__name__ + ": " + str(error),
+    except (Exception, KeyboardInterrupt) as error:
+        summary.update(status="cancelled" if isinstance(error, KeyboardInterrupt) else "failed",
+                       error=type(error).__name__ + ": " + str(error),
                        elapsed_seconds=round(time.monotonic() - started, 2))
         raise
     finally:
@@ -290,6 +309,14 @@ def restore_run(snapshot_id, run_id):
 def retrieve_run(snapshot_id, run_id, restored_state=None, overrides=None):
     from score import MODES, evaluate, write_report
 
+    for flag, value in (overrides or {}).items():
+        if value is None:
+            continue
+        if (flag not in ("k", "rrf-k", "merge-gap") or type(value) not in (int, float)
+                or not math.isfinite(value) or value < 0
+                or flag != "merge-gap" and value == 0
+                or flag != "rrf-k" and type(value) is not int):
+            raise ValueError(f"invalid search override: {flag}={value}")
     manifest, queries = corpus()
     _directory, snapshot = load_snapshot(snapshot_id)
     state = read_json(restored_state) if restored_state else snapshot["state"]
@@ -313,24 +340,60 @@ def retrieve_run(snapshot_id, run_id, restored_state=None, overrides=None):
             command.extend(["-" + flag, str(value)])
             search_config[{"k": "k", "rrf-k": "rrf_k", "merge-gap": "merge_gap_cells"}[flag]] = value
     results = []
-    ids = {video_id: media_id for media_id, video_id in snapshot["mapping"].items()}
-    with request_file.open() as source, (output / "search.log").open("w") as log, (output / "raw-responses.jsonl").open("w") as raw:
-        process = subprocess.Popen([*command, "search"], cwd=REPO, env=environment.runtime_env(state),
-                                   stdin=source, stdout=subprocess.PIPE, stderr=log, text=True)
+    ids = {str(video_id): media_id for media_id, video_id in snapshot["mapping"].items()}
+    bridge_errors = []
+    provenance = binary_provenance("evalbridge")
+    with request_file.open() as source, (output / "search.log").open("w") as log, (output / "raw-responses.jsonl").open("wb") as raw:
+        process = None
         try:
-            for line in process.stdout:
-                raw.write(line)
-                raw.flush()
-                result = json.loads(line)
-                for moment in result.get("moments") or []:
-                    moment["media_id"] = ids[int(moment["video_id"])]
-                results.append(result)
-                print(f"retrieved {len(results)}/{len(requests)} {result['query_id']} {result['mode']}", flush=True)
-            exit_code = process.wait()
+            process = subprocess.Popen([*command, "search"], cwd=REPO, env=environment.runtime_env(state),
+                                       stdin=source, stdout=subprocess.PIPE, stderr=log)
+            deadline = time.monotonic() + max(120, len(requests) * 120)
+            with selectors.DefaultSelector() as selector:
+                selector.register(process.stdout, selectors.EVENT_READ)
+                while selector.get_map():
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        raise TimeoutError("retrieval deadline exceeded")
+                    for key, _ in selector.select(timeout=min(1, remaining)):
+                        chunk = os.read(key.fd, 65536)
+                        if chunk:
+                            raw.write(chunk)
+                            raw.flush()
+                        else:
+                            selector.unregister(key.fileobj)
+            process.wait(timeout=max(0, deadline - time.monotonic()))
+        except (OSError, subprocess.SubprocessError, KeyboardInterrupt) as error:
+            bridge_errors.append(type(error).__name__ + ": " + str(error))
         finally:
-            stop(process)
+            if process is not None:
+                stop(process)
+                process.stdout.close()
+        exit_code = process.returncode if process is not None else None
+    expected = {(request["query_id"], request["mode"]) for request in requests}
+    for number, line in enumerate((output / "raw-responses.jsonl").read_bytes().splitlines(), 1):
+        try:
+            result = json.loads(line)
+            if (not isinstance(result, dict) or not isinstance(result.get("query_id"), str)
+                    or not isinstance(result.get("mode"), str)
+                    or (result["query_id"], result["mode"]) not in expected):
+                raise ValueError("unknown result query/mode or invalid response object")
+        except (ValueError, UnicodeDecodeError) as error:
+            bridge_errors.append(f"response line {number}: {error}")
+            continue
+        if isinstance(result.get("moments"), list):
+            for moment in result["moments"]:
+                if not isinstance(moment, dict):
+                    continue
+                video_id = moment.get("video_id")
+                moment["media_id"] = ids.get(str(video_id)) if type(video_id) in (int, str) else None
+        results.append(result)
+        print(f"retrieved {len(results)}/{len(requests)} {result['query_id']} {result['mode']}", flush=True)
     (output / "results.jsonl").write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in results))
-    after = inspect(state, scope(snapshot))
+    try:
+        after = inspect(state, scope(snapshot))
+    except (OSError, subprocess.SubprocessError, ValueError) as error:
+        after = {"passed": False, "error": type(error).__name__ + ": " + str(error)}
     write_json(output / "inspection-after.json", after)
     stable = after["passed"] and before["index_sha256"] == after["index_sha256"]
     channels = yaml.safe_load(Path(config["channels_file"]).read_text())["channels"]
@@ -338,14 +401,15 @@ def retrieve_run(snapshot_id, run_id, restored_state=None, overrides=None):
     metadata.update(run_id=run_id, code_revision=revision(), model_mode="real", search_config=search_config,
                     channels={"visual": ["visual"], "speech": ["speech"], "fused": sorted(channels)},
                     channel_config=channels, index_unchanged=stable, bridge_exit_code=exit_code,
+                    bridge_errors=bridge_errors, bridge_build_provenance=provenance,
                     languages={q["id"]: "zh" if any("\u4e00" <= c <= "\u9fff" for c in q["query"]) else "en" for q in queries},
                     timing="sequential queries, model service preloaded; not a cold-start or load test",
                     media_languages={v["id"]: v["language"] for v in manifest["videos"]})
     write_json(output / "metadata.json", metadata)
     report = evaluate(queries, results, metadata)
-    if not stable or exit_code:
+    if not stable or exit_code or bridge_errors:
         report["passed"] = False
-        report["limitations"].append("Run invalid: index drift or bridge process failed; do not adopt as a baseline.")
+        report["limitations"] = [*report["limitations"], "Run invalid: index drift or bridge process/response failed; do not adopt as a baseline."]
     write_report(report, output)
     print(f"report: {output}/report.md; valid={report['passed']}", flush=True)
     return report["passed"]
