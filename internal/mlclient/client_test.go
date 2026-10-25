@@ -105,6 +105,15 @@ func TestEmbedWireContractAndHeaders(t *testing.T) {
 	}
 }
 
+func TestMissingLocalRouteIsRetryable(t *testing.T) {
+	client := New(config.MLConfig{Token: "test"}, func(string) (string, bool) { return "", false })
+	_, err := client.Embed(context.Background(), query())
+	var classified *Error
+	if !errors.As(err, &classified) || !classified.Retryable || classified.Status != 0 || classified.Code != "space_unavailable" || apperr.KindOf(err) != apperr.Unavailable {
+		t.Fatalf("transient registry removal became a permanent model error: %v", err)
+	}
+}
+
 func TestDiscoveryPartialAvailabilityAndRefresh(t *testing.T) {
 	var changed atomic.Bool
 	healthy := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

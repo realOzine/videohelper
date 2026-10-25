@@ -175,7 +175,7 @@ func (c *Client) Embed(ctx context.Context, req EmbedRequest) (EmbedResponse, er
 	}
 	endpoint, ok := c.resolve(req.Space)
 	if !ok {
-		return EmbedResponse{}, failure(apperr.NotFound, 404, "unknown_space", false, nil)
+		return EmbedResponse{}, failure(apperr.Unavailable, 0, "space_unavailable", true, nil)
 	}
 	metadata, err := c.metadata(ctx, endpoint)
 	if err != nil {
