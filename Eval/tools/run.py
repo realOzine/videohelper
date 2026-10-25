@@ -399,6 +399,7 @@ def retrieve_run(snapshot_id, run_id, restored_state=None, overrides=None):
     channels = yaml.safe_load(Path(config["channels_file"]).read_text())["channels"]
     metadata = {key: snapshot[key] for key in ("dataset_id", "dataset_sha256", "labels_sha256", "snapshot_id", "index_sha256", "model_fingerprints", "models_config_sha256")}
     metadata.update(run_id=run_id, code_revision=revision(), model_mode="real", search_config=search_config,
+                    runtime={key: state[key] for key in ("run_id", "db_name", "bucket")},
                     channels={"visual": ["visual"], "speech": ["speech"], "fused": sorted(channels)},
                     channel_config=channels, index_unchanged=stable, bridge_exit_code=exit_code,
                     bridge_errors=bridge_errors, bridge_build_provenance=provenance,
