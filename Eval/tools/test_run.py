@@ -119,7 +119,8 @@ class RetrievalOrchestration(unittest.TestCase):
                      "targets": [{"media_id": "media", "start_ms": 0, "end_ms": 10,
                                   "acceptable_jump_ms": [0, 10]}]}
             manifest = {"videos": [{"id": "media", "language": "zh"}]}
-            state = {"ml_endpoint": "http://not-used.invalid", "models": {}, "config_path": "unused"}
+            state = {"ml_endpoint": "http://not-used.invalid", "models": {}, "config_path": "unused",
+                     "run_id": "original", "db_name": "vh_eval_original", "bucket": "vh-eval-original"}
             snapshot = dict.fromkeys(("dataset_id", "dataset_sha256", "labels_sha256", "snapshot_id",
                                       "index_sha256", "models_config_sha256"), "frozen")
             snapshot.update(state=state, principal={"workspace_id": 1, "user_id": 2},
@@ -156,7 +157,29 @@ for line in sys.stdin:
             self.assertEqual(metadata["search_config"], {"k": 4, "rrf_k": 20.5, "merge_gap_cells": 0})
             self.assertEqual(metadata["channels"]["fused"], ["audio", "speech", "visual"])
             self.assertEqual(metadata["bridge_build_provenance"]["build_revision"], "built")
+            self.assertEqual(metadata["runtime"], {
+                "run_id": "original", "db_name": "vh_eval_original", "bucket": "vh-eval-original"})
             self.assertEqual(launched.call_args.args[0][-7:], ["-k", "4", "-rrf-k", "20.5", "-merge-gap", "0", "search"])
+
+    def test_restored_runtime_provenance_matches_selected_state(self):
+        script = """import json, sys
+for line in sys.stdin:
+    request = json.loads(line)
+    print(json.dumps(dict(query_id=request['query_id'], mode=request['mode'], latency_ms=1,
+                          moments=[dict(video_id=3,start_ms=0,end_ms=10,jump_ms=0,score=1)])), flush=True)
+"""
+        with self.fixture(script) as (root, launched):
+            state = {"run_id": "restored", "db_name": "vh_eval_restored", "bucket": "vh-eval-restored",
+                     "ml_endpoint": "http://restored.invalid", "models": {}, "config_path": "restored.yaml",
+                     "secret": "must not enter metadata"}
+            state_path = root / "restored-state.json"
+            run.write_json(state_path, state)
+            self.assertTrue(run.retrieve_run("snapshot", "restore-check", restored_state=state_path))
+            metadata = run.read_json(root / "runs/restore-check/metadata.json")
+            self.assertEqual(metadata["runtime"], {
+                "run_id": "restored", "db_name": "vh_eval_restored", "bucket": "vh-eval-restored"})
+            self.assertEqual(launched.call_args.args[0][1:3], ["-config", "restored.yaml"])
+            self.assertTrue(all(call.args[0] == state for call in run.inspect.call_args_list))
 
     def test_bad_responses_and_nonzero_exit_leave_complete_invalid_report(self):
         lines = ["malformed", json.dumps({"query_id": "unknown", "mode": "visual"}),
