@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>VideoHelper · 在视频里找到那一刻</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;600&family=Noto+Sans+SC:wght@500;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="landing.css">
+<script>document.documentElement.classList.add("js")</script></head>
+<body>
+<header class="hero" id="top">
+<a class="mark" href="#top"><svg viewBox="0 0 26 26" fill="none" aria-hidden="true"><rect x="1.5" y="5.5" width="23" height="15" rx="3.5" stroke="#f3ede2" stroke-width="1.8"/><path d="M15 2v22" stroke="#f43d3f" stroke-width="2.4" stroke-linecap="round"/></svg>VideoHelper</a>
+<div class="topr"><a href="search.html" data-i18n="nav.demo">打开完整工作台</a>
+<div class="lang" role="group" aria-label="语言 Language"><button type="button" data-lang="zh" aria-pressed="true">中文</button><button type="button" data-lang="en" aria-pressed="false">EN</button></div></div>
+<div class="l">
+<h1 class="disp"><span class="ln"><span data-i18n="hero.h1a">在你的视频里，</span></span><span class="ln"><span data-i18n="hero.h1b">找到那一刻。</span></span></h1>
+<p class="lede" data-i18n="hero.lede">VideoHelper 是视频内容搜索工具：描述一个画面、一句台词或一种声音，它在你的视频里找到对应的那几秒，点一下就从那里播放。</p>
+<div class="act"><a class="btn" href="#try"><span data-i18n="hero.btn">现在就试试</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M7 17 17 7M9 7h8v8"/></svg></a><span class="note" data-i18n="hero.note">时间码精确到 0.1 秒 · 画面、台词、声音三路一起找</span></div>
+<ul class="wall" aria-label="示例视频" data-i18n-attr="aria-label:wall.label">
+<li><figure><div class="film"><video src="assets/sintel.mp4" poster="assets/sintel.jpg" muted loop playsinline autoplay preload="metadata" aria-hidden="true"></video></div><figcaption>sintel_trailer.mp4</figcaption></figure></li>
+<li><figure><div class="film"><video src="assets/surf.mp4" poster="assets/surf.jpg" muted loop playsinline autoplay preload="metadata" aria-hidden="true"></video></div><figcaption>surf_tel_aviv.mp4</figcaption></figure></li>
+<li><figure><div class="film"><video src="assets/rocket.mp4" poster="assets/rocket.jpg" muted loop playsinline autoplay preload="metadata" aria-hidden="true"></video></div><figcaption>rocket_launch.mp4</figcaption></figure></li>
+</ul>
+</div>
+<div class="r">
+<div class="viewer" data-ui id="viewer">
+<div class="film screen"><video id="hv" src="assets/reef.mp4" poster="assets/reef.jpg" muted loop playsinline autoplay preload="auto" aria-label="珊瑚礁边游动的鱼群" data-i18n-attr="aria-label:hero.vid"></video></div>
+<div class="row1"><b data-i18n="hero.q">珊瑚礁边的鱼群</b><span class="tc" id="htc">00:00.0</span></div>
+<div class="strip" id="hstrip" role="slider" tabindex="0" aria-valuemin="0" aria-valuemax="8" data-i18n-attr="aria-label:hero.strip" aria-label="片段时间线，移动指针查看画面"></div>
+<div class="chans"><div class="on"><b>#1</b><span data-i18n="ch.visual">画面</span></div><div><b>—</b><span data-i18n="ch.speech">台词</span></div><div><b>#5</b><span data-i18n="ch.audio">声音</span></div></div>
+<p class="m" style="margin-top:10px" id="hsrc"></p>
+</div>
+</div>
+</header>
+
+<div class="tickwrap" aria-hidden="true"><div class="ticker"><ul id="ticker"></ul></div></div>
+
+<main>
+<section class="stagex" id="try" aria-labelledby="tryh">
+<div class="head"><h2 class="disp rise" id="tryh" data-i18n="try.h">亲手试试工作台</h2><p class="rise" style="--d:80ms" data-i18n="try.p">这是工作台的缩小版，能点、能搜、能播放。换一句描述，或者去资料库里点开一个视频。</p></div>
+<div class="wallp rise">
+<div class="film" aria-hidden="true"><video src="assets/earth.mp4" poster="assets/earth.jpg" muted loop playsinline autoplay preload="metadata"></video></div>
+<div class="app" data-ui id="app">
+<aside>
+<div class="brand"><svg viewBox="0 0 26 26" fill="none" aria-hidden="true"><rect x="1.5" y="5.5" width="23" height="15" rx="3.5" stroke="#f3ede2" stroke-width="1.8"/><path d="M15 2v22" stroke="#f43d3f" stroke-width="2.4" stroke-linecap="round"/></svg>VideoHelper</div>
+<button type="button" data-view="search" aria-current="page"><span data-i18n="app.search">搜索</span></button>
+<button type="button" data-view="lib"><span data-i18n="app.lib">资料库</span><span class="m">8</span></button>
+<button type="button" data-view="proc"><span data-i18n="app.proc">处理中</span><span class="cnt" id="proccnt">1</span></button>
+<div class="grp" data-i18n="app.projects">项目</div>
+<button type="button" class="proj" data-view="lib"><span data-i18n="app.p1">海洋</span></button>
+<button type="button" class="proj" data-view="lib"><span data-i18n="app.p2">太空</span></button>
+<button type="button" class="proj" data-view="lib"><span data-i18n="app.p3">动画</span></button>
+</aside>
+<main>
+<div class="bar"><form id="qf" role="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M20 20l-4-4"/></svg><label class="sr" for="aq" data-i18n="app.qlabel">描述画面、台词或声音</label><input id="aq" type="search" autocomplete="off"></form><button class="go" type="submit" form="qf" data-i18n="app.go">搜索</button></div>
+<div class="chips" id="chips"></div>
+<div class="view" id="v-search"><div class="srch">
+<div class="pl"><div class="film"><video id="av" muted loop playsinline autoplay preload="metadata"></video><span class="badge" id="atc">00:00.0</span></div>
+<div class="meta"><b id="atitle"></b><span class="m" id="arange"></span></div>
+<div class="lanes" id="alanes"></div></div>
+<div><div class="m" id="acount" style="margin-bottom:8px"></div><div class="res" id="ares"></div></div>
+</div></div>
+<div class="view" id="v-lib" hidden><div class="lib" id="alib"></div></div>
+<div class="view" id="v-proc" hidden><div class="proc"><div><div class="film"><img id="pimg" src="assets/iss.jpg" width="720" height="405" alt=""></div><p style="margin-top:10px"><b id="ptitle"></b></p><p class="m" id="psub"></p></div><div class="stg" id="pstg"></div></div></div>
+</main>
+</div>
+</div>
+</section>
+
+<section class="plate" aria-labelledby="ph">
+<div class="grid"><h2 class="disp rise" id="ph" data-i18n="pl.h">一个视频的全部线索</h2></div>
+<div class="grid" style="margin-top:24px">
+<div class="notes left" id="nl"></div>
+<div class="panelx rise" id="panel" data-ui></div>
+<div class="notes right" id="nr"></div>
+</div>
+</section>
+
+<section class="how" id="how" aria-labelledby="howh">
+<div class="l"><h2 class="disp" id="howh"></h2><p class="detail" id="howd"></p></div>
+<div class="r"><div class="frag" id="frag" data-ui></div></div>
+<div class="stepper"><label for="stage" class="sr" data-i18n="how.label">处理步骤</label>
+<input id="stage" type="range" min="0" max="3" step="1" value="0"><ol class="stops" id="stops"></ol></div>
+</section>
+
+<section class="faq" id="faq" aria-labelledby="faqh"></section>
+
+<section class="choice" aria-labelledby="ch1">
+<h2 class="q disp" id="ch1" data-i18n="cta.q1">先传一段视频，</h2>
+<div class="midx"><div class="pair"><a class="btn dark" href="library.html" data-i18n="cta.up">上传视频</a><span class="or" data-i18n="cta.or">或</span><a class="btn light" href="search.html" data-i18n="cta.demo">打开完整工作台</a></div><p class="after" data-i18n="cta.after">工作台需要登录；上面的迷你版用的是示例视频。</p></div>
+<p class="q disp" data-i18n="cta.q2">还是先看演示？</p>
+</section>
+</main>
+
+<footer>
+<div class="line"><span class="what" data-i18n="ft.what">VideoHelper · 在视频里找画面</span>
+<nav aria-label="页脚" data-i18n-attr="aria-label:ft.nav"><a href="search.html" data-i18n="ft.search">搜索</a><a href="library.html" data-i18n="ft.library">资料库</a><a href="#faq" data-i18n="ft.faq">常见问题</a></nav>
+<span class="end">© 2026</span></div>
+<p class="credits" data-i18n-html="ft.credits"></p>
+</footer>
+<script src="i18n.js"></script><script src="landing.js"></script>
+</body>
+</html>

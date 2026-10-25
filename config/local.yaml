@@ -1,7 +1,7 @@
 # Go 服务配置。密钥一律走环境变量，不写进这个文件。
 server:
   addr: "127.0.0.1:18000"
-  cors_origins: []   # 前后端不同域部署（已定）：允许跨域访问的前端地址
+  cors_origins: ["http://127.0.0.1:5173", "http://localhost:5173"]   # 本地前端：python3 -m http.server 5173 -d web
 
 database:
   url_env: VH_DB_URL               # 环境变量名：postgres://...
@@ -16,10 +16,10 @@ s3:
   endpoint: "http://127.0.0.1:59000"                     # 本地 MinIO 填 http://minio:9000
   presign_ttl: 1h
 
-auth:                              # 认证服务待定
-  issuer: ""
-  audience: ""
-  jwks_url: ""
+auth:                              # 认证服务待定；本地用 node web/dev/devauth.mjs 签发令牌
+  issuer: "http://127.0.0.1:18001"
+  audience: "videohelper-local"
+  jwks_url: "http://127.0.0.1:18001/jwks"
 
 ml:
   endpoints: ["http://127.0.0.1:18080"]    # 可以多个，比如候选模型单独一个容器

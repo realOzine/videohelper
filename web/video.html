@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;600&family=Noto+Sans+SC:wght@500;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css"><link rel="stylesheet" href="vh.css"><link rel="stylesheet" href="theme.css">
+<title>视频详情 · VideoHelper</title></head>
+<body data-page="video">
+<div class="app" data-page="video">
+<nav class="sidebar" id="sidebar" aria-label="主导航"></nav>
+<header class="topbar" id="topbar"></header>
+<main class="canvas">
+<p class="notice" id="notice" role="alert" hidden></p>
+<p style="margin-bottom:12px"><a class="card-link" href="library.html" style="color:var(--muted)" data-i18n="nav.library">资料库</a></p>
+<section class="panel objhead" id="objhead" aria-label="视频" data-i18n-attr="aria-label:a.video" style="margin-bottom:var(--gap)"></section>
+<section class="panel" aria-labelledby="ph" style="margin-bottom:var(--gap)">
+<header style="align-items:flex-start"><div><h2 id="ph" data-i18n="h.progress">处理进度</h2><p id="pfinding" style="margin-top:4px;color:var(--muted);font-size:15px"></p></div><span class="stamp" id="pdone" style="white-space:nowrap"></span></header>
+<div class="pipe" id="pipe"></div>
+</section>
+<div class="grid top">
+<section class="panel player span-8" aria-label="播放器" data-i18n-attr="aria-label:a.player">
+<div class="frame" id="frame"></div>
+</section>
+<div class="stack span-4">
+<section class="panel" aria-labelledby="sh"><header><h2 id="sh" data-i18n="h.vsearch">在这个视频里搜索</h2></header>
+<form class="vsearch" id="vsearch" role="search"><label for="vq" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)" data-i18n="h.vsearch">在这个视频里搜索</label><input id="vq" class="input" type="search" placeholder="描述画面、台词或声音" data-i18n-attr="placeholder:top.placeholder"><button class="btn" type="submit" data-i18n="b.search">搜索</button></form>
+<ol class="results" id="vres" aria-live="polite"></ol>
+<div class="can" id="can"></div></section>
+<section class="panel" aria-labelledby="ih"><header><h2 id="ih" data-i18n="h.info">视频信息</h2></header><dl class="kv" id="kv"></dl></section>
+</div>
+</div>
+</main>
+</div>
+<script src="i18n.js"></script><script src="app-i18n.js"></script><script type="module" src="app.js"></script>
+</body>
+</html>

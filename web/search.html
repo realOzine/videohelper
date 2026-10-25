@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;600&family=Noto+Sans+SC:wght@500;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="app.css"><link rel="stylesheet" href="vh.css"><link rel="stylesheet" href="theme.css">
+<title>搜索 · VideoHelper</title></head>
+<body data-page="search">
+<div class="app" data-page="search">
+<nav class="sidebar" id="sidebar" aria-label="主导航"></nav>
+<header class="topbar" id="topbar"></header>
+<main class="canvas">
+<p class="notice" id="notice" role="alert" hidden></p>
+<div class="title-row"><div><h1 id="qh"></h1><p class="sub" id="sub"></p></div>
+<div class="actions"><label for="scope" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)" data-i18n="h.scope">搜索范围</label>
+<select id="scope" class="input"><option value="" data-i18n="opt.all">全部视频</option></select></div></div>
+<div class="grid top" id="found">
+<section class="panel player span-7" aria-label="播放器" data-i18n-attr="aria-label:a.player">
+<div class="frame" id="frame"></div>
+<div class="controls"><button class="play" id="play" type="button" aria-label="播放" data-i18n-attr="aria-label:play" aria-pressed="false" aria-keyshortcuts="Space"><svg viewBox="0 0 24 24"><path d="M7 4.5v15l12.5-7.5z" fill="currentColor"/></svg></button><span class="time" id="time"></span><span class="spacer"></span>
+<div class="actions"><button class="btn" id="prev" type="button" aria-keyshortcuts="K"><span data-i18n="b.prev">上一个</span> <kbd>K</kbd></button><button class="btn" id="next" type="button" aria-keyshortcuts="J"><span data-i18n="b.next">下一个</span> <kbd>J</kbd></button></div></div>
+<div class="timeline"><div class="chart-head"><h3 data-i18n="h.lanes">命中位置</h3><span id="lanecap" class="stamp"></span></div>
+<div class="lanes"><span class="labs" id="labs" aria-hidden="true"></span><span class="plot" id="plot" role="slider" tabindex="0" aria-label="播放位置，按命中通道显示" data-i18n-attr="aria-label:a.plot" aria-valuemin="0"></span></div></div>
+<div class="player-body">
+<div class="moment-head"><div><h2 id="mtitle"></h2><p class="meta" id="mmeta"></p><div class="why" id="why" style="margin-top:8px"></div></div>
+<a class="btn primary" id="open" href="video.html" data-i18n="b.open">打开视频</a></div>
+<p class="quote" id="quote"></p>
+</div>
+</section>
+<section class="panel span-5" aria-labelledby="count">
+<header><h2 id="count"></h2><span class="meta"><span id="pos"></span> · <span data-i18n="meta.byrel">按相关度排序</span></span></header>
+<ol class="results" id="results"></ol>
+</section>
+</div>
+</main>
+</div>
+<script src="i18n.js"></script><script src="app-i18n.js"></script><script type="module" src="app.js"></script>
+</body>
+</html>
