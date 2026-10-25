@@ -1,7 +1,9 @@
-"""Frozen real-output diagnosis; no model or running services are needed."""
+"""Frozen old-contract evidence and current-adapter regression; no services needed."""
 
+import copy
 import json
 import sys
+from itertools import pairwise
 from pathlib import Path
 
 import pytest
@@ -10,23 +12,64 @@ ROOT = Path(__file__).resolve().parents[3]
 sys.path[:0] = [str(ROOT / "ml"), str(ROOT / "Eval/tools")]
 
 from app.adapters.funasr import transcript_from_result
-from app.api.errors import MLError
 from diagnose_asr import violations
 
 HERE = Path(__file__).parent
+MINIMAL_CASES = json.loads((HERE / "minimal-repro.json").read_text())
 
 
-@pytest.mark.parametrize("case", json.loads((HERE / "minimal-repro.json").read_text()))
-def test_two_real_tokens_reproduce_adapter_rejection(case):
+@pytest.mark.parametrize("case", MINIMAL_CASES)
+def test_two_real_tokens_reproduce_historical_non_overlap_violation(case):
     result = case["result"]
     duration = case["duration_ms"]
-    with pytest.raises(MLError, match="ASR word timestamps are invalid"):
-        transcript_from_result(result, "zh", duration, 0, duration)
     invalid = violations(result, 0, duration)
     assert len(invalid) == 1
     assert invalid[0]["token_index"] == 1
     assert invalid[0]["overlap_ms"] == (60 if case["video_id"] == 3 else 140)
     assert not invalid[0]["zero_or_negative_duration"]
+
+
+@pytest.mark.parametrize("offset", [0, 3000])
+@pytest.mark.parametrize(
+    "result,duration",
+    [
+        pytest.param(case["result"], case["duration_ms"], id=f"two-token-{case['video_id']}")
+        for case in MINIMAL_CASES
+    ]
+    + [
+        pytest.param(
+            json.loads((HERE / f"video-{video_id}-raw.json").read_text())[0],
+            duration,
+            id=f"full-{video_id}",
+        )
+        for video_id, duration in [(3, 108000), (4, 96000)]
+    ],
+)
+def test_frozen_outputs_preserve_recognition_and_allowed_overlap(result, duration, offset):
+    before = copy.deepcopy(result)
+    transcript = transcript_from_result(result, "zh", duration + offset, offset, duration + offset)
+
+    assert transcript.language == "zh"
+    assert transcript.duration_ms == duration + offset
+    assert [sentence.text for sentence in transcript.sentences] == [
+        source["text"] for source in result["sentence_info"]
+    ]
+    words = [word for sentence in transcript.sentences for word in sentence.words]
+    assert [word.w for word in words] == result["raw_text"].split()
+    assert [[word.s, word.e] for word in words] == [
+        [start + offset, end + offset] for start, end in result["timestamp"]
+    ]
+    assert all(offset <= word.s < word.e <= duration + offset for word in words)
+    assert all(left.s <= right.s for left, right in pairwise(words))
+    assert any(left.e > right.s for left, right in pairwise(words))
+    for sentence, source in zip(transcript.sentences, result["sentence_info"], strict=True):
+        assert [[word.s, word.e] for word in sentence.words] == [
+            [start + offset, end + offset] for start, end in source["timestamp"]
+        ]
+        assert sentence.start_ms == min(word.s for word in sentence.words)
+        assert sentence.end_ms == max(word.e for word in sentence.words)
+        assert offset <= sentence.start_ms < sentence.end_ms <= duration + offset
+    assert result == before
 
 
 @pytest.mark.parametrize("video_id,expected_index,token_count", [(3, 106, 146), (4, 225, 240)])
