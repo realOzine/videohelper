@@ -1,0 +1,30 @@
+# CPU 开发清单：必须显式设置 ML_FAKE=1；fingerprint 与真实 adapter 不同。
+models:
+  - id: wemm-2b@r1
+    kind: embedder
+    adapter: wemm
+    weights: Tencent/WeMM-Embedding-2B
+    revision: fake-v1
+    dtype: float32
+    dim: 1024
+    metric: cosine
+    query_inputs: [text]
+    doc_inputs: [video, text]
+    max_batch: 64
+    max_span_ms: 30000
+    max_concurrency: 1
+    queue_limit: 64
+    query_concurrency: 1
+    query_queue_limit: 8
+    preprocess: {frames_per_clip: 8, image_size: 224}
+  - id: paraformer-zh@r1
+    kind: transcriber
+    adapter: funasr
+    weights: paraformer-zh
+    revision: fake-v1
+    dtype: float32
+    max_concurrency: 1
+    queue_limit: 4
+    max_window_ms: 900000
+    languages: [zh]
+    preprocess: {sample_rate: 16000}
