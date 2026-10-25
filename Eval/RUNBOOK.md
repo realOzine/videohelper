@@ -1,8 +1,8 @@
 # 真实模型基线运行说明
 
-本流程将**索引验收**与**固定索引检索回归**分开：上传、worker 和索引推理只在 `index` 执行；`retrieve` 校验已有索引，再调用真实查询编码和业务搜索。命令在仓库根目录执行。本文提供操作步骤，不宣称已有基线通过或给出未运行的质量分数。
+本流程将**索引验收**与**固定索引检索回归**分开：上传、worker 和索引推理只在 `index` 执行；`retrieve` 校验已有索引，再调用真实查询编码和业务搜索。命令在仓库根目录执行。本文提供操作步骤；已执行结果与质量指标见 [基线报告](BASELINE.md)。
 
-`baseline-v1` 是保留的失败运行，不能当作可用快照。ASR 修复已从 `main` 的 `30efaef` 合入 `eval`（`a98cd20`），`baseline-v2` 正在重新索引验收；只有其 [index-run.json](runs/baseline-v2-index/index-run.json) 为 `status: passed` 且完整快照已保存后，才能执行下文检索与恢复命令。已使用的 ID（成功或失败）均不能重跑；后续索引用新的 ID，例如 `baseline-v3`。
+`baseline-v1` 是保留的失败运行，不能当作可用快照。ASR 修复已从 `main` 的 `30efaef` 合入 `eval`（`a98cd20`），`baseline-v2` 已完成索引、重复检索和恢复验证，结果见 [基线报告](BASELINE.md)。后续每轮须确认对应 `index-run.json` 为 `status: passed` 且完整快照已保存，才能执行下文检索与恢复命令。已使用的 ID（成功或失败）均不能重跑；后续索引用新的 ID，例如 `baseline-v3`。
 
 ## 前置条件与隔离资源
 
@@ -61,7 +61,7 @@ SNAPSHOT=baseline-v3
 RUN=check-01
 ```
 
-新索引使用尚未用过的 `SNAPSHOT`；当前 `baseline-v2` 已启动，不要重跑或并行启动新索引。若要复用已有快照，只有确认 `baseline-v2` 验收通过且归档完整后，才可改设 `SNAPSHOT=baseline-v2` 并**跳过下一条 `index`**。`RUN` 每次流程必须换新值；它会派生 `-a`、`-b`、`-tuned`、`-restored`、`-restored-check`，这些 ID 和输出目录均不可复用。新建索引的 `SNAPSHOT` 最多 34 字符（运行目录附加 `-index`），`RUN` 最多 25 字符，以便最长后缀仍满足 40 字符限制；二者均遵守前述 ID 字符规则。
+新索引使用尚未用过的 `SNAPSHOT`；当前 `baseline-v2` 已完成，不要用同名 ID 重跑；也不要并行执行新的索引轮次。若要复用已有快照，只有确认 `baseline-v2` 验收通过且归档完整后，才可改设 `SNAPSHOT=baseline-v2` 并**跳过下一条 `index`**。`RUN` 每次流程必须换新值；它会派生 `-a`、`-b`、`-tuned`、`-restored`、`-restored-check`，这些 ID 和输出目录均不可复用。新建索引的 `SNAPSHOT` 最多 34 字符（运行目录附加 `-index`），`RUN` 最多 25 字符，以便最长后缀仍满足 40 字符限制；二者均遵守前述 ID 字符规则。
 
 ```sh
 ml/.venv/bin/python Eval/tools/run.py index --run-id "$SNAPSHOT"
@@ -83,7 +83,7 @@ ml/.venv/bin/python Eval/tools/score.py compare --before "Eval/runs/${RUN}-a/rep
 
 每次针对全库 5 个视频执行 35 条查询 × `visual` / `speech` / `fused`，共 105 个响应，每题最多取 10 个 moment。检索前后检查索引指纹与模型身份；不重新上传或启动 worker。查询文字原样传给模型，当前没有英文转换。`fused` 使用当前 active 的全部通道，包含 `audio`；没有独立声音金标，不能据此单独验收 CLAP。
 
-`report.json` / `report.md` 为汇总，`per_query.jsonl` 为逐题评分，`raw-responses.jsonl` 保存桥接原始输出，`results.jsonl` 补充稳定 `media_id`，`metadata.json` 记录代码、模型、索引、通道与检索参数。`requests.jsonl`、前后 `inspection-*.json` 与 `search.log` 用于追查失败。`passed=true` 仅表示响应有效且索引稳定，**没有设定质量达标阈值**。
+`report.json` / `report.md` 为汇总，`per_query.jsonl` 为逐题评分，`raw-responses.jsonl` 保存桥接原始输出，`results.jsonl` 补充稳定 `media_id`，`metadata.json` 记录代码、模型、索引、通道与检索参数；新增的 `runtime` 明确记录本次实际数据库和桶，恢复验证必须核对为恢复资源。`requests.jsonl`、前后 `inspection-*.json` 与 `search.log` 用于追查失败。`passed=true` 仅表示响应有效且索引稳定，**没有设定质量达标阈值**。
 
 比较输出 `delta.json` / `delta.md`；核对 `compatible`、`fixed_index_regression`、`identical_retrieval_conditions`，再看逐题变化。语料、标签、评分定义不一致会拒绝比较；快照或模型变化会标明，不能称作固定索引回归。同条件重复运行也要保留实际差异，不预先宣称结果一致。
 
