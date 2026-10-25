@@ -1055,7 +1055,7 @@ CREATE TABLE video (
   source_url   text,                                 -- 导入链接时的原始地址
   source_key   text,                                 -- S3 原片路径；上传完成或下载完成后填写
   normalized_video_key text,                                 -- S3 标准化视频路径；prepare_media 阶段完成后填写
-  duration_ms  int,                                  -- probe 填写；格子边界由它算出
+  duration_ms  int CHECK (duration_ms > 0),                                  -- probe 填写；格子边界由它算出
   has_video    boolean,                              -- probe 填写；false 时不建画面阶段
   has_audio    boolean,                              -- probe 填写；false 时不建 asr 和音频阶段
   thumbs       jsonb,                                -- 雪碧图布局 {"tile_w":320,"tile_h":180,"cols":10,"rows":10,"count":1440}；prepare_media 填写
@@ -1063,7 +1063,8 @@ CREATE TABLE video (
   error        text,                                 -- failed 时给用户看的原因
   deleted_at   timestamptz,                          -- 软删除时间；非空表示已删除，列表、检索、Agent 都看不到
   created_at   timestamptz NOT NULL DEFAULT now(),
-  updated_at   timestamptz NOT NULL DEFAULT now()
+  updated_at   timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (id, workspace_id)
 );
 CREATE INDEX video_workspace_created_idx ON video (workspace_id, created_at DESC, id DESC)
   WHERE deleted_at IS NULL;                          -- 列表分页，只含未删除的视频
@@ -1086,7 +1087,7 @@ CREATE TABLE stage_run (
   version     text        NOT NULL,                  -- 阶段实现版本；有不兼容变化时升级
   status      text        NOT NULL CHECK (status IN ('pending', 'queued', 'running', 'done', 'failed')),
   required    boolean     NOT NULL DEFAULT true,     -- finalize 是否要等它；生成计划时写死，shadow 的 embed 阶段为 false
-  attempt     int         NOT NULL DEFAULT 0,        -- 已执行次数
+  attempt     int         NOT NULL DEFAULT 0 CHECK (attempt >= 0),        -- 已执行次数
   error       text,                                  -- 最近一次错误
   output      jsonb       NOT NULL DEFAULT '{}',     -- 阶段产出与断点进度
   updated_at  timestamptz NOT NULL DEFAULT now(),
@@ -1097,16 +1098,17 @@ CREATE INDEX stage_run_open_idx ON stage_run (status, updated_at)
 
 -- 文本片段：首版只有转录句子（speech）；OCR 以后用同一张表，kind 加 'ocr'
 CREATE TABLE text_span (
-  video_id    bigint      NOT NULL REFERENCES video(id) ON DELETE CASCADE,
+  video_id    bigint      NOT NULL,
   workspace_id bigint      NOT NULL,                  -- 冗余，便于按工作区过滤
   kind        text        NOT NULL CHECK (kind IN ('speech')),
-  start_ms    int         NOT NULL,
+  start_ms    int         NOT NULL CHECK (start_ms >= 0),
   end_ms      int         NOT NULL,
   text        text        NOT NULL,
   words       jsonb,                                 -- 词级时间戳 [{"w":"接下来","s":12300,"e":12900}]，仅 speech
   model       text        NOT NULL,                  -- 产出它的模型，如 paraformer-zh@r1
   PRIMARY KEY (video_id, kind, start_ms),
-  CHECK (end_ms > start_ms)
+  CHECK (end_ms > start_ms),
+  FOREIGN KEY (video_id, workspace_id) REFERENCES video(id, workspace_id) ON DELETE CASCADE
 );
 CREATE INDEX text_span_workspace_idx    ON text_span (workspace_id, kind);
 
@@ -1118,22 +1120,24 @@ CREATE TABLE embedding_space (
   fingerprint    text        NOT NULL,               -- 权重 + 预处理配置的 hash
   doc_inputs     text[]      NOT NULL,               -- 能编码的文档类型：video / audio / text
   query_inputs   text[]      NOT NULL,               -- 能编码的查询类型：text
-  max_span_ms    int,                                -- 视频、音频输入的单段最长时长
+  max_span_ms    int CHECK (max_span_ms > 0),                                -- 视频、音频输入的单段最长时长
   disabled       boolean     NOT NULL DEFAULT false, -- fingerprint 或维度不一致时停用
   registered_at  timestamptz NOT NULL DEFAULT now()
 );
 
 -- 向量：一行一条；只放永远不变的定位字段，会变的属性（项目、标题）不放这里
 CREATE TABLE embedding (
-  video_id   bigint      NOT NULL REFERENCES video(id) ON DELETE CASCADE,
+  video_id   bigint      NOT NULL,
   workspace_id bigint      NOT NULL,                   -- 工作区隔离；所有查询必带
   channel    text        NOT NULL CHECK (channel IN ('visual', 'speech', 'audio')),
   space_id   text        NOT NULL REFERENCES embedding_space(id),
   seg        text        NOT NULL,                   -- 切片版本：grid@v1 / sentence@v1
-  start_ms   int         NOT NULL,
+  start_ms   int         NOT NULL CHECK (start_ms >= 0),
   end_ms     int         NOT NULL,
   vec        halfvec     NOT NULL,                   -- 不写维度，各 space 共用一列；维度由写入方按登记表校验
-  PRIMARY KEY (video_id, channel, space_id, seg, start_ms)
+  PRIMARY KEY (video_id, channel, space_id, seg, start_ms),
+  CHECK (end_ms > start_ms),
+  FOREIGN KEY (video_id, workspace_id) REFERENCES video(id, workspace_id) ON DELETE CASCADE
 );
 CREATE INDEX embedding_scan_idx ON embedding (workspace_id, channel, space_id, seg);  -- 小范围精确扫描、统计
 -- 每个 (channel, space) 组合一个部分 HNSW 索引，由 videohelper space add 调用 index.EnsureVectorIndex 创建（提议），

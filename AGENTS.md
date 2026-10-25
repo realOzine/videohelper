@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-VideoHelper is currently a design-stage video-search project. Tracked content consists of `docs/design.md` (product, architecture, decisions) and `docs/spec.md` (implementation contracts and testing strategy). Preserve their Chinese prose and distinguish confirmed decisions from proposals and open questions.
+VideoHelper is a video-search backend under implementation. `docs/design.md` describes product and architecture decisions; `docs/spec.md` defines implementation contracts. Go packages live in `internal/`, migrations in `migrations/`, and service configuration in `config/`. Preserve their Chinese prose and distinguish confirmed decisions from proposals and open questions.
 
 ## Agent Scope: Ignore `model-test/`
 
