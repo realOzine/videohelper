@@ -43,3 +43,16 @@ DELETE FROM embedding e WHERE e.ctid IN (
 
 -- name: DisableSpace :exec
 UPDATE embedding_space SET disabled = true WHERE id = $1;
+
+-- name: TextRanges :many
+WITH ranges AS (
+  SELECT unnest(@video_ids::bigint[]) AS video_id, unnest(@start_ms::int[]) AS start_ms, unnest(@end_ms::int[]) AS end_ms
+)
+SELECT t.* FROM text_span t JOIN video v ON v.id=t.video_id AND v.workspace_id=t.workspace_id
+WHERE t.workspace_id = @workspace_id AND t.kind='speech'
+  AND v.status='ready' AND v.deleted_at IS NULL
+  AND EXISTS (
+    SELECT 1 FROM ranges r
+    WHERE r.video_id=t.video_id AND t.start_ms<r.end_ms AND t.end_ms>r.start_ms
+  )
+ORDER BY t.video_id,t.start_ms;

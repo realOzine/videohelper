@@ -171,6 +171,13 @@ func TestVectorPostgresIntegration(t *testing.T) {
 			t.Fatalf("repaired index ready=%v error=%v", ready, err)
 		}
 	})
+	if _, err := pool.Exec(ctx, "UPDATE embedding_space SET disabled=true WHERE id=$1", space.ID); err != nil {
+		t.Fatal(err)
+	}
+	query.VideoIDs, query.TimeRange = nil, nil
+	if hits, err := SearchVectors(ctx, pool, query); err != nil || len(hits) != 0 {
+		t.Fatalf("disabled space still returned vectors: %+v %v", hits, err)
+	}
 }
 
 func assertHNSWPlan(t *testing.T, ctx context.Context, pool *pgxpool.Pool, query VectorQuery) {

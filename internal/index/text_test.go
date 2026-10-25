@@ -93,6 +93,17 @@ func TestSpeechPostgresIntegration(t *testing.T) {
 	if got, err := SpeechSentences(ctx, pool, v2); err != nil || len(got) != 3 {
 		t.Fatalf("indexing sentences unavailable to embedding: %+v error=%v", got, err)
 	}
+	ranges := []VideoSpan{
+		{VideoID: v1, Span: timeline.Span{StartMs: 0, EndMs: 20}},
+		{VideoID: v1, Span: timeline.Span{StartMs: 10, EndMs: 30}},
+		{VideoID: v2, Span: timeline.Span{StartMs: 0, EndMs: 30}},
+	}
+	if got, err := TextRanges(ctx, pool, w1, ranges); err != nil || len(got) != 3 || got[1].Text != "第二句" {
+		t.Fatalf("batched overlap duplicated sentences or included indexing video: %+v %v", got, err)
+	}
+	if got, err := TextRanges(ctx, pool, w2, ranges); err != nil || len(got) != 0 {
+		t.Fatalf("batched text escaped workspace: %+v %v", got, err)
+	}
 	if err := DeleteVideoChannel(ctx, pool, v1, "visual"); err != nil {
 		t.Fatal(err)
 	}
