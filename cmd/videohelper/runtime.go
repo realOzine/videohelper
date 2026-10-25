@@ -21,6 +21,7 @@ import (
 )
 
 type runtime struct {
+	objects   *blob.Store
 	library   *library.Service
 	search    *search.Service
 	pipeline  *pipeline.Service
@@ -83,6 +84,7 @@ func newRuntime(ctx context.Context, pool *pgxpool.Pool, cfg config.Config, role
 	if err != nil {
 		return nil, err
 	}
+	app.objects = objects
 	if role != config.RoleEval {
 		app.redis = redis.NewClient(&redis.Options{Addr: cfg.Redis.Addr})
 		if err := app.redis.Ping(ctx).Err(); err != nil {

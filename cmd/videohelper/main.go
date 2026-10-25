@@ -38,7 +38,7 @@ func run(ctx context.Context, args []string) error {
 	flags := flag.NewFlagSet("videohelper", flag.ContinueOnError)
 	path := flags.String("config", "config/local.yaml", "configuration file (run from repository root)")
 	flags.Usage = func() {
-		fmt.Fprintln(flags.Output(), "Usage: videohelper [-config path] migrate | local-init | worker | local-upload <file> | local-search <text> | local-video <id> | space add <channel> <id>")
+		fmt.Fprintln(flags.Output(), "Usage: videohelper [-config path] migrate | local-init | worker | api | local-upload <file> | local-search <text> | local-video <id> | space add <channel> <id>")
 		flags.PrintDefaults()
 	}
 	if err := flags.Parse(args); err != nil {
@@ -118,6 +118,9 @@ func run(ctx context.Context, args []string) error {
 			return err
 		}
 		defer app.close()
+		if args[0] == "api" {
+			return runAPI(ctx, pool, app, cfg)
+		}
 		if args[0] == "worker" {
 			return runWorker(ctx, app, cfg)
 		}
@@ -162,6 +165,8 @@ func commandRole(args []string) (config.Role, error) {
 			return config.RoleMigrate, nil
 		case "worker":
 			return config.RoleWorker, nil
+		case "api":
+			return config.RoleAPI, nil
 		}
 	}
 	if len(args) == 2 && strings.TrimSpace(args[1]) != "" {
