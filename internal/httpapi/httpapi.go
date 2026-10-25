@@ -167,7 +167,7 @@ func decode(r *http.Request, out any, optional bool) error {
 func (a api) authenticate(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		parts := strings.Fields(r.Header.Get("Authorization"))
-		if len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
+		if len(r.Header.Values("Authorization")) != 1 || len(parts) != 2 || !strings.EqualFold(parts[0], "Bearer") {
 			writeError(w, apperr.New(apperr.Unauthenticated, "unauthenticated", "需要 Bearer 令牌"))
 			return
 		}

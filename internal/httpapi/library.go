@@ -204,7 +204,17 @@ func (a api) video(r *http.Request) (int, any, error) {
 	if err != nil {
 		return 0, nil, err
 	}
-	return 200, map[string]any{"video": publicVideo(video)}, nil
+	if a.Pipeline == nil {
+		return 0, nil, apperr.New(apperr.Unavailable, "unavailable", "索引服务尚未就绪")
+	}
+	stages, err := a.Pipeline.ListStages(r.Context(), principal(r).WorkspaceID, id)
+	if err != nil {
+		return 0, nil, err
+	}
+	for i := range stages {
+		stages[i].UpdatedAt = stages[i].UpdatedAt.UTC()
+	}
+	return 200, map[string]any{"video": publicVideo(video), "stages": stages}, nil
 }
 
 func (a api) deleteVideo(r *http.Request) (int, any, error) {
