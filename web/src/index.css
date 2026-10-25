@@ -1,0 +1,110 @@
+@import "tailwindcss";
+
+/* One palette for the landing page and the workbench, after cindy.app: ink grounds, paper text and fields, one signal red.
+   The default Tailwind colours and breakpoints are cleared so only these exist. */
+@theme {
+  --color-*: initial;
+  --color-black: #000;
+  --color-white: #fff;
+  --color-ink: #0f0e15;
+  --color-ink-2: #16151e;
+  --color-ink-3: #201f2a;
+  --color-ink-4: #2b2a37;
+  --color-line: #3a3946;
+  --color-fg: #f3ede2;
+  --color-fg-soft: #b3b0be;
+  --color-faint: #9c99a8;
+  --color-paper: #f3ede2;
+  --color-on-paper: #14131b;
+  --color-on-paper-soft: #565362;
+  --color-red: #f43d3f;
+  --color-red-hi: #ff5557;
+  --color-red-text: #ff7173;
+  --color-red-deep: #c81e21;
+  --color-red-soft: #2e1519;
+  --color-red-track: #4a2227;
+  --color-red-line: #5c2a30;
+  --color-pos: #86d3a6;
+  --color-pos-bg: #12291e;
+  --color-pos-ink: #9fe0b9;
+  --color-neg-ink: #ff9a9b;
+  --color-hit: #6d6a7c;
+
+  --font-sans: "Geist", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", system-ui, sans-serif;
+  --font-disp: "Anton", "Noto Sans SC", "PingFang SC", Impact, sans-serif;
+  --font-cjk: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --breakpoint-*: initial;
+  --breakpoint-xs: 35rem;     /* 560: phone */
+  --breakpoint-sm: 47.5rem;   /* 760: landing phone */
+  --breakpoint-md: 53.75rem;  /* 860: workbench sidebar folds */
+  --breakpoint-lg: 60rem;     /* 960: landing notes stack */
+  --breakpoint-xl: 68.75rem;  /* 1100: tablet */
+
+  --animate-run: run 38s linear infinite;
+  --animate-drift: drift 26s ease-in-out infinite alternate;
+  --animate-enter: enter 420ms var(--ease-out) both;
+  --animate-beat: beat 1.6s ease-in-out infinite;
+
+  /* the one elevation cue on ink: a hairline of light along a panel's top edge */
+  --shadow-edge: inset 0 1px 0 rgb(255 255 255 / 0.045);
+}
+
+@keyframes run { to { transform: translateX(-50%); } }
+@keyframes enter { from { opacity: 0; transform: translateY(6px); } }
+@keyframes beat { 50% { opacity: 0.35; } }
+@keyframes drift { from { transform: scale(1.12); } to { transform: scale(1.02) translate(-1.5%, 1%); } }
+
+@layer base {
+  html { -webkit-text-size-adjust: 100%; color-scheme: dark; }
+  body { background: var(--color-ink); color: var(--color-fg); -webkit-font-smoothing: antialiased; font-variant-numeric: tabular-nums; }
+  :focus-visible { outline: 2px solid var(--color-red); outline-offset: 3px; }
+  button { cursor: pointer; }
+  ::selection { background: var(--color-red); color: var(--color-on-paper); }
+}
+
+/* the landing page's margins and five type steps: display, head, lead, body, small */
+.landing {
+  --m: max(40px, env(safe-area-inset-left, 0px)); --mr: max(40px, env(safe-area-inset-right, 0px));
+  --step-small: 15px; --step-body: clamp(17px, 16px + 0.2vw, 18px); --step-lead: clamp(24px, 2.2vw, 34px);
+  --step-head: clamp(44px, 5.6vw, 92px); --step-display: clamp(72px, 10vw, 168px);
+}
+@media (width < 47.5rem) { .landing { --m: max(20px, env(safe-area-inset-left, 0px)); --mr: max(20px, env(safe-area-inset-right, 0px)); } }
+
+@layer components {
+  /* Anton is Latin only: Chinese headings fall to the heavy CJK sans, the way cindy.app sets them */
+  .disp { font-family: var(--font-disp); font-weight: 400; text-transform: uppercase; letter-spacing: 0.005em; line-height: 0.98; }
+  :lang(zh-CN) .disp { font-family: var(--font-cjk); font-weight: 900; text-transform: none; letter-spacing: -0.01em; line-height: 1.12; }
+
+  /* entrances: rise into place once on screen (see Rise in ui.tsx) */
+  .rise { opacity: 0; transform: translateY(24px); transition: opacity 800ms var(--ease-out), transform 800ms var(--ease-out); transition-delay: var(--d, 0ms); }
+  .rise.in { opacity: 1; transform: none; }
+
+  /* channel marks: the shape tells the channel apart, the label says it */
+  .ch { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+  .ch::before { content: ""; width: 7px; height: 7px; flex: none; background: currentColor; }
+  .ch-visual::before { border-radius: 1px; }
+  .ch-speech::before { border-radius: 50%; }
+  .ch-audio::before { transform: rotate(45deg) scale(0.85); }
+
+  /* the landing's drag-through-the-stages slider */
+  .stage-range { width: 100%; margin: 0; appearance: none; height: 32px; background: transparent; cursor: pointer; }
+  .stage-range::-webkit-slider-runnable-track { height: 8px; background: linear-gradient(var(--color-fg), var(--color-fg)) 0 / var(--pass, 0%) 100% no-repeat, var(--color-ink-4); }
+  .stage-range::-webkit-slider-thumb { appearance: none; width: 32px; height: 32px; margin-top: -12px; background: var(--color-red); transition: transform 140ms var(--ease-out); }
+  .stage-range:active::-webkit-slider-thumb { transform: scale(1.12); }
+  .stage-range::-moz-range-track { height: 8px; background: var(--color-ink-4); }
+  .stage-range::-moz-range-progress { height: 8px; background: var(--color-fg); }
+  .stage-range::-moz-range-thumb { width: 32px; height: 32px; border: 0; border-radius: 0; background: var(--color-red); }
+}
+
+/* the cut corner on primary buttons, after cindy.app */
+@utility chamfer { clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%); }
+@utility chamfer-sm { clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0.01ms !important; animation: none !important; }
+  .rise { opacity: 1; transform: none; }
+}

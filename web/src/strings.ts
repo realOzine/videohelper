@@ -1,9 +1,8 @@
-// Workbench strings in Chinese and English; loaded after i18n.js and before app.js.
-(() => {
-  const page = document.querySelector('.app').dataset.page;
-  const titles = { search: ['搜索 · VideoHelper', 'Search · VideoHelper'], library: ['资料库 · VideoHelper', 'Library · VideoHelper'], video: ['视频详情 · VideoHelper', 'Video · VideoHelper'], signin: ['登录 · VideoHelper', 'Sign in · VideoHelper'] }[page];
-  window.I18N.add({
-    'st.importing': '导入中', 'top.account': '账号与登录', 'top.ws': '工作区 {id}',
+// Workbench strings in Chinese and English. Values may carry <b> or <code>, rendered by Rich in ui.tsx.
+import { addStrings } from './i18n.ts';
+
+addStrings({
+    'a.nav': '主导航', 'a.closenav': '关闭导航', 'st.importing': '导入中', 'top.account': '账号与登录', 'top.ws': '工作区 {id}',
     'stage.probe': '读取媒体信息', 'stage.prepare_media': '转码与缩略图', 'stage.visual': '画面编码', 'stage.asr': '语音转录', 'stage.speech': '台词编码', 'stage.audio': '声音编码', 'stage.finalize': '完成',
     queued: '排队中', 'err.network': '连不上 API（{base}），请检查地址和服务是否在运行。', 'p.name': '项目名称',
     's.title': '搜索', 's.empty': '输入一句话，在全部视频里找画面、台词或声音。', 's.none': '没有找到相关片段。', 's.skipped': '{chs}暂时不可用，结果只来自其余通道。',
@@ -13,7 +12,7 @@
     'can.noaudio': '无音轨', 'can.failed': '失败', 'vs.none': '这个视频里没有找到。',
     'si.title': '登录工作台', 'si.sub': '粘贴认证服务签发的访问令牌。本地开发可运行 <code>node web/dev/devauth.mjs</code> 生成。', 'si.base': 'API 地址', 'si.token': '访问令牌（JWT）', 'si.go': '登录', 'si.signout': '退出登录',
     'si.bad': '令牌无效或已过期。', 'si.out': '已退出登录，令牌已从这个浏览器删除。', 'si.badbase': 'API 地址必须是 http 或 https 开头的网址。',
-    'page.title': titles[0], today: '今天', yesterday: '昨天', and: '和',
+    'page.title.search': '搜索 · VideoHelper', 'page.title.library': '资料库 · VideoHelper', 'page.title.video': '视频详情 · VideoHelper', 'page.title.signin': '登录 · VideoHelper', today: '今天', yesterday: '昨天', and: '和',
     'ch.visual': '画面', 'ch.speech': '台词', 'ch.audio': '声音',
     'st.ready': '可搜索', 'st.indexing': '处理中', 'st.uploading': '上传中', 'st.failed': '失败',
     'frame.of': '{t} 的画面', 'frame.at': '{t} {tc} 的画面', jump: '跳到 {tc}',
@@ -38,8 +37,8 @@
     'h.projfilter': '按项目筛选', 'opt.allproj': '所有项目', 'meta.sort': '按添加时间，新的在前',
     'th.video': '视频', 'th.status': '状态', 'th.dur': '时长', 'th.proj': '项目', 'th.added': '添加时间', 'th.actions': '操作',
     'h.progress': '处理进度', 'h.vsearch': '在这个视频里搜索', 'b.search': '搜索', 'h.info': '视频信息', 'a.video': '视频', 'a.player': '播放器',
-  }, {
-    'st.importing': 'Importing', 'top.account': 'Account and sign-in', 'top.ws': 'Workspace {id}',
+}, {
+    'a.nav': 'Main navigation', 'a.closenav': 'Close navigation', 'st.importing': 'Importing', 'top.account': 'Account and sign-in', 'top.ws': 'Workspace {id}',
     'stage.probe': 'Read media info', 'stage.prepare_media': 'Transcode and thumbnails', 'stage.visual': 'Picture encoding', 'stage.asr': 'Transcription', 'stage.speech': 'Speech encoding', 'stage.audio': 'Sound encoding', 'stage.finalize': 'Finish',
     queued: 'Queued', 'err.network': 'Cannot reach the API at {base}. Check the address and that the service is running.', 'p.name': 'Project name',
     's.title': 'Search', 's.empty': 'Describe a scene, a line or a sound to search every video.', 's.none': 'No matching moments.', 's.skipped': '{chs} unavailable for now; results come from the other channels.',
@@ -49,7 +48,7 @@
     'can.noaudio': 'No audio track', 'can.failed': 'Failed', 'vs.none': 'Nothing found in this video.',
     'si.title': 'Sign in', 'si.sub': 'Paste an access token from your sign-in service. For local development, run <code>node web/dev/devauth.mjs</code>.', 'si.base': 'API address', 'si.token': 'Access token (JWT)', 'si.go': 'Sign in', 'si.signout': 'Sign out',
     'si.bad': 'The token is invalid or expired.', 'si.out': 'Signed out; the token is removed from this browser.', 'si.badbase': 'The API address must start with http or https.',
-    'page.title': titles[1], today: 'Today', yesterday: 'Yesterday', and: ' and ',
+    'page.title.search': 'Search · VideoHelper', 'page.title.library': 'Library · VideoHelper', 'page.title.video': 'Video · VideoHelper', 'page.title.signin': 'Sign in · VideoHelper', today: 'Today', yesterday: 'Yesterday', and: ' and ',
     'ch.visual': 'Picture', 'ch.speech': 'Speech', 'ch.audio': 'Sound',
     'st.ready': 'Searchable', 'st.indexing': 'Processing', 'st.uploading': 'Uploading', 'st.failed': 'Failed',
     'frame.of': 'A frame from {t}', 'frame.at': '{t} at {tc}', jump: 'Jump to {tc}',
@@ -74,5 +73,4 @@
     'h.projfilter': 'Filter by project', 'opt.allproj': 'All projects', 'meta.sort': 'Newest first',
     'th.video': 'Video', 'th.status': 'Status', 'th.dur': 'Length', 'th.proj': 'Project', 'th.added': 'Added', 'th.actions': 'Actions',
     'h.progress': 'Processing', 'h.vsearch': 'Search this video', 'b.search': 'Search', 'h.info': 'Video details', 'a.video': 'Video', 'a.player': 'Player',
-  });
-})();
+});

@@ -91,7 +91,7 @@ videohelper/
 │   ├── tools/run.py            # 索引验收、快照、检索回归
 │   └── annotations/queries.jsonl # 固定评估集（第 11 章）
 ├── ml/                          # Python 模型服务，独立项目（第 10 章）
-├── web/                         # 前端：静态 HTML/CSS/原生 ES 模块，无构建步骤
+├── web/                         # 前端：React + TypeScript + Tailwind，Vite 构建为静态文件
 ├── deploy/
 │   └── docker-compose.yml       # Postgres、Redis、MinIO；Go/ML 在宿主机运行
 └── docs/
@@ -2656,7 +2656,7 @@ MinIO 源码固定为 `v0.0.0-20251015172955-9e49d5e7a648`。本地默认凭证�
 
 ## 16. 前端
 
-前端在 `web/`：静态 HTML、CSS 和原生 ES 模块，不需要构建，任何静态主机都能托管（设计文档问题 11 已定）。认证服务确定前，登录页粘贴认证服务签发的 JWT 和 API 地址，存在浏览器 localStorage，令牌只放进 `Authorization` 头；本地开发用 `node web/dev/devauth.mjs` 签发令牌（`config/local.yaml` 的 `auth` 指向它）。纯函数测试：`make test-web`。首版需要的页面和它们依赖的接口：
+前端在 `web/`：React、TypeScript 和 Tailwind，由 Vite 构建成静态文件（每页一个 HTML 入口，地址保持 `search.html`、`video.html?id=…`），任何静态主机都能托管（设计文档问题 11 已定）。认证服务确定前，登录页粘贴认证服务签发的 JWT 和 API 地址，存在浏览器 localStorage，令牌只放进 `Authorization` 头；本地开发用 `node web/dev/devauth.mjs` 签发令牌（`config/local.yaml` 的 `auth` 指向它）。纯函数测试：`make test-web`；类型检查与构建：`npm --prefix web run build`。首版需要的页面和它们依赖的接口：
 
 | 页面 | 依赖的接口 |
 |---|---|

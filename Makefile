@@ -13,7 +13,7 @@ test-go:
 	go test -race $(GO_PACKAGES)
 
 test-web:
-	node --test web/*.test.mjs
+	npm --prefix web test
 
 vet:
 	go vet $(GO_PACKAGES)

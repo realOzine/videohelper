@@ -1,25 +1,13 @@
 <!doctype html>
 <html lang="zh-CN">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>登录 · VideoHelper</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;600&family=Noto+Sans+SC:wght@500;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="app.css"><link rel="stylesheet" href="vh.css"><link rel="stylesheet" href="theme.css">
-<title>登录 · VideoHelper</title></head>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;600;700&family=Noto+Sans+SC:wght@500;700;900&display=swap" rel="stylesheet">
+</head>
 <body data-page="signin">
-<div class="app signin" data-page="signin">
-<main class="canvas">
-<a class="brand" href="index.html"><svg viewBox="0 0 26 26" fill="none" aria-hidden="true"><rect x="1.5" y="5.5" width="23" height="15" rx="3.5" stroke="currentColor" stroke-width="1.8"/><path d="M15 2v22" stroke="#f43d3f" stroke-width="2.4" stroke-linecap="round"/></svg>VideoHelper</a>
-<div class="title-row"><div><h1 data-i18n="si.title">登录工作台</h1><p class="sub" data-i18n-html="si.sub"></p></div></div>
-<p class="notice" id="notice" role="alert" hidden></p>
-<form class="panel" id="si">
-<label class="field"><span data-i18n="si.base">API 地址</span><input class="input" id="base" type="url" required autocomplete="url"></label>
-<label class="field"><span data-i18n="si.token">访问令牌（JWT）</span><textarea class="input" id="token" rows="5" required spellcheck="false" autocomplete="off"></textarea></label>
-<div class="actions"><button class="btn primary" type="submit" data-i18n="si.go">登录</button><button class="btn" id="out" type="button" data-i18n="si.signout">退出登录</button>
-<div class="langsw" role="group" aria-label="语言 Language"><button type="button" data-lang="zh">中文</button><button type="button" data-lang="en">EN</button></div></div>
-<p class="stamp" id="state" aria-live="polite"></p>
-</form>
-</main>
-</div>
-<script src="i18n.js"></script><script src="app-i18n.js"></script><script type="module" src="app.js"></script>
+<div id="root"></div>
+<script type="module" src="/src/main.tsx"></script>
 </body>
 </html>

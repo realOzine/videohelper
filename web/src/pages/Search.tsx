@@ -1,0 +1,217 @@
+// Search: the hit lanes are the scrubber, one row per channel across the whole video; the playhead runs through all three.
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { get, post, type Moment, type Video } from '../api.ts';
+import { t, useLang } from '../i18n.ts';
+import { CHANNELS, tc, ticks } from '../lib.ts';
+import { newProject, panel, PanelHead, Shell, TitleRow, useNotice, useWorkspace } from '../Shell.tsx';
+import { btn, btnPrimary, Ch, cx, Icon, Rich, select, TcBadge, Thumb } from '../ui.tsx';
+
+interface Entry { id: string; v: Video; url: string; dur: number }
+const params = new URLSearchParams(location.search);
+const q = (params.get('q') || '').trim(), project = params.get('project') || '';
+
+export default function Search() {
+  useLang();
+  const { notice, fail } = useNotice();
+  const { ws, reload } = useWorkspace(fail);
+  const [found, setFound] = useState<{ ms: Moment[]; skipped: string[] } | null>(null);
+  const [picked, setPicked] = useState(-1);
+  const [entry, setEntry] = useState<Entry | null>(null);
+  const [playing, setPlaying] = useState(false);
+  const vid = useRef<HTMLVideoElement>(null), plot = useRef<HTMLSpanElement>(null), ph = useRef<HTMLSpanElement>(null), time = useRef<HTMLSpanElement>(null);
+  const loaded = useRef(new Map<string, Promise<Entry>>()), pickedRef = useRef(-1), entryRef = useRef<Entry | null>(null), pending = useRef<number | null>(null);
+  const ms = found?.ms ?? [];
+
+  useEffect(() => {
+    if (!q) return;
+    post<{ moments: Moment[]; skipped_channels: string[] }>('/v1/search', { query: q, project_id: project || undefined, limit: 50 })
+      .then((r) => setFound({ ms: r.moments, skipped: r.skipped_channels || [] })).catch(fail);
+  }, [fail]);
+
+  // the playhead and clock follow the real video by direct DOM writes, so playback does not re-render the list
+  const setT = useCallback((at: number, glide = false) => {
+    const e = entryRef.current;
+    if (!e || !ph.current || !time.current) return;
+    const x = Math.max(0, Math.min(e.dur, at));
+    ph.current.style.transition = glide ? 'transform 420ms var(--ease-out)' : 'none';
+    ph.current.style.transform = `translateX(${(x / e.dur * 100).toFixed(3)}%)`;
+    time.current.innerHTML = `<b>${tc(x)}</b> / ${tc(e.dur)}`;
+    plot.current?.setAttribute('aria-valuenow', String(Math.round(x / 1000)));
+    plot.current?.setAttribute('aria-valuetext', t('s.valuetext', { a: tc(x), b: tc(e.dur) }));
+  }, []);
+  const seek = useCallback((at: number, glide = false) => {
+    const v = vid.current;
+    if (v && v.readyState >= 1) v.currentTime = at / 1000; else pending.current = at;
+    setT(at, glide);
+  }, [setT]);
+
+  const load = useCallback((id: string) => {
+    if (!loaded.current.has(id)) {
+      loaded.current.set(id, Promise.all([get<{ video: Video }>(`/v1/videos/${id}`), get<{ url: string }>(`/v1/videos/${id}/playback`)]).then(([d, p]) => ({
+        id, v: d.video, url: p.url, dur: d.video.duration_ms || Math.max(...ms.filter((m) => m.video_id === id).map((m) => m.end_ms)),
+      })));
+    }
+    return loaded.current.get(id)!;
+  }, [ms]);
+
+  const choose = useCallback(async (i: number, jump = true) => {
+    const m = ms[i];
+    pickedRef.current = i; setPicked(i);
+    let e: Entry;
+    try { e = await load(m.video_id); } catch (err) { loaded.current.delete(m.video_id); return fail(err); }
+    if (pickedRef.current !== i) return;
+    entryRef.current = e; setEntry(e);
+    if (jump) requestAnimationFrame(() => seek(m.jump_ms, true));
+  }, [ms, load, seek, fail]);
+
+  useEffect(() => { if (ms.length) choose(0); }, [ms, choose]);
+
+  const step = useCallback((d: number) => choose((pickedRef.current + d + ms.length) % ms.length), [choose, ms.length]);
+  const toggle = useCallback(() => { const v = vid.current; if (v) (v.paused ? v.play().catch(fail) : v.pause()); }, [fail]);
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement;
+      if (!ms.length || el.closest('input, select, textarea') || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key === 'j') step(1); else if (e.key === 'k') step(-1);
+      else if (e.key === ' ' && !el.closest('button, a')) { e.preventDefault(); toggle(); }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [ms.length, step, toggle]);
+
+  // seeking: a click or drag on the lanes moves the playhead; landing inside a hit selects that moment
+  const seekAt = (e: React.PointerEvent) => {
+    const r = plot.current!.getBoundingClientRect(), en = entryRef.current;
+    if (!en) return;
+    const at = (Math.max(0, Math.min(r.width, e.clientX - r.left)) / r.width) * en.dur;
+    seek(at);
+    const hit = ms.findIndex((x) => x.video_id === en.id && at >= x.start_ms && at < x.end_ms);
+    if (hit >= 0 && hit !== pickedRef.current) choose(hit, false);
+  };
+  const onPlotKey = (e: React.KeyboardEvent) => {
+    const en = entryRef.current, v = vid.current;
+    if (!en || !v) return;
+    const d = ({ ArrowLeft: -5000, ArrowRight: 5000, PageDown: -60000, PageUp: 60000 } as Record<string, number>)[e.key];
+    const at = d ? v.currentTime * 1000 + d : e.key === 'Home' ? 0 : e.key === 'End' ? en.dur : null;
+    if (at != null) { e.preventDefault(); seek(Math.max(0, Math.min(en.dur, at))); }
+  };
+  const follow = () => { const v = vid.current; if (!v) return; setT(v.currentTime * 1000); if (!v.paused) requestAnimationFrame(follow); };
+
+  const m = picked >= 0 ? ms[picked] : null;
+  const mine = entry ? ms.filter((x) => x.video_id === entry.id) : [];
+  const pct = (x: number) => `${(x / (entry?.dur || 1) * 100).toFixed(3)}%`;
+  const CH = Object.fromEntries(CHANNELS.map((c) => [c, t(`ch.${c}`)]));
+  const note = found?.skipped.length ? ` ${t('s.skipped', { chs: found.skipped.map((c) => CH[c] || c).join(t('and')) })}` : '';
+  const best = ms[0];
+
+  return (
+    <Shell page="search" query={q} ws={ws} notice={notice} onNewProject={() => newProject(reload, fail)}>
+      <TitleRow title={q ? `“${q}”` : t('s.title')} sub={!q ? t('s.empty') : !found ? ' ' : !ms.length ? t('s.none') + note : (
+        <><Rich k="s.sub" vars={{ n: ms.length, v: new Set(ms.map((x) => x.video_id)).size, title: best.video_title, tc: tc(best.start_ms), chs: best.channels.map((h) => CH[h.channel]).join(t('and')) }} />{note}</>
+      )}>
+        <label htmlFor="scope" className="sr-only">{t('h.scope')}</label>
+        <select id="scope" className={select} value={project} onChange={(e) => { location.search = String(new URLSearchParams({ q, ...(e.target.value && { project: e.target.value }) })); }}>
+          <option value="">{t('opt.all')}</option>
+          {ws?.projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+        </select>
+      </TitleRow>
+
+      {ms.length > 0 && (
+        <div className="grid animate-enter grid-cols-12 items-start gap-6">
+          <section aria-label={t('a.player')} className="col-span-7 min-w-0 overflow-hidden rounded-[10px] bg-ink-2 shadow-edge max-md:col-span-12">
+            <div className="relative aspect-video bg-black">
+              <video ref={vid} src={entry?.url} playsInline preload="metadata" className="block size-full"
+                onLoadedMetadata={(e) => { if (pending.current != null) { e.currentTarget.currentTime = pending.current / 1000; pending.current = null; } }}
+                onPlay={() => { setPlaying(true); requestAnimationFrame(follow); }} onPause={() => setPlaying(false)} onSeeked={follow} />
+            </div>
+            <div className="flex min-h-14 flex-wrap items-center gap-3.5 border-b border-ink-3 px-4 py-2">
+              <button type="button" onClick={toggle} aria-pressed={playing} aria-label={playing ? t('pause') : t('play')} aria-keyshortcuts="Space"
+                className="grid size-8 flex-none place-items-center rounded-full bg-red text-on-paper transition-[transform,background-color] duration-150 ease-out hover:bg-red-hi active:scale-[.92]">
+                {playing ? <Icon.pause className="size-3.5" /> : <Icon.play className="size-3.5" />}
+              </button>
+              <span ref={time} className="whitespace-nowrap text-fg-soft [&_b]:font-medium [&_b]:text-fg" />
+              <span className="flex-1" />
+              <div className="flex gap-2">
+                <button type="button" className={btn} onClick={() => step(-1)} aria-keyshortcuts="K">{t('b.prev')} <kbd className="ml-0.5 font-sans text-[11px] text-faint max-xs:hidden">K</kbd></button>
+                <button type="button" className={btn} onClick={() => step(1)} aria-keyshortcuts="J">{t('b.next')} <kbd className="ml-0.5 font-sans text-[11px] text-faint max-xs:hidden">J</kbd></button>
+              </div>
+            </div>
+            <div className="border-b border-ink-3 px-5 pt-4 pb-[18px]">
+              <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                <h3 className="font-medium">{t('h.lanes')}</h3>
+                <span className="text-xs text-faint">{t('s.lanecap', { n: mine.length })}</span>
+              </div>
+              <div className="grid grid-cols-[40px_minmax(0,1fr)] gap-3">
+                <span className="grid auto-rows-[18px] items-center gap-1.5" aria-hidden>
+                  {CHANNELS.map((c) => <span key={c} className="text-xs leading-[18px] text-fg-soft">{CH[c]}</span>)}
+                </span>
+                <span ref={plot} role="slider" tabIndex={0} aria-label={t('a.plot')} aria-valuemin={0} aria-valuemax={Math.round((entry?.dur || 0) / 1000)}
+                  className="relative grid cursor-pointer touch-none auto-rows-[18px] items-center gap-1.5 rounded focus-visible:outline-offset-[6px]"
+                  onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); seekAt(e); }}
+                  onPointerMove={(e) => { if (e.currentTarget.hasPointerCapture(e.pointerId)) seekAt(e); }} onKeyDown={onPlotKey}>
+                  {CHANNELS.map((c) => (
+                    <span key={c} className="relative h-[18px] rounded bg-ink-3">
+                      {c !== 'visual' && entry?.v.has_audio === false && <span className="absolute top-0 left-2 text-[11px] leading-[18px] text-faint">{t('s.noaudio')}</span>}
+                      {mine.filter((x) => x.channels.some((h) => h.channel === c)).map((x) => {
+                        const on = ms.indexOf(x) === picked;
+                        return <span key={ms.indexOf(x)} title={`${tc(x.start_ms)} – ${tc(x.end_ms)}`} style={{ left: pct(x.start_ms), width: pct(x.end_ms - x.start_ms) }}
+                          className={cx('absolute min-w-1 rounded-sm transition-[background-color,top,bottom] duration-200 ease-out', on ? 'top-0 bottom-0 bg-red' : 'top-[3px] bottom-[3px] bg-hit hover:bg-fg')} />;
+                      })}
+                    </span>
+                  ))}
+                  <span className="relative block h-[18px] text-[11px] text-fg-soft">
+                    {ticks(entry?.dur || 0).map((x) => <span key={x} className="absolute top-0.5 -translate-x-1/2 whitespace-nowrap first:translate-x-0" style={{ left: pct(x) }}>{tc(x)}</span>)}
+                  </span>
+                  <span ref={ph} className="pointer-events-none absolute inset-x-0 -top-[5px] h-[72px]">
+                    <i className="absolute inset-y-0 -left-px w-0.5 rounded-[1px] bg-red before:absolute before:-top-[3px] before:-left-1 before:size-2.5 before:rounded-full before:bg-red before:shadow-[0_0_0_2px_var(--color-ink-2)] before:content-['']" />
+                  </span>
+                </span>
+              </div>
+            </div>
+            {m && (
+              <div className="grid gap-[18px] p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div className="min-w-0">
+                    <h2 className="text-lg font-semibold">{m.video_title}</h2>
+                    <p className="mt-0.5 text-[13px] text-fg-soft">{tc(m.start_ms, true)} – {tc(m.end_ms, true)}{t('s.meta', { secs: Math.round((m.end_ms - m.start_ms) / 1000), tc: tc(m.jump_ms, true) })}</p>
+                    <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1.5">
+                      {m.channels.map((h) => <Ch key={h.channel} c={h.channel}><Rich k="rank.b" vars={{ ch: CH[h.channel], n: h.rank }} /></Ch>)}
+                    </div>
+                  </div>
+                  <a className={btnPrimary} href={`video.html?id=${m.video_id}&t=${m.jump_ms}`}>{t('b.open')}</a>
+                </div>
+                {m.snippet && <p className="rounded-md bg-ink-3 px-3.5 py-3 text-[15px] leading-6">“{m.snippet}”</p>}
+              </div>
+            )}
+          </section>
+
+          <section aria-labelledby="count" className={cx(panel, 'col-span-5 max-md:col-span-12')}>
+            <PanelHead id="count" title={t('s.count', { n: ms.length })}>
+              <span className="text-xs text-faint">{t('s.pos', { n: picked + 1 })} · {t('meta.byrel')}</span>
+            </PanelHead>
+            <ol className="-mx-2 grid gap-1" onKeyDown={(e) => {
+              if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+              e.preventDefault();
+              const i = (picked + (e.key === 'ArrowDown' ? 1 : ms.length - 1)) % ms.length;
+              choose(i); (e.currentTarget.querySelectorAll('button')[i] as HTMLButtonElement).focus();
+            }}>
+              {ms.map((x, i) => (
+                <li key={i}>
+                  <button type="button" aria-pressed={i === picked} onClick={() => choose(i)}
+                    className="group flex w-full gap-3.5 rounded-[10px] p-2 text-left transition-colors duration-150 hover:bg-ink-3 aria-pressed:bg-ink-3">
+                    <Thumb thumb={x.thumbnail} label={t('frame.of', { t: x.video_title })} className="w-[120px] max-md:w-24"><TcBadge>{tc(x.jump_ms)}</TcBadge></Thumb>
+                    <span className="grid min-w-0 content-start gap-[3px]">
+                      <span className="truncate font-semibold">{x.video_title}</span>
+                      <span className="text-[13px] text-fg-soft">{tc(x.start_ms, true)} – {tc(x.end_ms, true)}</span>
+                      <span className="flex flex-wrap gap-x-2.5 gap-y-1">{x.channels.map((h) => <Ch key={h.channel} c={h.channel}>{t('rank', { ch: CH[h.channel], n: h.rank })}</Ch>)}</span>
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ol>
+          </section>
+        </div>
+      )}
+    </Shell>
+  );
+}

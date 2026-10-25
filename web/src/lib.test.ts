@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { channelState, eachLimit, esc, partRange, pipeline, safeNext, tc, ticks, tile } from './lib.js';
+import { channelState, eachLimit, marks, partRange, pipeline, safeNext, tc, ticks } from './lib.ts';
 
+const at = '2026-10-26T00:00:00Z';
 const stages = [
-  { stage: 'prepare_media', status: 'done' }, { stage: 'probe', status: 'done' },
-  { stage: 'embed:speech:wemm-2b@r1', status: 'pending' }, { stage: 'asr', status: 'failed' },
-  { stage: 'embed:visual:wemm-2b@r1', status: 'done' }, { stage: 'finalize', status: 'pending' },
+  { stage: 'prepare_media', status: 'done', attempt: 1, updated_at: at }, { stage: 'probe', status: 'done', attempt: 1, updated_at: at },
+  { stage: 'embed:speech:wemm-2b@r1', status: 'pending', attempt: 1, updated_at: at }, { stage: 'asr', status: 'failed', attempt: 3, updated_at: at },
+  { stage: 'embed:visual:wemm-2b@r1', status: 'done', attempt: 1, updated_at: at }, { stage: 'finalize', status: 'pending', attempt: 1, updated_at: at },
 ];
 
 test('timecodes', () => {
@@ -15,7 +16,7 @@ test('timecodes', () => {
   assert.equal(tc(9990, true), '00:09.9');
 });
 
-test('pipeline puts asr before speech encoding and drops empty lanes', () => {
+test('pipeline puts probe first, asr before speech encoding, and drops empty lanes', () => {
   const p = pipeline(stages);
   assert.deepEqual(p.before.map((s) => s.stage), ['probe', 'prepare_media']);
   assert.deepEqual(p.lanes.map(([c, l]) => [c, l.map((s) => s.stage)]), [['visual', ['embed:visual:wemm-2b@r1']], ['speech', ['asr', 'embed:speech:wemm-2b@r1']]]);
@@ -33,7 +34,7 @@ test('upload parts cover the file exactly', () => {
 
 test('eachLimit bounds concurrency and stops after a failure', async () => {
   let live = 0, peak = 0;
-  const seen = [];
+  const seen: number[] = [];
   await assert.rejects(eachLimit([1, 2, 3, 4, 5, 6], 2, async (n) => {
     live++; peak = Math.max(peak, live); seen.push(n);
     await new Promise((r) => setTimeout(r, 5));
@@ -44,9 +45,9 @@ test('eachLimit bounds concurrency and stops after a failure', async () => {
   assert.ok(seen.length < 6, `kept uploading after the failure: ${seen}`);
 });
 
-test('markup is escaped', () => {
-  assert.equal(esc('<a href="x">'), '&lt;a href=&quot;x&quot;&gt;');
-  assert.match(tile({ url: 'https://s/1.jpg?a=1&b=2', x: 320, y: 0, w: 320, h: 180 }), /viewBox="320 0 320 180".*href="https:\/\/s\/1\.jpg\?a=1&amp;b=2"/);
+test('dictionary markup splits without HTML', () => {
+  assert.deepEqual(marks('共 <b>《a》</b>，运行 <code>x</code>。'), [{ tag: '', text: '共 ' }, { tag: 'b', text: '《a》' }, { tag: '', text: '，运行 ' }, { tag: 'code', text: 'x' }, { tag: '', text: '。' }]);
+  assert.deepEqual(marks('<img src=x onerror=1>'), [{ tag: '', text: '<img src=x onerror=1>' }]);
 });
 
 test('ticks and sign-in redirects', () => {

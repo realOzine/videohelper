@@ -1,32 +1,13 @@
 <!doctype html>
 <html lang="zh-CN">
-<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>资料库 · VideoHelper</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;600&family=Noto+Sans+SC:wght@500;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="app.css"><link rel="stylesheet" href="vh.css"><link rel="stylesheet" href="theme.css">
-<title>资料库 · VideoHelper</title></head>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Geist:wght@400;500;600;700&family=Noto+Sans+SC:wght@500;700;900&display=swap" rel="stylesheet">
+</head>
 <body data-page="library">
-<div class="app" data-page="library">
-<nav class="sidebar" id="sidebar" aria-label="主导航"></nav>
-<header class="topbar" id="topbar"></header>
-<main class="canvas">
-<p class="notice" id="notice" role="alert" hidden></p>
-<div class="title-row"><div><h1 data-i18n="nav.library">资料库</h1><p class="sub" id="sub"></p></div>
-<div class="actions"><button class="btn" id="newproj" type="button" data-i18n="b.newproject">新建项目</button><button class="btn primary" id="upload" type="button" style="height:36px" data-i18n="b.upload">上传视频</button><input id="file" type="file" accept="video/*" multiple hidden></div></div>
-<div class="grid" style="margin-bottom:var(--gap)">
-<section class="panel span-7" aria-labelledby="uh"><header><h2 id="uh" data-i18n="h.uploading">正在上传</h2><span class="meta" data-i18n="meta.direct">浏览器分片直传，关掉页面会中断</span></header><div id="uploads"></div></section>
-<section class="panel span-5" aria-labelledby="ah"><header><h2 id="ah" data-i18n="h.attention">需要关注</h2><a class="card-link" href="library.html?status=indexing" data-i18n="b.viewindexing">查看处理中</a></header><div class="rows" id="attention"></div></section>
-</div>
-<div class="tabs" role="tablist" id="tabs"></div>
-<div class="toolbar"><label for="proj" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)" data-i18n="h.projfilter">按项目筛选</label>
-<select id="proj" class="input"><option value="" data-i18n="opt.allproj">所有项目</option></select>
-<span class="spacer"></span><span class="count" id="total"></span><span class="stamp" data-i18n="meta.sort">按添加时间，新的在前</span></div>
-<div class="table-wrap"><table>
-<thead><tr><th style="width:42%" data-i18n="th.video">视频</th><th data-i18n="th.status">状态</th><th class="n" data-i18n="th.dur">时长</th><th class="n opt" data-i18n="th.added">添加时间</th></tr></thead>
-<tbody id="rows"></tbody></table></div>
-<p style="margin-top:16px;text-align:center"><button class="btn" id="more" type="button" hidden data-i18n="b.more">加载更多</button></p>
-</main>
-</div>
-<script src="i18n.js"></script><script src="app-i18n.js"></script><script type="module" src="app.js"></script>
+<div id="root"></div>
+<script type="module" src="/src/main.tsx"></script>
 </body>
 </html>
