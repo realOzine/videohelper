@@ -27,8 +27,11 @@ type asrProgress struct {
 func (h *Handlers) ASR(ctx context.Context, sc *pipeline.StageCtx) (pipeline.Commit, error) {
 	opts := sc.Def.Options
 	model, endpoint, ok := h.registry.Transcriber()
-	if !ok || model.ID != opts.Transcriber || model.Fingerprint != opts.Fingerprint {
-		return nil, apperr.New(apperr.Unavailable, "asr_changed", "转录模型不可用或版本已改变")
+	if !ok || model.ID != opts.Transcriber {
+		return nil, apperr.New(apperr.Unavailable, "asr_unavailable", "转录模型暂时不可用")
+	}
+	if model.Fingerprint != opts.Fingerprint {
+		return nil, apperr.New(apperr.Invalid, "asr_changed", "转录模型版本已改变")
 	}
 	progress := asrProgress{ChunkMs: h.cfg.ML.TranscribeChunkMS, OverlapMs: h.cfg.ML.TranscribeOverlapMS, Keys: []string{}}
 	if len(sc.Progress) > 0 {
