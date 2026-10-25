@@ -60,7 +60,7 @@ func TestRegistryIntegration(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := migrations.Down(ctx, sqldb); err != nil {
+		if err := migrations.DownTo(ctx, sqldb, 0); err != nil {
 			t.Error(err)
 		}
 	}()

@@ -229,7 +229,7 @@ func indexTestDB(t *testing.T) (context.Context, *pgxpool.Pool) {
 	t.Cleanup(func() {
 		cleanupCtx, cleanupCancel := context.WithTimeout(context.Background(), 15*time.Second)
 		defer cleanupCancel()
-		if err := migrations.Down(cleanupCtx, sqldb); err != nil {
+		if err := migrations.DownTo(cleanupCtx, sqldb, 0); err != nil {
 			t.Error(err)
 		}
 	})
