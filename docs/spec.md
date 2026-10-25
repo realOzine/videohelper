@@ -5,11 +5,11 @@
 
 ## 0. 说明
 
-**范围**：Go 后端、Python 模型服务、数据库、所有接口，以及模块之间怎么交互。前端暂缓，只在[第 16 章](#16-前端暂缓)列出它依赖的接口。
+**范围**：Go 后端、Python 模型服务、数据库、所有接口，以及模块之间怎么交互。前端（`web/`）只依赖对外 API，见[第 16 章](#16-前端)。
 
 ## 当前实施范围（2026-10-25）
 
-本地处理链路为「视频 → 标准化视频 → WeMM 画面编码 / CLAP 声音编码 / ASR → WeMM 转录文本编码 → 文字检索 → 时间片段与证据」。WeMM-Embedding-2B 统一支持视频、文字、图片编码；图片是编码输入，本轮搜索入口只接受文字。启用 `visual`、`speech` 与 `audio`，保留音轨供 ASR 和 CLAP 使用。声音通道采用 edit-mind 同款 CLAP HTSAT unfused；查询文字原样传入，英文转换后续再做。前端、LLM/Agent、AWS 部署与验收暂缓；下文相关章节保留为后续设计，不构成本轮实现要求。真实模型验证与显式 fake 的协议/流程测试分开。
+本地处理链路为「视频 → 标准化视频 → WeMM 画面编码 / CLAP 声音编码 / ASR → WeMM 转录文本编码 → 文字检索 → 时间片段与证据」。WeMM-Embedding-2B 统一支持视频、文字、图片编码；图片是编码输入，本轮搜索入口只接受文字。启用 `visual`、`speech` 与 `audio`，保留音轨供 ASR 和 CLAP 使用。声音通道采用 edit-mind 同款 CLAP HTSAT unfused；查询文字原样传入，英文转换后续再做。LLM/Agent、AWS 部署与验收暂缓；前端已实现登录、资料库与上传、视频详情、搜索；下文相关章节保留为后续设计，不构成本轮实现要求。真实模型验证与显式 fake 的协议/流程测试分开。
 
 本轮提供本地上传、阶段状态/重试、项目范围和文字搜索。已就绪视频可自动补建新通道/空间缺失的编码阶段；URL 导入、上传分片续签、SSE 事件、到期 purge、配额计费仍是后续设计；软删除保留原片和处理文件。当前只记录索引时长。操作入口见 [README](../README.md)。
 
@@ -58,7 +58,7 @@
 13. [可观测性](#13-可观测性)
 14. [本地开发与部署](#14-本地开发与部署)
 15. [测试策略](#15-测试策略)
-16. [前端（暂缓）](#16-前端暂缓)
+16. [前端](#16-前端)
 17. [待确认问题](#17-待确认问题)
 
 ---
@@ -67,7 +67,7 @@
 
 ### 1.1 顶层目录
 
-目标结构如下，前端、云部署与导入相关文件仍属后续规划；评估的当前入口另见 Eval/，下列 internal/eval 为早期结构提议。当前 Go 和 Python 可以独立构建；每个 SQL 包使用自己的 `sqlc.yaml`，由 `make generate` 统一执行。
+目标结构如下，云部署与导入相关文件仍属后续规划；评估的当前入口另见 Eval/，下列 internal/eval 为早期结构提议。当前 Go 和 Python 可以独立构建；每个 SQL 包使用自己的 `sqlc.yaml`，由 `make generate` 统一执行。
 
 ```text
 videohelper/
@@ -91,7 +91,7 @@ videohelper/
 │   ├── tools/run.py            # 索引验收、快照、检索回归
 │   └── annotations/queries.jsonl # 固定评估集（第 11 章）
 ├── ml/                          # Python 模型服务，独立项目（第 10 章）
-├── web/                         # 前端（暂缓）
+├── web/                         # 前端：静态 HTML/CSS/原生 ES 模块，无构建步骤
 ├── deploy/
 │   └── docker-compose.yml       # Postgres、Redis、MinIO；Go/ML 在宿主机运行
 └── docs/
@@ -2654,9 +2654,9 @@ MinIO 源码固定为 `v0.0.0-20251015172955-9e49d5e7a648`。本地默认凭证�
 
 ---
 
-## 16. 前端（暂缓）
+## 16. 前端
 
-前端技术栈待定（设计文档问题 11）。首版需要的页面和它们依赖的接口：
+前端在 `web/`：静态 HTML、CSS 和原生 ES 模块，不需要构建，任何静态主机都能托管（设计文档问题 11 已定）。认证服务确定前，登录页粘贴认证服务签发的 JWT 和 API 地址，存在浏览器 localStorage，令牌只放进 `Authorization` 头；本地开发用 `node web/dev/devauth.mjs` 签发令牌（`config/local.yaml` 的 `auth` 指向它）。纯函数测试：`make test-web`。首版需要的页面和它们依赖的接口：
 
 | 页面 | 依赖的接口 |
 |---|---|
@@ -2669,9 +2669,9 @@ MinIO 源码固定为 `v0.0.0-20251015172955-9e49d5e7a648`。本地默认凭证�
 实现要点：
 
 - **部署**：前端与 API 不同域部署（已定），请求要带 `Authorization` 头，API 已配置 CORS。
-- **上传**：按 `part_size` 切文件，并发上传各分片（建议 4 路），收集每个分片响应头里的 ETag，最后调用 complete。URL 过期时调用 `upload-parts` 重新签发。
-- **SSE**：用 fetch 读取响应流，不用原生 EventSource，因为它不能带 `Authorization` 头，也不支持 POST。
-- **缩略图**：用 CSS 背景定位，从雪碧图里取出 `thumbnail` 指定的那一块。
+- **上传**：按 `part_size` 切文件，并发上传各分片（4 路），收集每个分片响应头里的 ETag，最后调用 complete；对象存储的 CORS 必须暴露 `ETag`。`upload-parts` 续签尚未实现，分片 URL 过期或页面关闭后需重新上传。
+- **进度**：`/v1/videos/{id}/events` 尚未实现，视频详情处理中每 3 秒重新拉取 `/v1/videos/{id}`，资料库每 5 秒刷新第一页。以后接 SSE 时用 fetch 读取响应流，不用原生 EventSource，因为它不能带 `Authorization` 头，也不支持 POST。
+- **缩略图**：用 SVG `viewBox` 从雪碧图里裁出 `thumbnail` 指定的那一块并缩放到格子大小；`Moment` 和 `Video` 都带 `thumbnail`。
 
 ---
 

@@ -48,4 +48,14 @@ ASR 允许起点有序的词、句时间重叠，合并范围取最早起点和�
 
 HTTP 服务通过 `bin/videohelper -config /path/to/config.yaml api` 启动，配置必须包含有效的 `auth.issuer`、`auth.audience`、`auth.jwks_url`。`/v1/*` 始终校验 JWT；`/healthz`、`/readyz` 无需登录。`local-*` 的固定身份不会用于 HTTP 请求。全局 `-config` 参数放在子命令之前。
 
+本地 Web 前端在 `web/`，静态文件，不需要构建。`config/local.yaml` 的 `auth` 指向本地开发签发器，`cors_origins` 已允许 `http://127.0.0.1:5173`。在三个已载入 `.env` 的终端分别运行下列命令，再打开 <http://127.0.0.1:5173>，登录页填 API 地址 `http://127.0.0.1:18000` 和签发器打印的令牌：
+
+```sh
+node web/dev/devauth.mjs                          # 打印 7 天有效的令牌；重启后旧令牌失效
+bin/videohelper api
+python3 -m http.server 5173 --bind 127.0.0.1 -d web
+```
+
+浏览器上传直传对象存储，存储的 CORS 需要暴露 `ETag` 响应头（本地 MinIO 默认满足）。
+
 用 Ctrl-C 停止 Go/ML 进程，`make deps-down` 停止基础服务并保留数据卷。`make test-go`、`make vet` 检查 Go；Python 常规检查为 `uv --directory ml run pytest` 和 `uv --directory ml run ruff check .`。真实模型与 MinIO 网络测试需要显式 `VH_TEST_REAL_MODELS=1`、`VH_TEST_S3_ENDPOINT`，运行方式见 [测试文件](ml/tests/test_real_models.py)。CLAP 独立真实测试使用 `VH_TEST_REAL_CLAP=1`，见 [CLAP 测试](ml/tests/test_clap_real.py)。

@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 
-VideoHelper combines a Go backend (`cmd/videohelper/`, `internal/`) with a Python model service (`ml/app/`). Tests live beside Go packages and in `ml/tests/`. Database migrations are in `migrations/`; configuration and the shared ML contract are in `config/` and `contracts/`. Keep the Chinese architecture documents, `docs/design.md` and `docs/spec.md`, aligned with contract changes. Runtime media belongs in object storage; local temporary files use `.local/`.
+VideoHelper combines a Go backend (`cmd/videohelper/`, `internal/`) with a Python model service (`ml/app/`) and a static frontend (`web/`). Tests live beside Go packages and in `ml/tests/`. Database migrations are in `migrations/`; configuration and the shared ML contract are in `config/` and `contracts/`. Keep the Chinese architecture documents, `docs/design.md` and `docs/spec.md`, aligned with contract changes. Runtime media belongs in object storage; local temporary files use `.local/`.
 
 ## Agent Scope: Ignore `model-test/`
 
@@ -15,6 +15,7 @@ The entire `model-test/` directory is an experimental sandbox for validation, de
 - `make test-go` / `make vet`: scoped Go race tests and static checks.
 - `make fmt` / `make generate`: format Go and regenerate package-local sqlc outputs.
 - `cd ml && uv run pytest` / `uv run ruff check .`: Python tests and lint.
+- `make test-web`: frontend helper tests (Node 22+); serve `web/` with any static server.
 
 ## Coding Style & Testing Guidelines
 
@@ -30,4 +31,4 @@ Use isolated worktrees for parallel execution with `gpt-6.1-sol` at high effort.
 
 ## Current Implementation Boundary
 
-Local text search uses WeMM-Embedding-2B for video, text, and image encoding, ASR for `speech`, and CLAP HTSAT unfused for the `audio` sound channel. Preserve source audio for ASR and CLAP. Pass query text unchanged; English translation is deferred. Frontend, LLM/Agent, and AWS acceptance remain deferred.
+Local text search uses WeMM-Embedding-2B for video, text, and image encoding, ASR for `speech`, and CLAP HTSAT unfused for the `audio` sound channel. Preserve source audio for ASR and CLAP. Pass query text unchanged; English translation is deferred. The `web/` frontend is plain HTML/CSS/ES modules with no build step or dependencies. LLM/Agent and AWS acceptance remain deferred.
