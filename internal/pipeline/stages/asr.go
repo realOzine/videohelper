@@ -49,8 +49,10 @@ func (h *Handlers) ASR(ctx context.Context, sc *pipeline.StageCtx) (pipeline.Com
 	}
 	progress.Total = total
 	var sentences []index.TextSpan
+	previousWord := 0
 	for i := 0; i < total; i++ {
 		start, end := i*progress.ChunkMs, min((i+1)*progress.ChunkMs, duration)
+		request := mlclient.TranscribeRequest{Model: model.ID, URI: h.objects.URI(sc.Video.NormalizedVideoKey), Language: "zh", StartMs: max(0, start-progress.OverlapMs), EndMs: min(duration, end+progress.OverlapMs)}
 		var response mlclient.TranscribeResponse
 		if i < len(progress.Keys) {
 			if err := h.readTranscript(ctx, progress.Keys[i], &response); err != nil {
@@ -58,7 +60,7 @@ func (h *Handlers) ASR(ctx context.Context, sc *pipeline.StageCtx) (pipeline.Com
 			}
 		} else {
 			var err error
-			response, err = h.ml.Transcribe(ctx, endpoint, mlclient.TranscribeRequest{Model: model.ID, URI: h.objects.URI(sc.Video.NormalizedVideoKey), Language: "zh", StartMs: max(0, start-progress.OverlapMs), EndMs: min(duration, end+progress.OverlapMs)})
+			response, err = h.ml.Transcribe(ctx, endpoint, request)
 			if err != nil {
 				return nil, err
 			}
@@ -82,16 +84,23 @@ func (h *Handlers) ASR(ctx context.Context, sc *pipeline.StageCtx) (pipeline.Com
 		if response.Model != opts.Transcriber || response.Fingerprint != opts.Fingerprint {
 			return nil, apperr.New(apperr.Invalid, "asr_changed", "转录断点与计划中的模型不一致")
 		}
+		if err := mlclient.ValidateTranscript(request, response, model); err != nil {
+			return nil, err
+		}
 		for _, sentence := range response.Sentences {
 			// shortcut: sentences belong to the chunk containing their start; increase overlap for speech longer than the overlap window.
 			if sentence.StartMs < start || sentence.StartMs >= end {
 				continue
 			}
-			if len(sentences) > 0 && sentence.StartMs < sentences[len(sentences)-1].Span.EndMs {
-				return nil, apperr.New(apperr.Invalid, "asr_overlap", "相邻转录窗口的句子重叠，请调整分段窗口")
+			if len(sentences) > 0 && sentence.StartMs < sentences[len(sentences)-1].Span.StartMs {
+				return nil, apperr.New(apperr.Invalid, "asr_overlap", "相邻转录窗口的句子时间顺序倒退")
 			}
 			words := make([]index.Word, len(sentence.Words))
 			for i, word := range sentence.Words {
+				if word.S < previousWord {
+					return nil, apperr.New(apperr.Invalid, "asr_overlap", "相邻转录窗口的词语时间顺序倒退")
+				}
+				previousWord = word.S
 				words[i] = index.Word{W: word.W, S: word.S, E: word.E}
 			}
 			sentences = append(sentences, index.TextSpan{WorkspaceID: sc.Video.WorkspaceID, VideoID: sc.Video.ID, Kind: "speech", Span: timeline.Span{StartMs: sentence.StartMs, EndMs: sentence.EndMs}, Text: sentence.Text, Words: words, Model: model.ID})

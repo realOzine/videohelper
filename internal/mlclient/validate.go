@@ -114,21 +114,23 @@ func validateVectors(req EmbedRequest, response EmbedResponse, info SpaceInfo) e
 	return nil
 }
 
-func validateTranscript(req TranscribeRequest, response TranscribeResponse, info TranscriberInfo) error {
+// ValidateTranscript also validates persisted chunks before checkpoint replay.
+func ValidateTranscript(req TranscribeRequest, response TranscribeResponse, info TranscriberInfo) error {
 	if response.Model != info.ID || response.Fingerprint != info.Fingerprint || response.DurationMs < 0 || response.Sentences == nil || !slices.Contains(info.Languages, response.Language) {
 		return contract("invalid transcription identity or metadata")
 	}
-	end, previous := min(req.EndMs, response.DurationMs), req.StartMs
+	end, previousSentence, previousWord := min(req.EndMs, response.DurationMs), req.StartMs, req.StartMs
 	for _, sentence := range response.Sentences {
-		if sentence.StartMs < previous || sentence.EndMs <= sentence.StartMs || sentence.EndMs > end || sentence.Words == nil {
-			return contract("invalid or overlapping sentence timestamps")
+		if sentence.StartMs < previousSentence || sentence.EndMs <= sentence.StartMs || sentence.EndMs > end || sentence.Words == nil {
+			return contract("invalid or out-of-order sentence timestamps")
 		}
 		for _, word := range sentence.Words {
-			if word.S < sentence.StartMs || word.E <= word.S || word.E > sentence.EndMs {
-				return contract("word timestamps outside sentence")
+			if word.S < sentence.StartMs || word.S < previousWord || word.E <= word.S || word.E > sentence.EndMs {
+				return contract("word timestamps outside sentence or out of order")
 			}
+			previousWord = word.S
 		}
-		previous = sentence.EndMs
+		previousSentence = sentence.StartMs
 	}
 	return nil
 }

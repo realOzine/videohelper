@@ -191,14 +191,15 @@ def test_real_models_over_http_and_s3(real_service):
     transcript = response.json()
     assert transcript["fingerprint"] == fingerprint(configs[body["model"]], fake=False)
     assert "".join(sentence["text"] for sentence in transcript["sentences"]) == TEXT
-    previous = 2500
+    sentence_start = word_start = 2500
     for sentence in transcript["sentences"]:
-        assert previous <= sentence["start_ms"] < sentence["end_ms"] <= 9000
-        previous = sentence["end_ms"]
-        word_end = sentence["start_ms"]
+        assert sentence_start <= sentence["start_ms"] < sentence["end_ms"] <= 9000
+        sentence_start = sentence["start_ms"]
         for word in sentence["words"]:
-            assert word_end <= word["s"] < word["e"] <= sentence["end_ms"]
-            word_end = word["e"]
+            assert (
+                max(word_start, sentence["start_ms"]) <= word["s"] < word["e"] <= sentence["end_ms"]
+            )
+            word_start = word["s"]
     silence = client.post("/v1/transcribe", json={**body, "start_ms": 0, "end_ms": 2000})
     assert silence.status_code == 200, silence.text
     assert silence.json()["sentences"] == []

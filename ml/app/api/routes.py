@@ -106,15 +106,16 @@ async def transcribe(body: TranscribeRequest, request: Request):
             if body.start_ms >= end_ms:
                 raise MLError(422, "media_unreadable", "No media in requested window")
             transcript = adapter.transcribe(path, body.language, body.start_ms, end_ms)
-            previous = body.start_ms
+            sentence_start = word_start = body.start_ms
             valid = transcript.duration_ms == duration and transcript.language in info.languages
             for sentence in transcript.sentences:
-                valid &= previous <= sentence.start_ms < sentence.end_ms <= end_ms
-                previous = sentence.end_ms
-                word_end = sentence.start_ms
+                valid &= sentence_start <= sentence.start_ms < sentence.end_ms <= end_ms
+                sentence_start = sentence.start_ms
                 for word in sentence.words:
-                    valid &= word_end <= word.s < word.e <= sentence.end_ms
-                    word_end = word.e
+                    valid &= (
+                        max(word_start, sentence.start_ms) <= word.s < word.e <= sentence.end_ms
+                    )
+                    word_start = word.s
             if not valid:
                 raise MLError(500, "internal", "Invalid transcript output")
             return TranscribeResponse(

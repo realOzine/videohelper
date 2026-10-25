@@ -38,7 +38,7 @@ models:
     max_window_ms: 900000
     languages: [zh]
     preprocess:
-      adapter_version: 1
+      adapter_version: 2
       funasr_version: 1.3.14
       pred_timestamp: true
       sample_rate: 16000
