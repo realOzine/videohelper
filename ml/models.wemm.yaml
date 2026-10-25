@@ -1,5 +1,5 @@
 # 本地 Mac 真实 WeMM：uv sync --extra wemm，ML_FAKE=0，ML_MODELS_FILE=models.wemm.yaml。
-# CPU 可将 device 改为 cpu、dtype 改为 float32；ASR 下一单元接入，当前清单仅加载 WeMM。
+# CPU 可将 device 改为 cpu、dtype 改为 float32；完整本地清单见 models.local.yaml。
 models:
   - id: wemm-2b@r1
     kind: embedder
