@@ -1,0 +1,12 @@
+model-test/
+.env
+.env.*
+!.env.example
+bin/
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.pyc
+coverage.out
+.DS_Store

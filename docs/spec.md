@@ -27,7 +27,8 @@
 | 数据库 | 表名用单数；主键用 `bigint` 自增或自然键 |
 | ID | 数据库自增 `bigint`；对外 JSON 里一律是字符串，如 `"42"`，避免 JavaScript 丢精度（已定） |
 | 空间 id | `{模型短名}@{版本}`，如 `wemm-2b@r1` |
-| 阶段名 | `probe`、`proxy`、`asr`、`embed:{channel}:{space}`、`finalize`、`fetch` |
+| 媒体命名 | 标准化视频为 `normalized_video`，文件名 `normalized_video.mp4`，存储字段 `normalized_video_key`；媒体预处理阶段为 `prepare_media`，负责转码、生成缩略图和上传结果 |
+| 阶段名 | `probe`、`prepare_media`、`asr`、`embed:{channel}:{space}`、`finalize`、`fetch` |
 | 切片版本 | `grid@v1`（画面、音频格子）、`sentence@v1`（转录句子）。画布上的示例名 `fixed2.5s@v1`、`asr-sentence@whisper-r1` 以本文为准 |
 
 ---
@@ -87,8 +88,7 @@ videohelper/
 │   └── docker-compose.yml       # 本地一键起全套；也是集成测试环境
 └── docs/
     ├── design.md                # 设计文档
-    ├── spec.md                  # 本文档
-    └── VideoHelper_Handoff.md   # 早期讨论记录
+    └── spec.md                  # 本文档
 ```
 
 ### 1.2 文件类型
@@ -158,7 +158,7 @@ internal/
 │   │   └── tx.go        # 事务辅助 WithTx；Querier 接口（连接池和事务都满足它）
 │   ├── blob/
 │   │   ├── s3.go        # S3 操作：分片上传的创建、签名、完成；流式分片上传；预签名下载；上传；删除前缀
-│   │   └── keys.go      # 对象路径规则的唯一来源：原片、proxy、缩略图、原始输出、视频前缀
+│   │   └── keys.go      # 对象路径规则的唯一来源：原片、标准化视频、缩略图、原始输出、视频前缀
 │   ├── queue/
 │   │   └── queue.go     # Asynq 封装：队列名、任务类型、载荷编解码、任务 id 规则、创建 client / server / scheduler
 │   ├── events/
@@ -168,15 +168,15 @@ internal/
 │   └── safehttp/
 │       └── safehttp.go  # 防 SSRF：URL 规则校验；拨号时再校验目标 IP；限制重定向、大小、时长
 │
-├── tenant/              # 身份与租户
-│   ├── tenant.go        # 类型：Tenant、User、Membership、Principal；首次登录建用户和个人工作区
+├── workspace/           # 身份与工作区
+│   ├── workspace.go     # 类型：Workspace、User、Membership、Principal；首次登录建用户和个人工作区
 │   ├── context.go       # 在 context 里存取 Principal
-│   ├── queries.sql      # tenant、app_user、membership 的查询（sqlc 输入）
-│   └── tenantdb/        # sqlc 生成的代码，不手改
+│   ├── queries.sql      # workspace、app_user、membership 的查询（sqlc 输入）
+│   └── workspacedb/     # sqlc 生成的代码，不手改
 │
 ├── library/             # 项目与视频
 │   ├── project.go       # 项目：创建、列表、删除、加入或移出视频
-│   ├── video.go         # 视频：查询、列表、软删除、恢复、播放地址；供 pipeline 在事务里更新时长、proxy、状态
+│   ├── video.go         # 视频：查询、列表、软删除、恢复、播放地址；供 pipeline 在事务里更新时长、标准化视频路径、状态
 │   ├── scope.go         # 范围解析：项目或视频列表 → 校验归属后的 video id；取视频时长
 │   ├── upload.go        # 上传：登记（建 video + 签发分片 URL）、完成（合并分片 → 启动流水线）
 │   ├── importurl.go     # 导入链接：识别平台（YouTube、哔哩哔哩的域名白名单）或直链（safehttp 规则）→ 建 video → 启动流水线
@@ -202,7 +202,7 @@ internal/
 │   └── types.go         # 请求、响应结构，与 contracts/ml-v1.yaml 一一对应
 │
 ├── media/               # 外部媒体命令的封装
-│   ├── ffmpeg.go        # 调用 ffprobe / ffmpeg：探测、转码 proxy、生成缩略图雪碧图、按时间点抽帧
+│   ├── ffmpeg.go        # 调用 ffprobe / ffmpeg：探测、转码生成标准化视频、生成缩略图雪碧图、按时间点抽帧
 │   └── ytdlp.go         # 调用 yt-dlp：读平台视频的元数据、下载到本地文件；只启用白名单里的提取器；错误分类
 │
 ├── index/               # 检索数据的唯一存取入口；所有 pgvector 相关 SQL 只在这里
@@ -220,12 +220,12 @@ internal/
 │   ├── pipelinedb/      # sqlc 生成的代码，不手改
 │   ├── fetch.go         # fetch：平台链接用 yt-dlp 下载到本地再上传 S3；直链用 safehttp 边下边写入 S3
 │   ├── probe.go         # probe：ffprobe，写时长和音视频流信息；展开后续阶段
-│   ├── proxy.go         # proxy：转码 720p、生成缩略图雪碧图、上传 S3
+│   ├── prepare_media.go # prepare_media：媒体预处理，转码生成标准化视频（最高 720p）、生成缩略图雪碧图、上传 S3
 │   ├── asr.go           # asr：按 10 分钟分段调用 /v1/transcribe；每段原始输出存 S3（兼作断点）；合并后替换 text_span
 │   ├── embed.go         # embed:{channel}:{space}：生成输入 → 分批调用 /v1/embed → 校验 → 写入 → 记断点
 │   ├── finalize.go      # finalize：确认必需阶段完成，视频改为 ready，记录索引时长
 │   ├── purge.go         # purge：软删除到期后，清理 S3 前缀，再删除视频行
-│   ├── throttle.go      # 名额（带租约的信号量）：租户 GPU 并发、各平台的下载并发
+│   ├── throttle.go      # 名额（带租约的信号量）：工作区 GPU 并发、各平台的下载并发
 │   └── reconcile.go     # 定时补偿：补投漏掉的任务、收回卡死的阶段、按 channels 配置回填、投递到期的 purge
 │
 ├── search/              # 检索内核；不调用 LLM
@@ -239,7 +239,7 @@ internal/
 │   ├── model.go         # 按配置创建 chat、vision 两个模型（openaimodel；base_url 可指向 gateway）
 │   ├── instruction.md   # 系统指令（go:embed）
 │   ├── tools.go         # 工具定义与实现：search_moments、get_transcript、list_videos、inspect_clip
-│   ├── inspect.go       # inspect_clip：从 proxy 抽帧，调用 vision 模型
+│   ├── inspect.go       # inspect_clip：从标准化视频抽帧，调用 vision 模型
 │   ├── sessions.go      # 会话：创建（scope 写进 state）、列表、历史
 │   └── events.go        # ADK 事件 → 产品事件（text、tool、moments、done、error）
 │
@@ -250,7 +250,7 @@ internal/
 │
 ├── httpapi/             # 对外 REST + SSE；只做协议转换
 │   ├── server.go        # 路由表（标准库 net/http ServeMux），挂中间件
-│   ├── middleware.go    # request id、访问日志、panic 恢复、CORS、鉴权（令牌 → 用户 → 租户）
+│   ├── middleware.go    # request id、访问日志、panic 恢复、CORS、鉴权（令牌 → 用户 → 工作区）
 │   ├── respond.go       # JSON 读写、apperr → HTTP 状态码、统一错误体
 │   ├── sse.go           # SSE 写出：事件格式、心跳、及时刷新
 │   ├── me.go            # GET /v1/me
@@ -271,19 +271,21 @@ internal/
 
 | 包 | 允许依赖 |
 |---|---|
-| `httpapi` | tenant、library、pipeline（只用 Retry）、search、agent、usage、platform/authn、platform/blob、platform/events、apperr、config |
-| `agent` | search、library、index、media、usage、tenant、platform/blob、apperr、config |
-| `search` | space、index、mlclient、timeline、library（范围与时长）、tenant、apperr、config |
+| `httpapi` | workspace、library、pipeline（只用 Retry）、search、agent、usage、platform/authn、platform/blob、platform/events、apperr、config |
+| `agent` | search、library、index、media、usage、workspace、platform/blob、apperr、config |
+| `search` | space、index、mlclient、timeline、library（范围与时长）、workspace、apperr、config |
 | `pipeline` | library、space、index、mlclient、media、timeline、usage、platform/*、apperr、config |
-| `eval` | search、space、index、tenant、config |
-| `library` | platform/db、platform/blob、platform/safehttp、tenant、timeline（只用类型）、apperr、config |
+| `eval` | search、space、index、workspace、config |
+| `library` | platform/db、platform/blob、platform/safehttp、workspace、timeline（只用类型）、apperr、config |
 | `space` | mlclient、index、platform/db、apperr、config |
 | `usage` | platform/db、apperr、config |
-| `tenant` | platform/db、platform/authn、apperr |
+| `workspace` | platform/db、platform/authn、apperr |
 | `index` | platform/db、timeline、apperr |
-| `mlclient` | apperr |
-| `media`、`timeline`、`apperr`、`config` | 只依赖标准库和外部库 |
-| `platform/*` | 只依赖外部库 |
+| `mlclient` | apperr、config |
+| `media` | timeline；其余只依赖标准库和外部库 |
+| `timeline`、`apperr`、`config` | 只依赖标准库和外部库 |
+| `platform/queue` | config；其余只依赖标准库和外部库 |
+| 其他 `platform/*` | 只依赖标准库和外部库 |
 
 两处依赖倒置，用来避免循环：
 
@@ -383,11 +385,11 @@ func (s *Store) DeletePrefix(ctx context.Context, prefix string) error
 func (s *Store) URI(key string) string // "s3://{bucket}/{key}"，传给 Python
 
 // keys.go：路径规则的唯一来源
-func VideoPrefix(tenantID, videoID int64) string                // tenants/{t}/videos/{v}/
-func SourceKey(tenantID, videoID int64, ext string) string
-func ProxyKey(tenantID, videoID int64) string
-func SpriteKey(tenantID, videoID int64, n int) string            // 第 n 张缩略图雪碧图
-func RawKey(tenantID, videoID int64, name string) string
+func VideoPrefix(workspaceID, videoID int64) string                // workspaces/{w}/videos/{v}/
+func SourceKey(workspaceID, videoID int64, ext string) string
+func NormalizedVideoKey(workspaceID, videoID int64) string      // workspaces/{w}/videos/{v}/normalized_video.mp4
+func SpriteKey(workspaceID, videoID int64, n int) string            // 第 n 张缩略图雪碧图
+func RawKey(workspaceID, videoID int64, name string) string
 ```
 
 #### platform/queue
@@ -404,8 +406,8 @@ const (
     TypePurge     = "purge"
     TypeReconcile = "reconcile"
 )
-type StagePayload struct { TenantID, VideoID int64; Stage, Version string }
-type PurgePayload struct { TenantID, VideoID int64 }
+type StagePayload struct { WorkspaceID, VideoID int64; Stage, Version string }
+type PurgePayload struct { WorkspaceID, VideoID int64 }
 
 var ErrThrottled = errors.New("throttled") // 名额不够：稍后重试，不计失败
 
@@ -422,18 +424,18 @@ func NewScheduler(r asynq.RedisConnOpt, every time.Duration) *asynq.Scheduler
 
 ```go
 type Event struct {
-    Type     string    // "stage" | "video"
-    TenantID int64
-    VideoID  int64
-    Stage    string    // Type=stage 时有值
-    Status   string
-    Progress *float64  // embed 阶段的完成比例，可选
-    Error    string
-    At       time.Time
+    Type        string    // "stage" | "video"
+    WorkspaceID int64
+    VideoID     int64
+    Stage       string    // Type=stage 时有值
+    Status      string
+    Progress    *float64  // embed 阶段的完成比例，可选
+    Error       string
+    At          time.Time
 }
-func (b *Bus) Publish(ctx context.Context, e Event) error // 同时发往视频频道和租户频道
+func (b *Bus) Publish(ctx context.Context, e Event) error // 同时发往视频频道和工作区频道
 func (b *Bus) SubscribeVideo(ctx context.Context, videoID int64) (<-chan Event, func())
-func (b *Bus) SubscribeTenant(ctx context.Context, tenantID int64) (<-chan Event, func())
+func (b *Bus) SubscribeWorkspace(ctx context.Context, workspaceID int64) (<-chan Event, func())
 ```
 
 #### platform/authn
@@ -454,17 +456,17 @@ func CheckURL(ctx context.Context, raw string) (*url.URL, error) // 规则见第
 func NewClient(maxBytes int64, timeout time.Duration) *http.Client // 拨号时校验 IP；每次重定向重新校验；最多 3 次重定向
 ```
 
-#### tenant
+#### workspace
 
-- **职责**：用户、租户、成员关系；把「令牌里的用户」解析成「这次请求以哪个租户的身份操作」。
+- **职责**：用户、工作区、成员关系；把「令牌里的用户」解析成「这次请求在哪个工作区内操作」。
 - **不负责**：登录、密码，这些交给认证服务。
 
 ```go
 type Role string // "owner" | "member"
-type Principal struct { UserID, TenantID int64; Role Role }
+type Principal struct { UserID, WorkspaceID int64; Role Role }
 
-// 首次登录：一个事务里建 app_user、个人 tenant、owner membership。
-// requested 为 0 时：只有一个租户就用它，有多个就返回 Invalid（要求带 X-Tenant-ID）。
+// 首次登录：一个事务里建 app_user、个人 workspace、owner membership。
+// requested 为 0 时：只有一个工作区就用它，有多个就返回 Invalid（要求带 X-Workspace-ID）。
 func (s *Service) Resolve(ctx context.Context, c authn.Claims, requested int64) (Principal, error)
 
 func WithPrincipal(ctx context.Context, p Principal) context.Context
@@ -478,11 +480,11 @@ func PrincipalFrom(ctx context.Context) (Principal, bool)
 
 ```go
 type Video struct {
-    ID, TenantID int64
-    Title, Status, SourceKind, SourceURL, SourceKey, ProxyKey, Error string
+    ID, WorkspaceID int64
+    Title, Status, SourceKind, SourceURL, SourceKey, NormalizedVideoKey, Error string
     DurationMs         *int
     HasVideo, HasAudio *bool
-    Thumbs             *timeline.SpriteLayout // proxy 完成后才有
+    Thumbs             *timeline.SpriteLayout // `prepare_media` 完成后才有
     DeletedAt          *time.Time             // 软删除时间；面向用户的查询只返回为空的视频
     CreatedAt, UpdatedAt time.Time
 }
@@ -496,9 +498,9 @@ type DerivedDropper interface {
     DropDerived(ctx context.Context, q db.Querier, videoID int64) error
 }
 
-func (s *Service) StartUpload(ctx context.Context, p tenant.Principal, filename string, size int64, contentType string, projectID *int64) (Video, UploadPlan, error)
-func (s *Service) CompleteUpload(ctx context.Context, p tenant.Principal, videoID int64, uploadID string, parts []blob.Part) (Video, error) // 内部调用 Starter.Start
-func (s *Service) StartImport(ctx context.Context, p tenant.Principal, rawURL, title string, projectID *int64) (Video, error)  // 内部调用 Starter.Start
+func (s *Service) StartUpload(ctx context.Context, p workspace.Principal, filename string, size int64, contentType string, projectID *int64) (Video, UploadPlan, error)
+func (s *Service) CompleteUpload(ctx context.Context, p workspace.Principal, videoID int64, uploadID string, parts []blob.Part) (Video, error) // 内部调用 Starter.Start
+func (s *Service) StartImport(ctx context.Context, p workspace.Principal, rawURL, title string, projectID *int64) (Video, error)  // 内部调用 Starter.Start
 
 // importurl.go：哪些链接能导入，是业务规则，放在 library
 type ImportSource struct {
@@ -507,29 +509,29 @@ type ImportSource struct {
 }
 // 域名在 import.platforms 的白名单里 → 对应平台；否则在允许直链时按 safehttp 规则校验；都不满足 → apperr Invalid（url_not_allowed）
 func ClassifyURL(ctx context.Context, raw string, cfg config.ImportConfig) (ImportSource, error)
-func (s *Service) Get(ctx context.Context, p tenant.Principal, id int64) (Video, error)
-func (s *Service) List(ctx context.Context, p tenant.Principal, f ListFilter) (videos []Video, nextCursor string, err error)
-func (s *Service) Delete(ctx context.Context, p tenant.Principal, id int64) error            // 软删除（已定）：一个事务里设 deleted_at，并调用 DerivedDropper 删掉派生数据（3.5 节）
-func (s *Service) Restore(ctx context.Context, p tenant.Principal, id int64) (Video, error)  // 恢复（提议）：清空 deleted_at，调用 Starter.Start 重新索引
-func (s *Service) PlaybackURL(ctx context.Context, p tenant.Principal, id int64) (url string, expires time.Time, err error)
+func (s *Service) Get(ctx context.Context, p workspace.Principal, id int64) (Video, error)
+func (s *Service) List(ctx context.Context, p workspace.Principal, f ListFilter) (videos []Video, nextCursor string, err error)
+func (s *Service) Delete(ctx context.Context, p workspace.Principal, id int64) error            // 软删除（已定）：一个事务里设 deleted_at，并调用 DerivedDropper 删掉派生数据（3.5 节）
+func (s *Service) Restore(ctx context.Context, p workspace.Principal, id int64) (Video, error)  // 恢复（提议）：清空 deleted_at，调用 Starter.Start 重新索引
+func (s *Service) PlaybackURL(ctx context.Context, p workspace.Principal, id int64) (url string, expires time.Time, err error)
 
 // scope.go
-func (s *Service) ResolveScope(ctx context.Context, p tenant.Principal, sc Scope) ([]int64, error) // nil 表示全租户
-func (s *Service) Durations(ctx context.Context, tenantID int64, ids []int64) (map[int64]int, error)
+func (s *Service) ResolveScope(ctx context.Context, p workspace.Principal, sc Scope) ([]int64, error) // nil 表示当前工作区的全部视频
+func (s *Service) Durations(ctx context.Context, workspaceID int64, ids []int64) (map[int64]int, error)
 
 // 项目
-func (s *Service) CreateProject(ctx context.Context, p tenant.Principal, name string) (Project, error)
-func (s *Service) ListProjects(ctx context.Context, p tenant.Principal) ([]Project, error)
-func (s *Service) DeleteProject(ctx context.Context, p tenant.Principal, id int64) error // 不删除视频
-func (s *Service) AddVideo(ctx context.Context, p tenant.Principal, projectID, videoID int64) error
-func (s *Service) RemoveVideo(ctx context.Context, p tenant.Principal, projectID, videoID int64) error
+func (s *Service) CreateProject(ctx context.Context, p workspace.Principal, name string) (Project, error)
+func (s *Service) ListProjects(ctx context.Context, p workspace.Principal) ([]Project, error)
+func (s *Service) DeleteProject(ctx context.Context, p workspace.Principal, id int64) error // 不删除视频
+func (s *Service) AddVideo(ctx context.Context, p workspace.Principal, projectID, videoID int64) error
+func (s *Service) RemoveVideo(ctx context.Context, p workspace.Principal, projectID, videoID int64) error
 
 // 供 pipeline 在事务里调用（包级函数，接收 Querier）
 func UpdateSource(ctx context.Context, q db.Querier, videoID int64, sourceKey string) error // 写原片位置；导入的视频同时从 importing 改为 indexing
 func UpdateProbe(ctx context.Context, q db.Querier, videoID int64, durationMs int, hasVideo, hasAudio bool) error
-func UpdateProxy(ctx context.Context, q db.Querier, videoID int64, proxyKey string, thumbs timeline.SpriteLayout) error
+func UpdatePreparedMedia(ctx context.Context, q db.Querier, videoID int64, normalizedVideoKey string, thumbs timeline.SpriteLayout) error
 func SetStatus(ctx context.Context, q db.Querier, videoID int64, status, errMsg string) error
-func GetForWorker(ctx context.Context, q db.Querier, videoID int64) (Video, error) // 不校验租户，只给 worker 用
+func GetForWorker(ctx context.Context, q db.Querier, videoID int64) (Video, error) // 不校验工作区，只给 worker 用
 ```
 
 #### timeline
@@ -628,10 +630,10 @@ func (c *Client) Transcribe(ctx context.Context, baseURL string, req TranscribeR
 
 ```go
 type ProbeInfo struct { DurationMs int; HasVideo, HasAudio bool; Width, Height int; FPS float64 }
-type ProxyOptions struct { MaxHeight int; GOPSeconds int; CRF int }
+type TranscodeOptions struct { MaxHeight int; GOPSeconds int; CRF int }
 
 func Probe(ctx context.Context, src string) (ProbeInfo, error)
-func Transcode(ctx context.Context, src, dst string, o ProxyOptions) error
+func Transcode(ctx context.Context, src, dst string, o TranscodeOptions) error
 func Sprites(ctx context.Context, src, outDir string, cells []timeline.Span, tileW, cols, rows int) ([]string, timeline.SpriteLayout, error) // 每格取起点一帧，按行拼成雪碧图
 func Frames(ctx context.Context, src string, atMs []int, width int) ([][]byte, error)                       // JPEG，inspect_clip 用
 
@@ -665,20 +667,20 @@ yt-dlp 的输出和退出码在 `ytdlp.go` 里统一翻译成上面两类错误�
 ```go
 type VectorSpace struct { ID string; Dim int; Metric string }
 type VectorRow struct {
-    VideoID, TenantID int64
+    VideoID, WorkspaceID int64
     Channel, SpaceID, Seg string
     Span timeline.Span
     Vec  []float32
 }
 type VectorQuery struct {
-    TenantID  int64
-    VideoIDs  []int64          // nil 表示全租户
-    Channel   string
-    Seg       string
-    Space     VectorSpace
-    Vec       []float32
-    TimeRange *timeline.Span   // 可选
-    K         int
+    WorkspaceID int64
+    VideoIDs    []int64          // nil 表示当前工作区的全部视频
+    Channel     string
+    Seg         string
+    Space       VectorSpace
+    Vec         []float32
+    TimeRange   *timeline.Span   // 可选
+    K           int
 }
 type VectorHit struct { VideoID int64; Span timeline.Span; Distance float32; Rank int }
 
@@ -693,7 +695,7 @@ func Coverage(ctx context.Context, q db.Querier, channel, spaceID string) (video
 
 type Word struct { W string `json:"w"`; S int `json:"s"`; E int `json:"e"` }
 type TextSpan struct {
-    VideoID, TenantID int64
+    VideoID, WorkspaceID int64
     Kind  string
     Span  timeline.Span
     Text  string
@@ -702,12 +704,12 @@ type TextSpan struct {
 }
 
 // 一个事务里：删这个视频的 speech 句子 → 删它的 speech 向量 → 写入新句子
-func ReplaceSpeech(ctx context.Context, q db.Querier, tenantID, videoID int64, model string, sents []TextSpan) error
-func TextRange(ctx context.Context, q db.Querier, tenantID, videoID int64, s timeline.Span) ([]TextSpan, error)
+func ReplaceSpeech(ctx context.Context, q db.Querier, workspaceID, videoID int64, model string, sents []TextSpan) error
+func TextRange(ctx context.Context, q db.Querier, workspaceID, videoID int64, s timeline.Span) ([]TextSpan, error)
 func SpeechSentences(ctx context.Context, q db.Querier, videoID int64) ([]TextSpan, error)
 ```
 
-拼 SQL 的规则：`channel`、`space_id`、`seg`、维度、运算符直接写进 SQL 文本（部分索引要求它们是字面量）。这些值只能来自 `embedding_space` 表和 channels 配置，写进 SQL 前用白名单格式校验（`^[a-z0-9@._-]+$`），绝不来自用户输入。租户、视频 id、向量、K 一律用参数。
+拼 SQL 的规则：`channel`、`space_id`、`seg`、维度、运算符直接写进 SQL 文本（部分索引要求它们是字面量）。这些值只能来自 `embedding_space` 表和 channels 配置，写进 SQL 前用白名单格式校验（`^[a-z0-9@._-]+$`），绝不来自用户输入。工作区、视频 id、向量、K 一律用参数。
 
 #### pipeline
 
@@ -716,7 +718,7 @@ func SpeechSentences(ctx context.Context, q db.Querier, videoID int64) ([]TextSp
 
 ```go
 type StageDef struct {
-    Name     string        // probe / proxy / asr / embed:visual:wemm-2b@r1 / finalize / fetch
+    Name     string        // probe / prepare_media / asr / embed:visual:wemm-2b@r1 / finalize / fetch
     Version  string        // 实现版本，初始 "v1"
     Queue    string        // cpu | gpu | gpu_low
     Deps     []string
@@ -736,7 +738,7 @@ func ExpandPlan(v library.Video, ch []space.Channel, reg *space.Registry) []Stag
 
 func (s *Service) Start(ctx context.Context, videoID int64) error                    // 实现 library.Starter
 func (s *Service) DropDerived(ctx context.Context, q db.Querier, videoID int64) error // 实现 library.DerivedDropper：index.DeleteVideo，再删自己的 stage_run
-func (s *Service) Retry(ctx context.Context, tenantID, videoID int64) error          // 视频是否属于这个租户在 SQL 里校验；httpapi 传 Principal.TenantID
+func (s *Service) Retry(ctx context.Context, workspaceID, videoID int64) error          // 视频是否属于这个工作区在 SQL 里校验；httpapi 传 Principal.WorkspaceID
 func (s *Service) Register(mux *asynq.ServeMux)                                      // 注册 stage、purge、reconcile 三类 handler
 ```
 
@@ -771,7 +773,7 @@ type Result struct {
     Moments []Moment
     Skipped []string // 这次没参与的通道：编码或召回失败（提议）
 }
-func (s *Service) Search(ctx context.Context, p tenant.Principal, q Query) (Result, error)
+func (s *Service) Search(ctx context.Context, p workspace.Principal, q Query) (Result, error)
 ```
 
 #### agent
@@ -791,10 +793,10 @@ type Event struct {
 }
 type CitedMoment struct { ID string; search.Moment; VideoTitle string }
 
-func (s *Service) CreateSession(ctx context.Context, p tenant.Principal, sc library.Scope, title string) (Session, error)
-func (s *Service) ListSessions(ctx context.Context, p tenant.Principal) ([]Session, error)
-func (s *Service) History(ctx context.Context, p tenant.Principal, sessionID string) (Session, []Message, error)
-func (s *Service) Send(ctx context.Context, p tenant.Principal, sessionID, text string) (iter.Seq[Event], error)
+func (s *Service) CreateSession(ctx context.Context, p workspace.Principal, sc library.Scope, title string) (Session, error)
+func (s *Service) ListSessions(ctx context.Context, p workspace.Principal) ([]Session, error)
+func (s *Service) History(ctx context.Context, p workspace.Principal, sessionID string) (Session, []Message, error)
+func (s *Service) Send(ctx context.Context, p workspace.Principal, sessionID, text string) (iter.Seq[Event], error)
 ```
 
 #### usage
@@ -805,9 +807,9 @@ const (
     KindLLMTokens  = "llm_tokens"
     KindIndexedMs  = "indexed_ms"
 )
-func (s *Service) Record(ctx context.Context, q db.Querier, tenantID int64, kind string, amount int64, ref string) error
-func (s *Service) Check(ctx context.Context, tenantID int64, kind string, need int64) error // 超额返回 apperr.Quota
-func (s *Service) Summary(ctx context.Context, tenantID int64) (Summary, error)
+func (s *Service) Record(ctx context.Context, q db.Querier, workspaceID int64, kind string, amount int64, ref string) error
+func (s *Service) Check(ctx context.Context, workspaceID int64, kind string, need int64) error // 超额返回 apperr.Quota
+func (s *Service) Summary(ctx context.Context, workspaceID int64) (Summary, error)
 ```
 
 配额检查点：
@@ -825,16 +827,16 @@ func (s *Service) Summary(ctx context.Context, tenantID int64) (Summary, error)
 
 ```go
 type Deps struct {
-    Tenant   *tenant.Service
-    Library  *library.Service
-    Pipeline *pipeline.Service
-    Search   *search.Service
-    Agent    *agent.Service
-    Usage    *usage.Service
-    Blob     *blob.Store
-    Events   *events.Bus
-    Authn    *authn.Verifier
-    Cfg      config.Config
+    Workspace *workspace.Service
+    Library   *library.Service
+    Pipeline  *pipeline.Service
+    Search    *search.Service
+    Agent     *agent.Service
+    Usage     *usage.Service
+    Blob      *blob.Store
+    Events    *events.Bus
+    Authn     *authn.Verifier
+    Cfg       config.Config
 }
 func New(d Deps) http.Handler
 ```
@@ -897,13 +899,13 @@ llm:
 worker:
   cpu_concurrency: 8
   gpu_concurrency: 2
-  tenant_gpu_limit: 1                  # 每个租户同时最多跑几个 gpu 任务；必须小于 gpu_concurrency，否则一个租户就能占满（启动时校验）
+  workspace_gpu_limit: 1               # 每个工作区同时最多跑几个 gpu 任务；必须小于 gpu_concurrency，否则一个工作区就能占满（启动时校验）
   max_retry: 8
   reconcile_every: 5m
 
 media:
-  proxy_max_height: 720                # 720p（已定）
-  proxy_gop_seconds: 1                 # 每秒一个关键帧，seek 准
+  normalized_video_max_height: 720     # 最高 720p（已定）
+  normalized_video_gop_seconds: 1      # 每秒一个关键帧，seek 准
   thumb_width: 320                     # 每格缩略图的宽度
   sprite_cols: 10                      # 雪碧图（已定）：每张 10 列 × 10 行，即 100 格
   sprite_rows: 10
@@ -918,7 +920,7 @@ search:
 import:                                # 导入链接
   ytdlp_path: /usr/local/bin/yt-dlp    # 镜像里固定版本的 yt-dlp
   allow_direct: false                  # 是否接受直链（见设计文档问题 5）
-  max_height: 1080                     # 下载画质上限，反正都会转成 proxy（待定）
+  max_height: 1080                     # 下载画质上限，反正都会转成标准化视频（待定）
   max_duration_ms: 14400000            # 单个视频时长上限，4 小时（待定）
   max_bytes: 10737418240               # 下载文件大小上限，10 GB（待定）
   timeout: 2h                          # 首版不带平台登录态（已定）
@@ -996,7 +998,7 @@ Go 版本以 ADK v2 的 `go.mod` 要求为准。
 ### 3.1 约定
 
 - Postgres 16 或更新，线上用 AWS RDS 托管（已定）；只用一个扩展：pgvector ≥ 0.8（需要 iterative scan）。
-- 所有业务数据都能追溯到 `tenant_id`。`text_span`、`embedding` 上冗余存了 `tenant_id`：视频的归属不会变，冗余之后召回查询不用联表。
+- 所有业务数据都能追溯到 `workspace_id`。`text_span`、`embedding` 上冗余存了 `workspace_id`：视频的归属不会变，冗余之后召回查询不用联表。
 - 删除分两步（软删除，已定）：软删除时打上 `deleted_at`，同时删掉派生数据（向量、句子、阶段记录）；保留期满彻底清除时删 video 行，项目关联等其余数据通过外键级联删除。
 - 时间段用 `int` 毫秒，最长约 24 天，够用。
 
@@ -1008,8 +1010,8 @@ Go 版本以 ADK v2 的 `go.mod` 要求为准。
 -- +goose Up
 CREATE EXTENSION IF NOT EXISTS vector;  -- pgvector：向量类型与 HNSW 索引
 
--- 租户：一个工作区；所有业务数据都挂在它下面
-CREATE TABLE tenant (
+-- 工作区：业务数据的归属与访问隔离边界
+CREATE TABLE workspace (
   id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   name        text        NOT NULL,
   plan        text        NOT NULL DEFAULT 'free',   -- 套餐名；额度在配置里
@@ -1025,45 +1027,45 @@ CREATE TABLE app_user (
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 
--- 谁属于哪个租户、什么角色
+-- 谁属于哪个工作区、什么角色
 CREATE TABLE membership (
-  tenant_id   bigint      NOT NULL REFERENCES tenant(id)   ON DELETE CASCADE,
+  workspace_id bigint      NOT NULL REFERENCES workspace(id)   ON DELETE CASCADE,
   user_id     bigint      NOT NULL REFERENCES app_user(id) ON DELETE CASCADE,
   role        text        NOT NULL CHECK (role IN ('owner', 'member')),
   created_at  timestamptz NOT NULL DEFAULT now(),
-  PRIMARY KEY (tenant_id, user_id)
+  PRIMARY KEY (workspace_id, user_id)
 );
 CREATE INDEX membership_user_idx ON membership (user_id);
 
 -- 项目：一组视频，是搜索与对话的范围
 CREATE TABLE project (
   id          bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  tenant_id   bigint      NOT NULL REFERENCES tenant(id) ON DELETE CASCADE,
+  workspace_id bigint      NOT NULL REFERENCES workspace(id) ON DELETE CASCADE,
   name        text        NOT NULL,
   created_at  timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX project_tenant_idx ON project (tenant_id);
+CREATE INDEX project_workspace_idx ON project (workspace_id);
 
 -- 视频元数据；文件本身在 S3
 CREATE TABLE video (
   id           bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  tenant_id    bigint      NOT NULL REFERENCES tenant(id) ON DELETE CASCADE,
+  workspace_id bigint      NOT NULL REFERENCES workspace(id) ON DELETE CASCADE,
   title        text        NOT NULL,
   source_kind  text        NOT NULL CHECK (source_kind IN ('upload', 'youtube', 'bilibili', 'direct')),  -- 来源：上传 / 平台导入 / 直链
   source_url   text,                                 -- 导入链接时的原始地址
   source_key   text,                                 -- S3 原片路径；上传完成或下载完成后填写
-  proxy_key    text,                                 -- S3 proxy 路径；proxy 阶段完成后填写
+  normalized_video_key text,                                 -- S3 标准化视频路径；prepare_media 阶段完成后填写
   duration_ms  int,                                  -- probe 填写；格子边界由它算出
   has_video    boolean,                              -- probe 填写；false 时不建画面阶段
   has_audio    boolean,                              -- probe 填写；false 时不建 asr 和音频阶段
-  thumbs       jsonb,                                -- 雪碧图布局 {"tile_w":320,"tile_h":180,"cols":10,"rows":10,"count":1440}；proxy 填写
+  thumbs       jsonb,                                -- 雪碧图布局 {"tile_w":320,"tile_h":180,"cols":10,"rows":10,"count":1440}；prepare_media 填写
   status       text        NOT NULL CHECK (status IN ('uploading', 'importing', 'indexing', 'ready', 'failed')),
   error        text,                                 -- failed 时给用户看的原因
   deleted_at   timestamptz,                          -- 软删除时间；非空表示已删除，列表、检索、Agent 都看不到
   created_at   timestamptz NOT NULL DEFAULT now(),
   updated_at   timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX video_tenant_created_idx ON video (tenant_id, created_at DESC, id DESC)
+CREATE INDEX video_workspace_created_idx ON video (workspace_id, created_at DESC, id DESC)
   WHERE deleted_at IS NULL;                          -- 列表分页，只含未删除的视频
 CREATE INDEX video_deleted_idx ON video (deleted_at)
   WHERE deleted_at IS NOT NULL;                      -- 清除任务查找到期的软删除视频
@@ -1080,7 +1082,7 @@ CREATE INDEX project_video_video_idx ON project_video (video_id);
 -- 流水线阶段状态：流水线状态的唯一来源（Asynq 只负责投递）
 CREATE TABLE stage_run (
   video_id    bigint      NOT NULL REFERENCES video(id) ON DELETE CASCADE,
-  stage       text        NOT NULL,                  -- fetch / probe / proxy / asr / embed:visual:wemm-2b@r1 / finalize
+  stage       text        NOT NULL,                  -- fetch / probe / prepare_media / asr / embed:visual:wemm-2b@r1 / finalize
   version     text        NOT NULL,                  -- 阶段实现版本；有不兼容变化时升级
   status      text        NOT NULL CHECK (status IN ('pending', 'queued', 'running', 'done', 'failed')),
   required    boolean     NOT NULL DEFAULT true,     -- finalize 是否要等它；生成计划时写死，shadow 的 embed 阶段为 false
@@ -1096,7 +1098,7 @@ CREATE INDEX stage_run_open_idx ON stage_run (status, updated_at)
 -- 文本片段：首版只有转录句子（speech）；OCR 以后用同一张表，kind 加 'ocr'
 CREATE TABLE text_span (
   video_id    bigint      NOT NULL REFERENCES video(id) ON DELETE CASCADE,
-  tenant_id   bigint      NOT NULL,                  -- 冗余，便于按租户过滤
+  workspace_id bigint      NOT NULL,                  -- 冗余，便于按工作区过滤
   kind        text        NOT NULL CHECK (kind IN ('speech')),
   start_ms    int         NOT NULL,
   end_ms      int         NOT NULL,
@@ -1106,7 +1108,7 @@ CREATE TABLE text_span (
   PRIMARY KEY (video_id, kind, start_ms),
   CHECK (end_ms > start_ms)
 );
-CREATE INDEX text_span_tenant_idx    ON text_span (tenant_id, kind);
+CREATE INDEX text_span_workspace_idx    ON text_span (workspace_id, kind);
 
 -- 向量空间登记：一个模型的一个版本
 CREATE TABLE embedding_space (
@@ -1124,7 +1126,7 @@ CREATE TABLE embedding_space (
 -- 向量：一行一条；只放永远不变的定位字段，会变的属性（项目、标题）不放这里
 CREATE TABLE embedding (
   video_id   bigint      NOT NULL REFERENCES video(id) ON DELETE CASCADE,
-  tenant_id  bigint      NOT NULL,                   -- 租户隔离；所有查询必带
+  workspace_id bigint      NOT NULL,                   -- 工作区隔离；所有查询必带
   channel    text        NOT NULL CHECK (channel IN ('visual', 'speech', 'audio')),
   space_id   text        NOT NULL REFERENCES embedding_space(id),
   seg        text        NOT NULL,                   -- 切片版本：grid@v1 / sentence@v1
@@ -1133,7 +1135,7 @@ CREATE TABLE embedding (
   vec        halfvec     NOT NULL,                   -- 不写维度，各 space 共用一列；维度由写入方按登记表校验
   PRIMARY KEY (video_id, channel, space_id, seg, start_ms)
 );
-CREATE INDEX embedding_scan_idx ON embedding (tenant_id, channel, space_id, seg);  -- 小范围精确扫描、统计
+CREATE INDEX embedding_scan_idx ON embedding (workspace_id, channel, space_id, seg);  -- 小范围精确扫描、统计
 -- 每个 (channel, space) 组合一个部分 HNSW 索引，由 videohelper space add 调用 index.EnsureVectorIndex 创建（提议），
 -- 不放在迁移文件里，因为它取决于接入了哪些空间：
 --   CREATE INDEX CONCURRENTLY IF NOT EXISTS emb_hnsw_visual_wemm_2b_r1 ON embedding
@@ -1143,23 +1145,23 @@ CREATE INDEX embedding_scan_idx ON embedding (tenant_id, channel, space_id, seg)
 -- 计量：配额检查与以后计费
 CREATE TABLE usage_event (
   id         bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  tenant_id  bigint      NOT NULL REFERENCES tenant(id) ON DELETE CASCADE,
+  workspace_id bigint      NOT NULL REFERENCES workspace(id) ON DELETE CASCADE,
   kind       text        NOT NULL CHECK (kind IN ('gpu_seconds', 'llm_tokens', 'indexed_ms')),
   amount     bigint      NOT NULL CHECK (amount >= 0),
   ref        text,                                   -- 关联对象，如 video:42、session:s_9f2
   at         timestamptz NOT NULL DEFAULT now()
 );
-CREATE INDEX usage_event_tenant_idx ON usage_event (tenant_id, kind, at);
+CREATE INDEX usage_event_workspace_idx ON usage_event (workspace_id, kind, at);
 
 -- +goose Down
 DROP TABLE usage_event, embedding, embedding_space, text_span, stage_run,
-           project_video, video, project, membership, app_user, tenant;
+           project_video, video, project, membership, app_user, workspace;
 ```
 
 和画布上「数据库表」画板相比的变化：
 
 - `video` 增加了 `source_kind`、`source_url`、`has_video`、`has_audio`、`thumbs`（雪碧图布局）、`deleted_at`（软删除），状态增加了 `importing`。
-- `text_span` 增加了 `tenant_id`。
+- `text_span` 增加了 `workspace_id`。
 - `embedding` 带上了 `seg`。
 - `embedding_space` 增加了 `doc_inputs`、`query_inputs`、`max_span_ms`、`disabled`。
 - `stage_run` 增加了 `required`：生成计划时就写死哪些阶段是必需的，改 channels 配置不影响已经在索引中的视频。
@@ -1171,7 +1173,7 @@ DROP TABLE usage_event, embedding, embedding_space, text_span, stage_run,
 | 部分 HNSW（每个 channel + space 一个） | 向量召回 | 表达式 `vec::halfvec(dim)` + 条件 `channel = … AND space_id = …`；运算符类按 metric 选：cosine → `halfvec_cosine_ops`、ip → `halfvec_ip_ops`、l2 → `halfvec_l2_ops` |
 | `embedding_scan_idx` | 小范围精确扫描、覆盖率统计 | B-tree |
 | `stage_run_open_idx` | reconciler 扫描未完成的阶段 | 部分索引，只覆盖未完成的行 |
-| `video_tenant_created_idx` | 视频列表分页 | (tenant_id, created_at desc, id desc)，只含未删除的视频 |
+| `video_workspace_created_idx` | 视频列表分页 | (workspace_id, created_at desc, id desc)，只含未删除的视频 |
 | `video_deleted_idx` | 清除任务查找到期的软删除视频 | 部分索引，只含已软删除的视频 |
 
 部分索引的名字统一为 `emb_hnsw_{channel}_{space}`，其中 space 里的非字母数字字符换成下划线。
@@ -1189,8 +1191,8 @@ WITH hits AS MATERIALIZED (
          vec::halfvec(1024) <=> $1 AS distance   -- 维度与运算符来自登记表
   FROM embedding
   WHERE channel = 'visual' AND space_id = 'wemm-2b@r1' AND seg = 'grid@v1'  -- 字面量，与部分索引一致
-    AND tenant_id = $2
-    AND video_id = ANY($3)                       -- 范围是全租户时去掉这一行
+    AND workspace_id = $2
+    AND video_id = ANY($3)                       -- 范围是当前工作区的全部视频时去掉这一行
     AND start_ms < $5 AND end_ms > $6            -- 有时间范围时才加
   ORDER BY vec::halfvec(1024) <=> $1
   LIMIT $4
@@ -1225,7 +1227,7 @@ WHERE video_id = $1 AND (stage, version) IN (...);
 
 ```sql
 -- channels 配置里的某个 (channel, space) 在 ready 视频上还没有对应阶段
-SELECT v.id, v.tenant_id
+SELECT v.id, v.workspace_id
 FROM video v
 WHERE v.status = 'ready'
   AND v.deleted_at IS NULL
@@ -1241,8 +1243,8 @@ LIMIT $2;                                      -- 每轮最多回填多少个视
 
 | 场景 | 规则 |
 |---|---|
-| 租户隔离 | 所有查询函数的参数里都有 tenant_id，没有「不带租户」的查询函数；唯一例外是 worker 内部按 video_id 取视频（`GetForWorker`），它的 video_id 来自任务载荷，不来自用户 |
-| 删除视频（软删除，已定） | 一个事务里：设 `deleted_at` → 调用 `DerivedDropper`（由 pipeline 实现）删除这个视频的 `embedding`、`text_span`、`stage_run`。这些都是派生数据，恢复时重建。项目关联、原片、proxy 保留。列表、范围解析、Agent 工具一律过滤 `deleted_at IS NULL`。还在队列里的任务找不到阶段记录，直接成功结束 |
+| 工作区隔离 | 所有查询函数的参数里都有 workspace_id，没有「不带工作区」的查询函数；唯一例外是 worker 内部按 video_id 取视频（`GetForWorker`），它的 video_id 来自任务载荷，不来自用户 |
+| 删除视频（软删除，已定） | 一个事务里：设 `deleted_at` → 调用 `DerivedDropper`（由 pipeline 实现）删除这个视频的 `embedding`、`text_span`、`stage_run`。这些都是派生数据，恢复时重建。项目关联、原片、标准化视频保留。列表、范围解析、Agent 工具一律过滤 `deleted_at IS NULL`。还在队列里的任务找不到阶段记录，直接成功结束 |
 | 恢复（提议） | 清空 `deleted_at` → `Starter.Start`，从 probe 重新索引 |
 | 彻底清除 | 软删除超过 `limits.soft_delete_purge_after`（期限待定）后，purge 任务先删 S3 前缀，再删 video 行，其余数据级联删除 |
 | ASR 重跑 | asr 阶段在一个事务里替换全部 speech 句子并删掉旧的 speech 向量（`ReplaceSpeech`），之后它的下游 `embed:speech:*` 一起重置并重新编码。触发重跑的入口首版不做，见设计文档问题 25 |
@@ -1261,7 +1263,7 @@ LIMIT $2;                                      -- 每轮最多回填多少个视
 
 - 由 ADK 的 `session/database` 通过 GORM 自动创建，表结构归 ADK 管理，我们不手写迁移。
 - ADK 的表和业务表隔离（已定）：给 ADK 单独开一个连接池，连接串里设 `search_path=adk`，让它的表落在 `adk` schema。实现时确认 ADK 的 GORM 配置支持这种方式。
-- ADK 会话里的 app name 固定为 `videohelper`；user id 用 `"{tenant_id}:{user_id}"`，从结构上避免跨租户读到会话。
+- ADK 会话里的 app name 固定为 `videohelper`；user id 用 `"{workspace_id}:{user_id}"`，从结构上避免跨工作区读到会话。
 
 ---
 
@@ -1273,12 +1275,12 @@ LIMIT $2;                                      -- 每轮最多回填多少个视
 |---|---|
 | 地址 | 所有接口在 `/v1` 下；JSON 请求和响应，`Content-Type: application/json` |
 | 鉴权 | `Authorization: Bearer <令牌>`；`/healthz` 除外 |
-| 租户 | 可选请求头 `X-Tenant-ID`。用户只属于一个租户时可以不带；属于多个租户时必须带 |
+| 工作区 | 可选请求头 `X-Workspace-ID`。用户只属于一个工作区时可以不带；属于多个工作区时必须带 |
 | 分页 | 请求带 `limit`（默认 20，最大 100）和 `cursor`；响应里 `next_cursor` 为 null 表示没有下一页 |
 | 错误体 | `{ "error": { "code": "not_found", "message": "视频不存在" } }` |
 | 请求 id | 响应头 `X-Request-ID`；请求里带了就沿用 |
 | ID | 一律是字符串，如 `"42"`（已定）；路径参数同理 |
-| 跨域 | 前端与 API 不同域部署（已定）。允许的来源在 `server.cors_origins`；允许请求头 `Authorization`、`Content-Type`、`X-Tenant-ID`、`X-Request-ID`；暴露响应头 `X-Request-ID` |
+| 跨域 | 前端与 API 不同域部署（已定）。允许的来源在 `server.cors_origins`；允许请求头 `Authorization`、`Content-Type`、`X-Workspace-ID`、`X-Request-ID`；暴露响应头 `X-Request-ID` |
 | SSE | 前端用 fetch 读取响应流，不用浏览器原生的 EventSource，因为 EventSource 不能带 `Authorization` 头，也不支持 POST |
 
 错误码：
@@ -1288,10 +1290,10 @@ LIMIT $2;                                      -- 每轮最多回填多少个视
 | 400 | `invalid_argument` | 参数不合法 |
 | 400 | `url_not_allowed` | 导入链接被安全规则拒绝 |
 | 401 | `unauthenticated` | 没有令牌，或令牌无效 |
-| 403 | `permission_denied` | 资源不属于当前租户，或角色不够 |
+| 403 | `permission_denied` | 资源不属于当前工作区，或角色不够 |
 | 404 | `not_found` | 资源不存在 |
 | 409 | `conflict` | 状态不允许这个操作，比如对非 uploading 的视频调用 complete |
-| 409 | `not_ready` | 资源还没准备好，比如 proxy 还没生成就请求播放地址 |
+| 409 | `not_ready` | 资源还没准备好，比如标准化视频还没生成就请求播放地址 |
 | 413 | `payload_too_large` | 超过 S3 单个对象 5 TB 的上限（我们自己不设上限） |
 | 429 | `quota_exceeded` | 超出套餐额度 |
 | 500 | `internal` | 服务器内部错误 |
@@ -1350,7 +1352,7 @@ LIMIT $2;                                      -- 每轮最多回填多少个视
 | 方法与路径 | 作用 | 状态 |
 |---|---|---|
 | `GET /healthz` | 健康检查（不鉴权） | 提议 |
-| `GET /v1/me` | 当前用户、所属租户、用量与额度 | 提议 |
+| `GET /v1/me` | 当前用户、所属工作区、用量与额度 | 提议 |
 | `POST /v1/projects` | 新建项目 | 已定 |
 | `GET /v1/projects` | 项目列表 | 已定 |
 | `DELETE /v1/projects/{id}` | 删除项目（不删视频） | 已定 |
@@ -1383,8 +1385,8 @@ LIMIT $2;                                      -- 每轮最多回填多少个视
 // 200
 {
   "user": { "id": "3", "email": "a@example.com", "name": "示例用户" },
-  "tenants": [ { "id": "1", "name": "个人工作区", "role": "owner" } ],
-  "current_tenant_id": "1",
+  "workspaces": [ { "id": "1", "name": "个人工作区", "role": "owner" } ],
+  "current_workspace_id": "1",
   "usage": { "indexed_ms_month": 7200000, "llm_tokens_day": 12000 },
   "limits": { "indexed_ms_month": 36000000, "llm_tokens_day": 200000 }
 }
@@ -1399,7 +1401,7 @@ LIMIT $2;                                      -- 每轮最多回填多少个视
 { "project": { "id": "7", "name": "K8s 课程", "video_count": 0, "created_at": "…" } }
 ```
 
-`GET /v1/projects` 返回 `{ "projects": [Project] }`，不分页，单个租户的项目数量预计不多。其余三个项目接口成功时返回 204，视频或项目不属于当前租户时返回 403。
+`GET /v1/projects` 返回 `{ "projects": [Project] }`，不分页，单个工作区的项目数量预计不多。其余三个项目接口成功时返回 204，视频或项目不属于当前工作区时返回 403。
 
 #### `POST /v1/uploads`
 
@@ -1436,7 +1438,7 @@ LIMIT $2;                                      -- 每轮最多回填多少个视
 { "video": { /* Video，status = indexing */ } }
 ```
 
-- 校验：视频属于当前租户（403/404）；状态是 uploading（409）。
+- 校验：视频属于当前工作区（403/404）；状态是 uploading（409）。
 - 行为：完成分片上传 → 写 `source_key` → `Starter.Start`（建初始阶段，状态改为 indexing，投递 probe）。
 
 #### `POST /v1/videos/{id}/upload-parts`（提议）
@@ -1489,7 +1491,7 @@ LIMIT $2;                                      -- 每轮最多回填多少个视
 返回 202。这是软删除（已定），具体规则见 3.5 节：
 
 - 视频立刻从列表、搜索和 Agent 的范围里消失。
-- 向量、转录句子随即删除，原片和 proxy 先保留。
+- 向量、转录句子随即删除，原片和标准化视频先保留。
 - 保留期满后彻底清除（期限待定）。
 
 #### `POST /v1/videos/{id}/restore`（提议）
@@ -1504,10 +1506,10 @@ LIMIT $2;                                      -- 每轮最多回填多少个视
 
 ```jsonc
 // 200
-{ "url": "https://s3…/proxy.mp4", "expires_at": "2026-10-25T09:00:00Z" }
+{ "url": "https://s3…/normalized_video.mp4", "expires_at": "2026-10-25T09:00:00Z" }
 ```
 
-proxy 还没生成时返回 409 `not_ready`。
+标准化视频还没生成时返回 409 `not_ready`。
 
 #### `GET /v1/videos/{id}/events`（SSE）
 
@@ -1530,7 +1532,7 @@ data: {"video_id":"42","status":"ready"}
 // 请求
 {
   "query": "海边有人弹吉他",           // 必填
-  "project_id": "7",                  // 可选，与 video_ids 二选一；都不给 = 全租户
+  "project_id": "7",                  // 可选，与 video_ids 二选一；都不给 = 当前工作区的全部视频
   "video_ids": ["42", "43"],          // 可选
   "time_range": { "start_ms": 0, "end_ms": 600000 },   // 可选，视频内的时间段
   "limit": 20                         // 默认 20，最大 50
@@ -1550,7 +1552,7 @@ data: {"video_id":"42","status":"ready"}
 
 ```jsonc
 // 请求：scope 建会话时确定，之后不能扩大
-{ "scope": { "project_id": "7" }, "title": "找白板画面" }   // scope 也可以是 { "video_ids": ["42"] }，或省略表示全租户
+{ "scope": { "project_id": "7" }, "title": "找白板画面" }   // scope 也可以是 { "video_ids": ["42"] }，或省略表示当前工作区的全部视频
 // 201
 { "session": { "id": "s_9f2…", "title": "找白板画面", "scope": { "project_id": "7" }, "created_at": "…" } }
 ```
@@ -1597,8 +1599,8 @@ SSE 事件：
 - **请求头**：`X-Request-ID`（必带，用于串联日志）；`traceparent`（可选）；`X-Timeout-Ms`（提议）：调用方最多还愿意等多少毫秒，Go 按 context 的剩余时间填。Python 从收到请求开始计时，排队出来时已经超时就不再推理，直接返回 504（`deadline_exceeded`）。用相对时长而不用绝对时间，是为了不依赖两边的时钟一致。
 - **核心原则**：
   - 请求里只出现 space id、模型 id、S3 地址和时间段。
-  - Python 不知道租户，也不知道数据库 id。
-  - Python 不连数据库、不碰队列，只读 S3 上的 proxy 和模型权重。
+  - Python 不知道工作区，也不知道数据库 id。
+  - Python 不连数据库、不碰队列，只读 S3 上的标准化视频和模型权重。
 
 ### 5.2 `GET /v1/spaces`
 
@@ -1647,7 +1649,7 @@ Python 报告本实例加载的向量空间和转录模型。Go 启动时调用�
   "space": "wemm-2b@r1",
   "role": "document",                                   // query | document
   "inputs": [
-    { "video": { "uri": "s3://videohelper/tenants/1/videos/42/proxy.mp4", "start_ms": 0, "end_ms": 2500 } },
+    { "video": { "uri": "s3://videohelper/workspaces/1/videos/42/normalized_video.mp4", "start_ms": 0, "end_ms": 2500 } },
     { "text": "接下来我们看一下滚动更新是怎么做的" }
   ]
 }
@@ -1683,7 +1685,7 @@ Python 报告本实例加载的向量空间和转录模型。Go 启动时调用�
 // 请求：转录分段调用（已定），Go 每次只请求一个时间窗口
 {
   "model": "paraformer-zh@r1",
-  "uri": "s3://videohelper/tenants/1/videos/42/proxy.mp4",
+  "uri": "s3://videohelper/workspaces/1/videos/42/normalized_video.mp4",
   "language": "zh",
   "start_ms": 570000,
   "end_ms": 1230000
@@ -1760,10 +1762,10 @@ sequenceDiagram
   participant C as 本地缓存
   participant S as S3
   participant G as Postgres
-  W->>P: POST /v1/embed（32 段 proxy 引用 + 时间段）
-  P->>C: 这个 proxy 在缓存里吗？
+  W->>P: POST /v1/embed（32 段标准化视频引用 + 时间段）
+  P->>C: 这个标准化视频在缓存里吗？
   alt 不在
-    C->>S: 下载 proxy（同一个文件只下载一次）
+    C->>S: 下载标准化视频（同一个文件只下载一次）
   end
   P->>P: 按时间段解码、抽帧，模型推理
   P-->>W: 32 个向量 + fingerprint
@@ -1791,7 +1793,7 @@ sequenceDiagram
 
 | 队列 | 放什么任务 | 消费者 | 并发（初始值） |
 |---|---|---|---|
-| `cpu` | stage：fetch、probe、proxy、finalize | worker 里的 cpu server | `worker.cpu_concurrency` = 8 |
+| `cpu` | stage：fetch、probe、prepare_media、finalize | worker 里的 cpu server | `worker.cpu_concurrency` = 8 |
 | `maint` | reconcile、purge | 同一个 cpu server，权重较低 | 共用 |
 | `gpu` | stage：asr、active 空间的 embed:* | worker 里的 gpu server | `worker.gpu_concurrency` = 2 |
 | `gpu_low` | stage：shadow 空间的 embed:*，即候选模型的编码，包括存量回填（提议） | 同一个 gpu server，权重较低 | 共用 |
@@ -1806,10 +1808,10 @@ sequenceDiagram
 
 ```jsonc
 // type = "stage"，任务 id = "stage:{video_id}:{stage}:{version}"
-{ "tenant_id": 1, "video_id": 42, "stage": "embed:visual:wemm-2b@r1", "version": "v1" }
+{ "workspace_id": 1, "video_id": 42, "stage": "embed:visual:wemm-2b@r1", "version": "v1" }
 
 // type = "purge"，任务 id = "purge:{video_id}"，队列 maint：彻底清除一个软删除到期的视频
-{ "tenant_id": 1, "video_id": 42 }
+{ "workspace_id": 1, "video_id": 42 }
 
 // type = "reconcile"，任务 id = "reconcile:{时间窗口起点}"，队列 maint，由 scheduler 每 5 分钟投递
 {}
@@ -1821,12 +1823,12 @@ sequenceDiagram
 |---|---|---|---|---|---|---|---|
 | `fetch` | cpu | — | 只有导入链接 | 平台视频（yt-dlp）或直链 | S3 原片；`video.source_key`、标题 | 2 小时 | 是 |
 | `probe` | cpu | fetch（如果有） | 总是 | S3 原片（预签名 URL） | `video.duration_ms/has_video/has_audio`；生成后续阶段 | 5 分钟 | 是 |
-| `proxy` | cpu | probe | 总是 | S3 原片 | S3 `proxy.mp4`、`sprites/*.jpg`；`video.proxy_key`、`video.thumbs` | 3 小时 | 是 |
-| `asr` | gpu | proxy | `has_audio` | proxy | S3 `raw/asr-{model}/chunk-{i}.json`（每段一个）；`text_span` | 2 小时 | 是 |
-| `embed:visual:{space}` | gpu；shadow 空间走 gpu_low | proxy | `has_video`；每个 active 和 shadow 空间一个 | proxy | `embedding`（visual） | 3 小时 | 只有 active 的是 |
-| `embed:audio:{space}` | gpu；shadow 空间走 gpu_low | proxy | `has_audio`；同上 | proxy | `embedding`（audio） | 3 小时 | 只有 active 的是 |
+| `prepare_media` | cpu | probe | 总是 | S3 原片 | S3 `normalized_video.mp4`、`sprites/*.jpg`；`video.normalized_video_key`、`video.thumbs` | 3 小时 | 是 |
+| `asr` | gpu | prepare_media | `has_audio` | 标准化视频 | S3 `raw/asr-{model}/chunk-{i}.json`（每段一个）；`text_span` | 2 小时 | 是 |
+| `embed:visual:{space}` | gpu；shadow 空间走 gpu_low | prepare_media | `has_video`；每个 active 和 shadow 空间一个 | 标准化视频 | `embedding`（visual） | 3 小时 | 只有 active 的是 |
+| `embed:audio:{space}` | gpu；shadow 空间走 gpu_low | prepare_media | `has_audio`；同上 | 标准化视频 | `embedding`（audio） | 3 小时 | 只有 active 的是 |
 | `embed:speech:{space}` | gpu；shadow 空间走 gpu_low | asr | `has_audio`；同上 | `text_span` | `embedding`（speech） | 1 小时 | 只有 active 的是 |
-| `finalize` | cpu | proxy 和所有必需的阶段 | 总是 | `stage_run` | `video.status = ready`；计量 | 1 分钟 | — |
+| `finalize` | cpu | prepare_media 和所有必需的阶段 | 总是 | `stage_run` | `video.status = ready`；计量 | 1 分钟 | — |
 
 超时都是初始值，实现时设定（已定）。
 
@@ -1841,14 +1843,14 @@ sequenceDiagram
 
 1. **解析载荷**。
 2. **检查**：只读地查一次这个阶段。查不到（视频已删除）或者已经是 done，直接返回成功（幂等）。
-3. **限流**：gpu 队列的任务申请租户 GPU 名额，fetch 阶段申请平台下载名额（6.6 节）；gpu_low 的任务不申请。名额不够就返回 `ErrThrottled`，稍后重试，不计失败。这时阶段还是 queued，执行次数也不变。
+3. **限流**：gpu 队列的任务申请工作区 GPU 名额，fetch 阶段申请平台下载名额（6.6 节）；gpu_low 的任务不申请。名额不够就返回 `ErrThrottled`，稍后重试，不计失败。这时阶段还是 queued，执行次数也不变。
 4. **认领**：执行 3.4 节的认领 SQL，状态改为 running，执行次数加 1。返回 0 行说明检查之后视频被删除了，或者阶段已经完成：释放名额，直接返回成功。
 5. **发布事件**：`stage running`。
 6. **执行** `StageDef.Run`。耗时长的阶段在执行过程中调用 `SaveProgress` 记录断点。
 7. **成功时**：
    1. 开一个事务：锁住这个视频的阶段行 → 写阶段产出 → 状态改为 done → 根据依赖图把就绪的下游改为 queued → 提交。
    2. 提交之后投递下游任务。任务 id 冲突视为成功。投递失败也不要紧，reconciler 会补投。
-   3. 发布事件，释放租户名额。
+   3. 发布事件，释放工作区名额。
 8. **失败时**（执行中遇到 ML 服务 503 返回的 `ErrThrottled` 也走这里，但不计入重试次数）：
    1. 把错误信息写进 `stage_run.error`，状态改回 queued，表示等待重试。
    2. 如果这是最后一次重试（`asynq.GetRetryCount(ctx) >= asynq.GetMaxRetry(ctx)`）：状态改为 failed；如果是必需阶段，视频也改为 failed，错误原因写给用户看。
@@ -1893,11 +1895,11 @@ sequenceDiagram
 2. 一个事务里：`UpdateProbe` → `ExpandPlan` 插入后续阶段的 `stage_run`（状态 pending，`required` 按当时的 channels 配置写死）。
 3. 时长为 0，或者既没有画面也没有音轨：失败，不重试，提示「无法识别的视频文件」。
 
-**proxy**
+**prepare_media（媒体预处理）**
 
-1. ffmpeg 读原片的预签名 URL，输出到本地临时目录。参数：H.264（CRF 23，preset veryfast），高度不超过 720（`media.proxy_max_height`，已定），关键帧间隔 = 帧率 × `proxy_gop_seconds`，关闭场景切换插帧，AAC 128k，`+faststart`。
-2. 生成缩略图雪碧图（已定）：对 proxy 按 `timeline.Cells(duration)` 每格取起点一帧，缩放到宽 `thumb_width`，按行拼成 `sprite_cols × sprite_rows`（10 × 10）格一张的 JPEG。1 小时视频有 1440 格，拼成 15 张图。
-3. 上传 `proxy.mp4` 和 `sprites/{n}.jpg`，在一个事务里写 `video.proxy_key` 和 `video.thumbs`（雪碧图布局），然后删除临时文件。
+1. ffmpeg 读原片的预签名 URL，生成标准化视频 `normalized_video.mp4`，输出到本地临时目录。参数：H.264（CRF 23，preset veryfast），高度不超过 720（`media.normalized_video_max_height`，已定），关键帧间隔 = 帧率 × `normalized_video_gop_seconds`，关闭场景切换插帧，AAC 128k，`+faststart`。
+2. 生成缩略图雪碧图（已定）：对标准化视频按 `timeline.Cells(duration)` 每格取起点一帧，缩放到宽 `thumb_width`，按行拼成 `sprite_cols × sprite_rows`（10 × 10）格一张的 JPEG。1 小时视频有 1440 格，拼成 15 张图。
+3. 上传 `normalized_video.mp4` 和 `sprites/{n}.jpg`，在一个事务里调用 `library.UpdatePreparedMedia` 写 `video.normalized_video_key` 和 `video.thumbs`（雪碧图布局），然后删除临时文件。
 
 **asr**（分段调用，已定；模型是阿里 FunASR）
 
@@ -1917,7 +1919,7 @@ sequenceDiagram
 **embed:{channel}:{space}**
 
 1. 生成输入列表：
-   - visual / audio：`timeline.Cells(duration)`，每格一个 video 或 audio 输入，URI 是 proxy。
+   - visual / audio：`timeline.Cells(duration)`，每格一个 video 或 audio 输入，URI 指向标准化视频。
    - speech：`index.SpeechSentences` → `timeline.MergeSentences`，每句一个 text 输入。
 2. 从断点 `Progress.next`（没有就是 0）开始，每批 `min(ml.embed_batch, max_batch)` 个：
    1. 调用 `mlclient.Embed`，`role=document`。
@@ -1940,13 +1942,13 @@ sequenceDiagram
 2. 先 `blob.DeletePrefix(VideoPrefix)` 删 S3 上的文件，再删除 video 行（其余数据级联删除）。顺序不能反：如果先删了行、删文件时失败，S3 上就会留下没人认领的孤儿文件。
 3. 可以重复执行。
 
-### 6.6 名额：租户 GPU 并发、平台下载并发
+### 6.6 名额：工作区 GPU 并发、平台下载并发
 
 两种名额用同一套机制，只是键和上限不同：
 
 | 名额 | Redis 键 | 上限 | 目的 |
 |---|---|---|---|
-| 租户 GPU 并发 | `vh:gpu:{tenant_id}` | `worker.tenant_gpu_limit`，默认 1，必须小于 `gpu_concurrency` | 一个租户的大批量上传不堵住其他租户 |
+| 工作区 GPU 并发 | `vh:gpu:{workspace_id}` | `worker.workspace_gpu_limit`，默认 1，必须小于 `gpu_concurrency` | 一个工作区的大批量上传不堵住其他工作区 |
 | 平台下载并发 | `vh:fetch:{platform}`（全局共享） | `import.platforms.{平台}.max_concurrency`，默认 2 | 避免被平台限流或封禁出口 IP |
 
 - **Redis 结构**：有序集合。成员是任务 id，分值是租约到期时间（毫秒时间戳）。
@@ -1956,9 +1958,9 @@ sequenceDiagram
   3. 否则返回名额不足。
 - **释放**：执行完删除这个成员。
 - **为什么用租约**：worker 崩溃时来不及释放名额，租约到期后名额会自动收回，不会永久卡住。
-- **以后**：租户 GPU 名额可以按套餐区分。
-- **上限要小于总并发**：租户名额等于 `gpu_concurrency` 时，一个租户就能占满所有 GPU 并发，其他租户只能等。代价是只有一个租户在用时，GPU 并发用不满。
-- **gpu_low 不占租户名额**（提议）：回填是系统发起的，不该占用户自己的名额；它能用多少 GPU，由队列权重限制。
+- **以后**：工作区 GPU 名额可以按套餐区分。
+- **上限要小于总并发**：工作区名额等于 `gpu_concurrency` 时，一个工作区就能占满所有 GPU 并发，其他工作区只能等。代价是只有一个工作区在用时，GPU 并发用不满。
+- **gpu_low 不占工作区名额**（提议）：回填是系统发起的，不该占用户自己的名额；它能用多少 GPU，由队列权重限制。
 
 ### 6.7 reconciler
 
@@ -1977,10 +1979,10 @@ sequenceDiagram
 | 键 / 频道 | 类型 | 用途 |
 |---|---|---|
 | `asynq:*` | Asynq 内部 | 队列、重试、调度 |
-| `vh:gpu:{tenant_id}` | 有序集合 | 租户 GPU 名额（6.6 节） |
+| `vh:gpu:{workspace_id}` | 有序集合 | 工作区 GPU 名额（6.6 节） |
 | `vh:fetch:{platform}` | 有序集合 | 平台下载名额（6.6 节） |
 | `vh:ev:video:{video_id}` | pub/sub 频道 | 单个视频的进度事件 |
-| `vh:ev:tenant:{tenant_id}` | pub/sub 频道 | 租户维度的事件，视频列表页用 |
+| `vh:ev:workspace:{workspace_id}` | pub/sub 频道 | 工作区维度的事件，视频列表页用 |
 
 Redis 里没有任何不能丢的数据。Redis 清空后，reconciler 会根据 `stage_run` 把任务补回来。
 
@@ -1991,9 +1993,9 @@ Redis 里没有任何不能丢的数据。Redis 清空后，reconciler 会根据
 ```text
 {bucket}/
 ├── models/{model_id}/            # 模型权重（提议）：从 HF、ModelScope 同步过来的固定版本，ml 启动时从这里加载
-└── tenants/{tenant_id}/videos/{video_id}/
+└── workspaces/{workspace_id}/videos/{video_id}/
     ├── source.{ext}              # 原片：上传或导入的文件
-    ├── proxy.mp4                 # 统一格式：720p H.264/AAC，每秒一个关键帧，faststart；播放和所有模型都读它
+    ├── normalized_video.mp4      # 标准化视频：最高 720p H.264/AAC，每秒一个关键帧，faststart；供播放和后续音视频处理使用
     ├── sprites/{n}.jpg           # 缩略图雪碧图：每张 10 × 10 格；第 n 张对应第 100n 到 100n+99 格
     └── raw/asr-{model}/chunk-{i}.json   # ASR 每段的原始输出：既是断点，改切句规则时也不用重跑模型
 ```
@@ -2004,8 +2006,8 @@ Redis 里没有任何不能丢的数据。Redis 清空后，reconciler 会根据
 | 预签名有效期 | 上传分片 1 小时（过期后用 `upload-parts` 接口重新签发）；播放、缩略图 1 小时 |
 | 浏览器 | 只拿到预签名 URL，不直接拥有任何 S3 权限 |
 | bucket 的 CORS | 浏览器从前端域名直传 S3，所以 bucket 要允许前端来源的 PUT 和 GET，并暴露 `ETag` 响应头。不暴露的话，浏览器读不到每个分片的 ETag，就没法调用 complete |
-| Python 的权限 | 只读，并且只能读 `tenants/*/videos/*/proxy.mp4` 和 `models/*`（后者是提议） |
-| worker 的权限 | 读写 `tenants/*` |
+| Python 的权限 | 只读，并且只能读 `workspaces/*/videos/*/normalized_video.mp4` 和 `models/*`（后者是提议） |
+| worker 的权限 | 读写 `workspaces/*` |
 | 保留期 | 软删除到期后随视频一起清除；具体期限待定（设计文档问题 8） |
 
 ---
@@ -2019,7 +2021,7 @@ Redis 里没有任何不能丢的数据。Redis 清空后，reconciler 会根据
 ### 8.2 算法步骤
 
 1. **校验**：`Text` 不能为空；`Limit` 不超过 `search.max_limit`。
-2. **解析范围**：`library.ResolveScope`。传了 project 就取项目里的视频；传了 video_ids 就逐个校验是否属于当前租户；都没传就是全租户（nil）。范围解析为空时直接返回空结果。
+2. **解析范围**：`library.ResolveScope`。传了 project 就取项目里的视频；传了 video_ids 就逐个校验是否属于当前工作区；都没传就是当前工作区的全部视频（nil）。范围解析为空时直接返回空结果。
 3. **确定召回列表**：从 channels 配置取每个通道的 active 空间（eval 可以用 `SpaceOverride` 覆盖），得到若干个 (channel, space)。权重为 0 的通道跳过。
 4. **编码**：每个 (channel, space) 的查询文字是 `ChannelQueries[channel]`，没有就用 `Text`。按 (space, 文字) 去重后并行调用 `mlclient.Embed(role=query)`。某个编码失败（超时、503、504，或者空间已停用）时，用到它的通道记进 `Skipped`，不参与后面的召回（提议）。
 5. **召回**，全部并行：
@@ -2148,20 +2150,20 @@ flowchart LR
 **inspect_clip**（`llm.inspect_clip_enabled=true` 时才注册）
 
 - 参数：`{ "video_id": string, "start_ms": int, "end_ms": int, "question": string }`。
-- 行为：从 proxy 上均匀抽 4 帧（宽 512），连同问题发给 vision 模型。
+- 行为：从标准化视频上均匀抽 4 帧（宽 512），连同问题发给 vision 模型。
 - 返回：`{ "matches": bool, "answer": string }`。
 
 **所有工具的共同规则**：
 
-- tenant_id 和 scope 一律从会话 state 读，不从参数读。
+- workspace_id 和 scope 一律从会话 state 读，不从参数读。
 - 参数里的 video_id 必须在会话范围内，否则返回错误给模型，告诉它「这个视频不在范围内」。
 
 ### 9.4 会话与引用
 
 | 内容 | 存放 |
 |---|---|
-| `vh:tenant_id`、`vh:user_id` | session state，创建时写入，之后只读 |
-| `vh:scope` | session state，`{ "project_id": "7" }` 或 `{ "video_ids": [...] }`，或为空表示全租户 |
+| `vh:workspace_id`、`vh:user_id` | session state，创建时写入，之后只读 |
+| `vh:scope` | session state，`{ "project_id": "7" }` 或 `{ "video_ids": [...] }`，或为空表示当前工作区的全部视频 |
 | `vh:moments` | session state，引用编号 → `{video_id, start_ms, end_ms}`；编号在会话内连续递增（m1、m2……），历史回答里的引用一直有效 |
 
 ### 9.5 ADK 事件到产品事件的映射（`events.go`）
@@ -2383,7 +2385,7 @@ class Transcriber(Protocol):
 **`/v1/transcribe`**：
 
 1. 校验模型 id、语言、时间窗口长度（不超过 `max_window_ms`）。
-2. 从缓存取到 proxy 文件。
+2. 从缓存取到标准化视频文件。
 3. 经过闸门后执行 `adapter.transcribe(path, language, start_ms, end_ms)`：用 `media.audio.load` 取出这段音频（16 kHz 单声道），交给 FunASR 识别，再把时间加上窗口起点。
 4. 校验句子有序、不重叠后返回。
 
@@ -2397,7 +2399,7 @@ class Transcriber(Protocol):
 | 下载 | 先写临时文件，下载完成后原子改名；每个 URI 一把锁，并发请求只下载一次 |
 | 淘汰 | 超过上限时，按最近访问时间删除最久没用的文件；命中时更新访问时间 |
 | 来源 | 只支持 `s3://bucket/key`；S3 地址可以用 `ML_S3_ENDPOINT` 指向 MinIO |
-| 视频解码 | PyAV。proxy 每秒有一个关键帧，seek 到起点前最近的关键帧再往后解码，开销很小 |
+| 视频解码 | PyAV。标准化视频每秒有一个关键帧，seek 到起点前最近的关键帧再往后解码，开销很小 |
 | 音频解码 | PyAV 解码音轨，重采样到 adapter 要求的采样率，转单声道，截取时间段 |
 
 ### 10.7 并发与背压
@@ -2454,8 +2456,8 @@ fingerprint = "sha256:" + sha256(JSON，按键排序（{
 每行一条，表示「这句描述应该找到这个时间段」：
 
 ```jsonc
-{"q": "海边有人弹吉他", "tenant_id": 1, "video_id": 42, "start_ms": 750000, "end_ms": 820000}
-{"q": "讲到滚动更新的地方", "tenant_id": 1, "video_id": 7, "start_ms": 401000, "end_ms": 452000}
+{"q": "海边有人弹吉他", "workspace_id": 1, "video_id": 42, "start_ms": 750000, "end_ms": 820000}
+{"q": "讲到滚动更新的地方", "workspace_id": 1, "video_id": 7, "start_ms": 401000, "end_ms": 452000}
 ```
 
 ### 11.2 `videohelper eval`
@@ -2490,16 +2492,16 @@ fused    (active)       0.51      0.80      0.88       0.63   —
 
 ## 12. 安全
 
-### 12.1 租户隔离
+### 12.1 工作区隔离
 
 | 层 | 做法 |
 |---|---|
-| 鉴权 | 中间件校验令牌 → `tenant.Resolve` 得到 Principal → 放进 context；没有 Principal 的请求到不了业务代码 |
-| 数据访问 | 所有面向请求的查询函数都要求传入 Principal 或 tenant_id；评审时检查「SQL 里有 tenant_id」 |
+| 鉴权 | 中间件校验令牌 → `workspace.Resolve` 得到 Principal → 放进 context；没有 Principal 的请求到不了业务代码 |
+| 数据访问 | 所有面向请求的查询函数都要求传入 Principal 或 workspace_id；评审时检查「SQL 里有 workspace_id」 |
 | 范围 | video_ids、project_id 在使用前都要校验归属 |
-| Agent | 工具从会话 state 取租户和范围；会话的 ADK user id 带着租户 |
-| 文件 | 路径按租户分前缀；只签发短时效的预签名 URL |
-| 第二道防线 | 不开启 Postgres 行级安全（已定）；靠所有查询都带 tenant_id，评审时逐条检查 |
+| Agent | 工具从会话 state 取工作区和范围；会话的 ADK user id 带着工作区 |
+| 文件 | 路径按工作区分前缀；只签发短时效的预签名 URL |
+| 第二道防线 | 不开启 Postgres 行级安全（已定）；靠所有查询都带 workspace_id，评审时逐条检查 |
 
 ### 12.2 导入链接（SSRF）
 
@@ -2529,7 +2531,7 @@ fused    (active)       0.51      0.80      0.88       0.63   —
 
 - **密钥**：数据库地址、Redis 地址、LLM key、S3 凭证都只放环境变量。配置文件里只写环境变量的名字。
 - **平台登录态**：首版不给 yt-dlp 配置任何平台账号（已定）。
-- **ml 服务**：只在内网可达，并且校验共享令牌（已定）；S3 权限只读，且只能读 proxy 和模型权重（`models/*`，提议）。
+- **ml 服务**：只在内网可达，并且校验共享令牌（已定）；S3 权限只读，且只能读标准化视频和模型权重（`models/*`，提议）。
 - **数据库**：RDS 放在私有子网，安全组只放行 api 和 worker；连接走 TLS；主账号和应用用的账号分开，密码放 Secrets Manager。
 - **上传**：不设大小上限（已定）；`content_type` 白名单。真正能不能识别，由 probe 判断。
 - **跨域**：API 只允许 `server.cors_origins` 里的前端来源。令牌放在 `Authorization` 头里，不用 cookie 鉴权，所以不需要额外防 CSRF。
@@ -2541,7 +2543,7 @@ fused    (active)       0.51      0.80      0.88       0.63   —
 
 | 项目 | 做法 |
 |---|---|
-| 日志 | `log/slog`，JSON 格式。统一字段：`request_id`、`tenant_id`、`user_id`、`video_id`、`stage`、`task_id`、`duration_ms`、`error` |
+| 日志 | `log/slog`，JSON 格式。统一字段：`request_id`、`workspace_id`、`user_id`、`video_id`、`stage`、`task_id`、`duration_ms`、`error` |
 | 请求串联 | httpapi 生成 `X-Request-ID`，透传给 Python；worker 用任务 id 作为 request id |
 | 阶段耗时 | 每个阶段结束时打一条日志，带耗时和结果；以后可以据此做指标 |
 | 队列 | 用 Asynq 自带的 inspector 查看队列长度、重试、归档任务 |
@@ -2636,7 +2638,7 @@ fused    (active)       0.51      0.80      0.88       0.63   —
 
 | 页面 | 依赖的接口 |
 |---|---|
-| 登录后首页：视频列表、上传 | `/v1/me`、`/v1/videos`、`/v1/uploads`、`/v1/videos/{id}/complete`、`/v1/imports`、租户维度进度事件（以后） |
+| 登录后首页：视频列表、上传 | `/v1/me`、`/v1/videos`、`/v1/uploads`、`/v1/videos/{id}/complete`、`/v1/imports`、工作区维度进度事件（以后） |
 | 视频详情：播放、阶段进度 | `/v1/videos/{id}`、`/v1/videos/{id}/playback`、`/v1/videos/{id}/events` |
 | 搜索页 | `/v1/search`、`/v1/videos/{id}/playback` |
 | 对话页 | `/v1/chat/sessions`、`/v1/chat/sessions/{id}`、`/v1/chat/sessions/{id}/messages` |
@@ -2665,7 +2667,7 @@ fused    (active)       0.51      0.80      0.88       0.63   —
 | 4 | Python 依赖管理 | 用 uv |
 | 5 | ASR 的库和模型 | 阿里 FunASR |
 | 6 | WeMM 的输入要求 | 实现时查阅 WeMM 文档确定 |
-| 7 | proxy 分辨率 | 720p |
+| 7 | 标准化视频分辨率 | 最高 720p |
 | 8 | 缩略图形式 | 雪碧图 |
 | 9 | 转录请求 | 分段调用 |
 | 10 | 关键词兜底（原句相似度匹配） | 暂不开启；后来关键词检索整体不做，这一条已不适用（见 30） |
@@ -2693,4 +2695,4 @@ fused    (active)       0.51      0.80      0.88       0.63   —
 
 - **29. 短链解析**：`b23.tv` 短链由 Go 先解析成 `bilibili.com` 地址，再交给 yt-dlp（本文目前的做法），还是直接交给 yt-dlp 处理？前者 Go 要多发一次请求，但能在下载前确认落地域名在白名单里。
 - **31. 重新签发分片 URL**：上传不设上限之后，超大文件可能要传好几个小时，一开始签发的 URL 会过期，所以本文提议增加 `POST /v1/videos/{id}/upload-parts` 接口（4.4 节）。确认要加吗？
-- **32. 模型权重的来源**：原来文档里有三种说法：S3（14.4 节）、HF 仓库（10.3 节）、ModelScope（10.10 节），而 ml 服务的 S3 权限只能读 proxy，从 S3 拉权重会被拒绝。本文提议统一成 S3（10.3 节）：用一个同步脚本把固定版本的权重从 HF、ModelScope 拷到 `models/`，ml 启动时从这里加载，同时开通 `models/*` 的只读权限。好处是线上不依赖外网、版本固定；代价是换模型时多一步同步。另一个做法是启动时直接从 HF、ModelScope 下载：少一步，但 ml 要能访问外网，还受对方限流影响。确认用 S3 吗？
+- **32. 模型权重的来源**：原来文档里有三种说法：S3（14.4 节）、HF 仓库（10.3 节）、ModelScope（10.10 节），而 ml 服务的 S3 权限只能读标准化视频，从 S3 拉权重会被拒绝。本文提议统一成 S3（10.3 节）：用一个同步脚本把固定版本的权重从 HF、ModelScope 拷到 `models/`，ml 启动时从这里加载，同时开通 `models/*` 的只读权限。好处是线上不依赖外网、版本固定；代价是换模型时多一步同步。另一个做法是启动时直接从 HF、ModelScope 下载：少一步，但 ml 要能访问外网，还受对方限流影响。确认用 S3 吗？

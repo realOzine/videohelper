@@ -1,7 +1,7 @@
 # VideoHelper 设计文档（首版）
 
 > 状态：草案，待评审　｜　更新：2026-10-25
-> 配套文档：[实现文档 spec.md](spec.md) · [早期讨论记录 VideoHelper_Handoff.md](VideoHelper_Handoff.md) · [设计画布](https://claude.ai/artifact/38jtvjPEShFP1fSfD1CKXb)
+> 配套文档：[实现文档 spec.md](spec.md) · [设计画布](https://claude.ai/artifact/38jtvjPEShFP1fSfD1CKXb)
 
 这份文档回答三个问题：**产品要做什么、要达到什么效果、整体怎么设计**。目录结构、文件职责、表字段、接口字段等细节写在 [spec.md](spec.md)，这里不重复。
 
@@ -37,7 +37,7 @@
 | 项目 | 内容 | 状态 |
 |---|---|---|
 | 首版重点 | 根据描述找到对应画面 | 已定 |
-| 产品形态 | 多租户 SaaS | 已定 |
+| 产品形态 | SaaS，按工作区隔离数据 | 已定 |
 | 交互方式 | 搜索框（不经过 LLM）+ Agent 对话（多轮细化） | 已定 |
 | 视频来源 | 上传文件；导入 YouTube、哔哩哔哩链接（用开源工具 yt-dlp 下载） | 已定 |
 | 召回通道 | 画面、转录、音频三个向量通道 | 已定 |
@@ -79,7 +79,7 @@ flowchart LR
 | FR-5 | Agent 对话 | 多轮细化搜索：拆解描述、调整通道权重、必要时看图复核；回答引用具体片段 | 已定 |
 | FR-6 | 项目 | 用项目把视频分组；项目是搜索和对话的范围 | 已定 |
 | FR-7 | 播放跳转 | 点击片段，播放器跳到对应时间 | 已定 |
-| FR-8 | 多租户 | 注册即有个人工作区；租户之间数据完全隔离 | 已定 |
+| FR-8 | 工作区隔离 | 注册即有个人工作区；工作区之间数据完全隔离 | 已定 |
 | FR-9 | 删除视频 | 提供删除接口，采用软删除：视频立刻从列表和搜索里消失，保留期满后再彻底清除文件和数据 | 已定 |
 | FR-10 | 失败可见、可重试 | 哪个处理阶段失败、为什么失败都能看到，可以手动重试 | 已定 |
 
@@ -87,10 +87,10 @@ flowchart LR
 
 | 编号 | 需求 | 设计上的保证 |
 |---|---|---|
-| NFR-1 隔离 | 租户 A 永远看不到租户 B 的任何数据 | 所有表带 `tenant_id`；所有查询必带；Agent 工具从会话上下文取租户，不信任模型传入的 id；S3 路径按租户分前缀 |
+| NFR-1 隔离 | 工作区 A 永远看不到工作区 B 的任何数据 | 所有表带 `workspace_id`；所有查询必带；Agent 工具从会话上下文取工作区，不信任模型传入的 id；S3 路径按工作区分前缀 |
 | NFR-2 可替换 | 换 embedding 模型、换 LLM 不改 Go 代码 | Go 只认 space 契约；LLM 只认 OpenAI 兼容接口 + 配置 |
 | NFR-3 可靠 | 任何一步失败都能重试，重试不产生脏数据 | 阶段状态存在 Postgres；所有写入按主键覆盖；任务 id 去重 |
-| NFR-4 公平 | 一个租户的大批量上传不能堵住其他租户 | GPU 任务按租户限并发 |
+| NFR-4 公平 | 一个工作区的大批量上传不能堵住其他工作区 | GPU 任务按工作区限并发 |
 | NFR-5 成本可控 | GPU、LLM 用量可计量、可限额 | `usage_event` 计量；按套餐配额（额度待定） |
 | NFR-6 可观测 | 能看到每个视频处理到哪一步、哪里慢、哪里错 | 阶段状态 + 进度事件 + 结构化日志 |
 | NFR-7 性能 | 搜索、索引的速度目标 | 目标值待定，见[问题 2](#12-待确认问题) |
@@ -141,9 +141,10 @@ flowchart LR
 
 | 概念 | 含义 |
 |---|---|
-| 租户（tenant） | 一个工作区。所有业务数据都挂在租户下。首版用户注册即自动创建个人工作区 |
+| 工作区（Workspace） | 业务数据的归属与访问隔离边界。项目、视频等业务数据都属于一个工作区。首版用户注册即自动创建个人工作区 |
 | 项目（project） | 一组视频，是搜索和 Agent 对话的范围（scope） |
-| 原片 / proxy | 原片是用户上传的文件；proxy 是转码后的统一格式（H.264/AAC、每秒一个关键帧），播放和所有模型都读 proxy |
+| 原片 / 标准化视频（normalized_video） | 原片是用户上传或导入的原始文件；标准化视频由原片转码生成，采用 H.264/AAC、最高 720p、每秒一个关键帧，作为播放和后续音视频处理的统一输入 |
+| 媒体预处理（prepare_media） | 生成标准化视频和缩略图的处理阶段：转码、生成缩略图雪碧图，再上传处理结果 |
 | 格子（cell） | 画面、音频的切片单位：视频不短于 90 秒时每 2.5 秒一格，短于 90 秒时每 1 秒一格。边界由时长算出，不存储 |
 | 句子（sentence） | 转录的切片单位：ASR 输出的一句话，过短的与相邻句合并 |
 | 通道（channel） | 一路向量召回：visual（画面）、speech（转录语义）、audio（声音） |
@@ -151,7 +152,7 @@ flowchart LR
 | active / shadow | 某通道当前用于查询的空间是 active；正在回填、等待评估的候选空间是 shadow |
 | 切片版本（seg） | 切片规则的版本号，如 `grid@v1`、`sentence@v1`。规则一变，版本号就变 |
 | 片段（moment） | 返回给用户的结果：同一视频里相邻命中合并后的时间段，带跳转点和证据。查询时计算，不入库 |
-| 阶段（stage） | 一个视频要经过的处理步骤，如 probe、proxy、asr、`embed:visual:wemm-2b@r1` |
+| 阶段（stage） | 一个视频要经过的处理步骤，如 probe、prepare_media、asr、`embed:visual:wemm-2b@r1` |
 
 ---
 
@@ -190,7 +191,7 @@ flowchart TB
   subgraph Data["数据层"]
     PG[("Postgres（RDS）<br/>pgvector")]
     RD[("Redis<br/>Asynq 队列 · 进度事件")]
-    S3[("S3<br/>原片 · proxy · 缩略图")]
+    S3[("S3<br/>原片 · 标准化视频 · 缩略图")]
   end
   LLM["DeepSeek API"]
 
@@ -203,9 +204,9 @@ flowchart TB
   WK -->|"消费任务 / 发布进度"| RD
   WK -->|"SQL"| PG
   WK -->|"ML 契约：编码、转录"| ML
-  WK -->|"读原片，写 proxy、缩略图"| S3
+  WK -->|"读原片，写标准化视频、缩略图"| S3
   WK -->|"yt-dlp 下载导入的视频"| PLAT["YouTube · 哔哩哔哩"]
-  ML -->|"只读 proxy"| S3
+  ML -->|"只读标准化视频"| S3
 ```
 
 ### 5.3 模块职责：负责什么，不负责什么
@@ -215,14 +216,14 @@ flowchart TB
 | 模块 | 负责 | 不负责 |
 |---|---|---|
 | Web 前端 | 上传、搜索、对话、播放的界面 | 任何业务规则 |
-| api 进程 | 对外 REST + SSE；鉴权与租户识别；搜索；Agent 对话 | 转码这类媒体处理、长时间任务（例外：可选工具 inspect_clip 会现抽几帧，见问题 9） |
+| api 进程 | 对外 REST + SSE；鉴权与工作区识别；搜索；Agent 对话 | 转码这类媒体处理、长时间任务（例外：可选工具 inspect_clip 会现抽几帧，见问题 9） |
 | worker 进程 | 消费队列；执行处理阶段（包括用 yt-dlp 下载导入的视频）；推进阶段依赖；补投漏掉的任务 | 对外提供接口 |
 | search（api 内） | 查询编码 → 多路召回 → 融合 → 合并成片段 | 调用 LLM；理解复杂意图 |
-| agent（api 内） | 和 DeepSeek 对话；决定调用哪些工具；组织带引用的回答 | 直接写 SQL（数据都通过 search、index、library 的函数读取，且都带租户）；越过会话范围 |
-| ml 服务 | 读 proxy、抽帧或取音频、跑模型、返回向量或句子 | 存储任何业务数据；连数据库；碰队列 |
+| agent（api 内） | 和 DeepSeek 对话；决定调用哪些工具；组织带引用的回答 | 直接写 SQL（数据都通过 search、index、library 的函数读取，且都带工作区）；越过会话范围 |
+| ml 服务 | 读标准化视频、抽帧或取音频、跑模型、返回向量或句子 | 存储任何业务数据；连数据库；碰队列 |
 | Postgres | 所有业务数据、阶段状态、转录、向量、Agent 会话 | 文件存储 |
-| Redis | 任务队列；进度事件；租户并发计数 | 任何不能丢的数据（丢了可以从 Postgres 重建） |
-| S3 | 原片、proxy、缩略图、推理原始输出 | 元数据 |
+| Redis | 任务队列；进度事件；工作区并发计数 | 任何不能丢的数据（丢了可以从 Postgres 重建） |
+| S3 | 原片、标准化视频、缩略图、推理原始输出 | 元数据 |
 
 ### 5.4 Go 内部分层
 
@@ -240,7 +241,7 @@ flowchart TB
     search["search<br/>检索内核"]
   end
   subgraph D["领域层"]
-    tenant["tenant"]
+    workspace["workspace"]
     library["library<br/>项目、视频"]
     space["space<br/>向量空间、通道"]
     usage["usage<br/>计量、配额"]
@@ -275,7 +276,7 @@ flowchart TB
 
 | 接口 | 两端 | 形式 | 设计要点 |
 |---|---|---|---|
-| 对外 API | 浏览器 ↔ httpapi | REST + SSE，JSON | 登录凭证 → tenant_id；大文件走预签名 URL |
+| 对外 API | 浏览器 ↔ httpapi | REST + SSE，JSON | 登录凭证 → workspace_id；大文件走预签名 URL |
 | ML 契约 v1 | Go ↔ Python | HTTP/JSON，3 个接口 | 只认 space id；只传 S3 引用和时间段，不传字节 |
 | Agent 工具 | ADK ↔ Go 函数 | 进程内调用 | 范围取自会话；不信任模型传入的 id |
 
@@ -319,16 +320,16 @@ sequenceDiagram
   R->>W: probe
   W->>S: ffprobe 读原片
   W->>G: 写时长，生成后续阶段的 stage_run
-  W->>R: 投递 proxy
-  R->>W: proxy
-  W->>S: 写 proxy.mp4 和缩略图雪碧图
+  W->>R: 投递 prepare_media
+  R->>W: prepare_media
+  W->>S: 写 normalized_video.mp4 和缩略图雪碧图
   W->>R: 投递 3 个 gpu 任务
 
   par 画面
     R->>W: embed:visual
     loop 每批 32 段
       W->>P: /v1/embed（S3 引用 + 时间段）
-      P->>S: 读 proxy（有缓存则跳过）
+      P->>S: 读标准化视频（有缓存则跳过）
       P-->>W: 向量
       W->>G: 写 embedding（visual）
     end
@@ -406,10 +407,10 @@ sequenceDiagram
 ```mermaid
 flowchart LR
   F["fetch<br/>仅导入：yt-dlp 下载"]:::opt --> PR["probe<br/>读时长、音视频流"]
-  PR --> PX["proxy<br/>转码 + 缩略图"]
-  PX --> V["embed:visual:{space}"]
-  PX --> AU["embed:audio:{space}"]
-  PX --> ASR["asr<br/>转录成句子"]
+  PR --> PM["prepare_media<br/>媒体预处理：转码 + 缩略图"]
+  PM --> V["embed:visual:{space}"]
+  PM --> AU["embed:audio:{space}"]
+  PM --> ASR["asr<br/>转录成句子"]
   ASR --> SP["embed:speech:{space}"]
   V --> FIN["finalize"]
   AU --> FIN
@@ -420,7 +421,7 @@ flowchart LR
 
 - 只有 probe 之前的阶段在一开始就创建。**probe 完成时**，根据探测结果和 channels 配置生成后续阶段：没有音轨就不建 asr 和音频阶段，没有画面就不建画面阶段。
 - 每个通道的每个空间（active 和 shadow）各有一个 embed 阶段；**finalize 只等 active 的阶段**，shadow 的回填不影响视频变成 ready。哪些阶段是必需的，在生成计划时就记进 `stage_run`，之后改 channels 配置不影响已经在索引中的视频。
-- cpu 阶段（fetch、probe、proxy、finalize）由 Go 自己调用外部命令完成（yt-dlp、ffmpeg）；gpu 阶段（asr、embed）由 Go 调用 Python。
+- cpu 阶段（fetch、probe、prepare_media、finalize）由 Go 自己调用外部命令完成（yt-dlp、ffmpeg）；gpu 阶段（asr、embed）由 Go 调用 Python。
 
 ### 6.3 一个任务是怎么被消费的
 
@@ -428,7 +429,7 @@ flowchart LR
 flowchart TD
   Q["从 Redis 队列取出任务"] --> L{"stage_run 还在吗？<br/>是否已完成？"}
   L -->|"视频已删除，或已完成"| OK["直接结束（幂等）"]
-  L -->|"待执行"| G{"要申请名额吗？<br/>gpu 任务：租户 GPU 名额<br/>fetch：平台下载名额"}
+  L -->|"待执行"| G{"要申请名额吗？<br/>gpu 任务：工作区 GPU 名额<br/>fetch：平台下载名额"}
   G -->|"要"| T{"名额够吗？"}
   T -->|"不够"| D["稍后重试，不算失败"]
   T -->|"够"| RUN
@@ -495,7 +496,7 @@ sequenceDiagram
   participant G as Postgres
 
   B->>A: POST /v1/search
-  A->>S: Search（租户 + 范围 + 描述）
+  A->>S: Search（工作区 + 范围 + 描述）
   par 按 space 去重后并行编码
     S->>P: /v1/embed role=query（wemm-2b@r1）
     P-->>S: 查询向量
@@ -592,9 +593,9 @@ flowchart LR
 ### 6.8 删除视频（软删除）
 
 1. 用户调用删除接口。一个事务里给视频打上删除时间 `deleted_at`，同时删掉它的向量、转录句子和阶段记录。这些都是派生数据，恢复时可以重建。视频立刻从列表、搜索和 Agent 的范围里消失。
-2. 原片、proxy 和项目关联先保留，所以视频还能恢复。恢复接口是提议，恢复后从 probe 重新索引一遍。
+2. 原片、标准化视频和项目关联先保留，所以视频还能恢复。恢复接口是提议，恢复后从 probe 重新索引一遍。
 3. 队列里还没执行完的该视频的任务，执行时找不到阶段记录，直接结束。
-4. 保留期满后（期限待定），后台任务先删 S3 上 `tenants/{租户}/videos/{视频}/` 下的文件，再删视频记录。
+4. 保留期满后（期限待定），后台任务先删 S3 上 `workspaces/{工作区}/videos/{视频}/` 下的文件，再删视频记录。
 
 状态图里的 deleted 只是示意。实际上它用 `deleted_at` 字段表示，不是 `status` 的一个取值。
 
@@ -606,33 +607,33 @@ flowchart LR
 
 | 数据 | 存放位置 | 能否重建 |
 |---|---|---|
-| 租户、用户、项目、视频元数据 | Postgres | 不能（真实数据） |
+| 工作区、用户、项目、视频元数据 | Postgres | 不能（真实数据） |
 | 阶段状态 | Postgres `stage_run` | 不能（但可以重跑） |
 | 转录句子、词级时间戳 | Postgres `text_span`；原始 ASR 输出另存 S3 | 能（重跑 ASR） |
 | 向量 | Postgres `embedding`（pgvector） | 能（重新编码） |
 | 原片 | S3 | 不能 |
-| proxy、缩略图 | S3 | 能（重新转码） |
+| 标准化视频、缩略图 | S3 | 能（重新转码） |
 | Agent 会话 | Postgres（ADK 自建的表） | 不能 |
-| 任务队列、进度事件、租户并发计数 | Redis | 能（从 `stage_run` 补投） |
+| 任务队列、进度事件、工作区并发计数 | Redis | 能（从 `stage_run` 补投） |
 
 ### 7.2 实体关系
 
 ```mermaid
 erDiagram
-  TENANT ||--o{ MEMBERSHIP : has
+  WORKSPACE ||--o{ MEMBERSHIP : has
   APP_USER ||--o{ MEMBERSHIP : has
-  TENANT ||--o{ PROJECT : owns
-  TENANT ||--o{ VIDEO : owns
+  WORKSPACE ||--o{ PROJECT : owns
+  WORKSPACE ||--o{ VIDEO : owns
   PROJECT ||--o{ PROJECT_VIDEO : contains
   VIDEO ||--o{ PROJECT_VIDEO : "belongs to"
   VIDEO ||--o{ STAGE_RUN : "processed by"
   VIDEO ||--o{ TEXT_SPAN : has
   VIDEO ||--o{ EMBEDDING : has
   EMBEDDING_SPACE ||--o{ EMBEDDING : defines
-  TENANT ||--o{ USAGE_EVENT : records
+  WORKSPACE ||--o{ USAGE_EVENT : records
 ```
 
-首版 11 张业务表：`tenant`、`app_user`、`membership`、`project`、`project_video`、`video`、`stage_run`、`text_span`、`embedding_space`、`embedding`、`usage_event`，另加 ADK 自动创建的会话表。完整 DDL 见 [spec.md 第 3 章](spec.md#3-数据库)。
+首版 11 张业务表：`workspace`、`app_user`、`membership`、`project`、`project_video`、`video`、`stage_run`、`text_span`、`embedding_space`、`embedding`、`usage_event`，另加 ADK 自动创建的会话表。完整 DDL 见 [spec.md 第 3 章](spec.md#3-数据库)。
 
 刻意不建的表：
 
@@ -645,7 +646,7 @@ erDiagram
 
 ### 7.3 向量行上只放不变的字段
 
-`embedding` 的一行只放永远不变的定位字段：视频、租户、通道、空间、切片版本、起止时间。项目归属、标题、人名这类会变的属性放在各自的表里，查询时先筛出 video_id 列表，再进向量查询。原因是：
+`embedding` 的一行只放永远不变的定位字段：视频、工作区、通道、空间、切片版本、起止时间。项目归属、标题、人名这类会变的属性放在各自的表里，查询时先筛出 video_id 列表，再进向量查询。原因是：
 
 - 每个视频的向量是「3 个通道 × 每个空间」各一份，属性挂在向量上，改一次就要改很多行。
 - edit-mind 正是因为把属性挂在向量上，才不得不专门写 `updateVideoMetadata`、`faceRenaming` 这类任务。
@@ -662,10 +663,10 @@ erDiagram
 | D4 | Go 只认 space 契约，模型可随时替换 | 已定 | 用户明确要求解耦；按评估结果换模型 | 按模型写死接口 |
 | D5 | 向量库首版用 pgvector，以后视规模再换 | 已定 | 少一个有状态服务；元数据和向量能在一个事务里 | 一开始就上 Qdrant |
 | D6 | 画面、音频每 2.5 秒一格（短于 90 秒每 1 秒），转录按句子 | 已定 | 定位精细；句子才有完整语义；边界可计算 | 固定 10 秒；按镜头切 |
-| D7 | 多租户 SaaS | 已定 | 产品形态 | 单用户自托管 |
+| D7 | SaaS，按工作区隔离数据 | 已定 | 产品形态 | 单用户自托管 |
 | D8 | 检索内核不调用 LLM，搜索框和 Agent 共用 | 提议 | 快、便宜、可测试；LLM 只负责拆解问题 | 每次搜索都先让 LLM 解析 |
 | D9 | 阶段状态存 Postgres，Asynq 只负责投递和重试 | 提议 | Redis 数据丢了也能恢复；状态可查；重试、退避、超时、收回崩溃 worker 的任务、多副本只跑一份的定时任务都是 Asynq 现成的 | 只靠队列；引入 Temporal 等工作流引擎；直接用 `stage_run` 当队列（见问题 24） |
-| D10 | 按资源分队列：cpu、gpu，另有放维护任务的 maint、放回填的 gpu_low；GPU 按租户限并发 | 提议 | 转码不挤占编码；回填不堵新上传；租户之间公平 | 一个队列 |
+| D10 | 按资源分队列：cpu、gpu，另有放维护任务的 maint、放回填的 gpu_low；GPU 按工作区限并发 | 提议 | 转码不挤占编码；回填不堵新上传；工作区之间公平 | 一个队列 |
 | D11 | 不建 segment 表，向量行自带时间段 | 提议 | 召回一张表完成；边界可计算 | 单独的 segment 表 |
 | D12 | 转录与 OCR 共用 `text_span` 表（首版只有 speech） | 已定 | 按时间段取原话的查询只写一套；以后加 OCR 零迁移 | 每种文本一张表 |
 | D13 | 多种信号不拼进同一个向量 | 提议 | 不互相稀释；换一个模型只重算一路 | edit-mind 的英文模板拼接 |
@@ -684,11 +685,11 @@ erDiagram
 
 ## 9. 质量属性
 
-### 9.1 多租户隔离（三道防线）
+### 9.1 工作区隔离（三道防线）
 
-1. **数据库**：所有业务表带 `tenant_id`；所有查询函数必须传入租户，没有「不带租户的查询」。不开 Postgres 行级安全（已定），靠评审时逐条检查。
-2. **Agent**：工具从会话上下文取租户和范围，模型传入的 video_id 必须在范围内，否则拒绝。
-3. **文件**：S3 路径按租户分前缀；浏览器只拿到短时效的预签名 URL；Python 只有只读权限。
+1. **数据库**：所有业务表带 `workspace_id`；所有查询函数必须传入工作区，没有「不带工作区的查询」。不开 Postgres 行级安全（已定），靠评审时逐条检查。
+2. **Agent**：工具从会话上下文取工作区和范围，模型传入的 video_id 必须在范围内，否则拒绝。
+3. **文件**：S3 路径按工作区分前缀；浏览器只拿到短时效的预签名 URL；Python 只有只读权限。
 
 ### 9.2 可靠性
 
@@ -699,9 +700,9 @@ erDiagram
 
 ### 9.3 公平与成本
 
-- GPU 任务按租户限制并发数，超出的任务稍后执行，不算失败。每个租户的名额要小于 GPU 总并发，否则一个租户就能占满。
+- GPU 任务按工作区限制并发数，超出的任务稍后执行，不算失败。每个工作区的名额要小于 GPU 总并发，否则一个工作区就能占满。
 - 换模型时的成批回填走低优先级队列，不和新视频抢 GPU（提议）。
-- 每个租户的 GPU 时间、LLM token、索引时长都记入 `usage_event`，用于配额检查和以后计费。具体额度待定。
+- 每个工作区的 GPU 时间、LLM token、索引时长都记入 `usage_event`，用于配额检查和以后计费。具体额度待定。
 
 ### 9.4 安全
 
@@ -716,7 +717,7 @@ erDiagram
 ### 9.5 可观测性
 
 - 用户看得到：每个视频的每个阶段状态、失败原因，实时推送。
-- 开发看得到：结构化日志统一带 request_id、tenant_id、video_id、stage、task_id；请求 id 透传到 Python。
+- 开发看得到：结构化日志统一带 request_id、workspace_id、video_id、stage、task_id；请求 id 透传到 Python。
 
 ---
 
@@ -792,11 +793,11 @@ flowchart LR
 | CLAP 音频检索（2.5 秒片段、中文查询） | 同一批视频，用中文和英文的声音描述各查一遍 | 在 CLAP adapter 里加翻译；或调整片段时长 |
 | FunASR 的分句与时间戳（ASR 已定用阿里 FunASR） | 抽查句子边界和时间戳准确度 | 调整语音活动检测和标点模型；或换模型，契约不变 |
 | DeepSeek + ADK `openaimodel` | 跑通工具调用、流式输出、非思考模式、图片输入 | 图片不行就让 inspect_clip 绕开 ADK 直接调用；工具调用不稳就自己实现 `model.LLM` |
-| 多租户下带过滤的 HNSW 查询 | 压测：小租户、大租户、大量 video_id 过滤 | 小范围直接精确扫描；开 iterative scan；规模大了换 Qdrant |
+| 按工作区过滤的 HNSW 查询 | 压测：小工作区、大工作区、大量 video_id 过滤 | 小范围直接精确扫描；开 iterative scan；规模大了换 Qdrant |
 | 每小时约 3.5k 条向量的存储与编码成本 | 按预期规模估算存储、GPU 时间 | 调整格子时长，或用 halfvec 之外的压缩 |
 | YouTube 限制云服务器 IP 下载（要求登录、验证不是机器人） | 在目标部署环境实测一批链接的导入成功率 | 配置平台账号的登录态（cookies）；或换下载出口（需评估合规） |
 | 平台改版导致 yt-dlp 暂时失效 | 监控导入成功率 | 固定版本、定期升级；失败时给用户清楚的原因 |
-| 哔哩哔哩不登录拿不到高画质 | 实测不登录能拿到的画质 | 首版接受较低画质（反正都会转成 proxy），或配置账号 |
+| 哔哩哔哩不登录拿不到高画质 | 实测不登录能拿到的画质 | 首版接受较低画质（反正都会转成标准化视频），或配置账号 |
 | 版权与平台服务条款 | 法务评估 | 用户协议写明导入内容的权利由用户负责；导入时让用户确认（见问题 17） |
 
 验证用的「描述 → 期望时间段」标注数据，同时就是评估集的第一版。之后换模型、调参数都靠它。
@@ -821,19 +822,19 @@ flowchart LR
 ### 12.2 仍待确认
 
 - **1. 目标用户与主要视频类型**：教程、录屏、讲座、生活视频、影视素材，各占多少？这会影响模型选型和格子时长。
-- **2. 性能目标**：搜索的 P95 延迟要多少？一小时视频期望多久索引完？预期的租户数和视频总时长？
+- **2. 性能目标**：搜索的 P95 延迟要多少？一小时视频期望多久索引完？预期的工作区数和视频总时长？
 - **3. 认证方案**：用哪家托管认证服务？部署在 AWS 上可以用 Cognito。
 - **4. 团队功能**：首版要不要支持一个工作区有多个成员？表结构已经支持，问的只是功能做不做。
 - **5. 直链**：除了 YouTube 和哔哩哔哩，首版还要不要支持直接指向视频文件的链接（比如 `https://…/talk.mp4`）？
 - **6. 配额与套餐**：免费额度多少（每月可索引多少小时、每天多少 LLM token）？超额时怎么处理？
-- **7. 数据合规**：租户的转录和画面帧会发给 DeepSeek，需要怎样的告知和同意？AWS 部署在哪个区域？是否涉及数据出境？
-- **8. 数据保留**：软删除的视频保留多久再彻底清除？用户能不能在回收站里自己恢复？没被删除的视频，原片、proxy、缩略图、推理原始输出是否也有保留期限？
-- **9. inspect_clip（看图复核）**：首版是否启用？它每次调用都有 token 成本。如果启用，帧从哪来：从 proxy 现抽 720p 的帧（看得清，但 api 进程要跑 ffmpeg），还是直接用已有的雪碧图（api 不做任何媒体处理，但只有 320 宽，白板上的字这类细节可能看不清）？
+- **7. 数据合规**：工作区的转录和画面帧会发给 DeepSeek，需要怎样的告知和同意？AWS 部署在哪个区域？是否涉及数据出境？
+- **8. 数据保留**：软删除的视频保留多久再彻底清除？用户能不能在回收站里自己恢复？没被删除的视频，原片、标准化视频、缩略图、推理原始输出是否也有保留期限？
+- **9. inspect_clip（看图复核）**：首版是否启用？它每次调用都有 token 成本。如果启用，帧从哪来：从标准化视频现抽 720p 的帧（看得清，但 api 进程要跑 ffmpeg），还是直接用已有的雪碧图（api 不做任何媒体处理，但只有 320 宽，白板上的字这类细节可能看不清）？
 - **10. 评估集**：由谁标注？首批多少条？
 - **11. 前端技术栈**：React、Next.js 还是其他？
 - **13. 视频语言**：以中文为主吗？需要支持多语言吗？ASR 已定为 FunASR，它以中文为主，如果有英文视频，需要再加一个英文模型。这也影响 CLAP 是否需要翻译。
 - **14. 部署预算**：GPU 实例类型和数量、目标月成本。
-- **16. 下载上限**：导入视频的画质上限（建议 1080p，反正都会转成 proxy）、单个视频的时长上限。上传已定不设上限，导入是否也不设？
+- **16. 下载上限**：导入视频的画质上限（建议 1080p，反正都会转成标准化视频）、单个视频的时长上限。上传已定不设上限，导入是否也不设？
 - **17. 版权与条款**：导入时是否要求用户确认自己拥有内容的使用权？用户协议怎么写？
 - **18. 播放列表与分 P**：首版只导入链接指向的单个视频，还是也支持整个播放列表、合集，以及哔哩哔哩的多 P 视频？
 - **19. 平台字幕**：YouTube、哔哩哔哩自带的字幕，要不要用来代替或校正 ASR？首版建议统一用自己的 ASR，结果一致、流程简单。
