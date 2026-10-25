@@ -2110,6 +2110,10 @@ asr = [
     { name = "funasr" },
     { name = "torchaudio" },
 ]
+clap = [
+    { name = "torch" },
+    { name = "transformers" },
+]
 wemm = [
     { name = "accelerate" },
     { name = "torch" },
@@ -2136,13 +2140,15 @@ requires-dist = [
     { name = "pillow", specifier = ">=11,<13" },
     { name = "pydantic", specifier = ">=2.10,<3" },
     { name = "pyyaml", specifier = ">=6,<7" },
+    { name = "torch", marker = "extra == 'clap'", specifier = ">=2.10,<3" },
     { name = "torch", marker = "extra == 'wemm'", specifier = ">=2.10,<3" },
     { name = "torchaudio", marker = "extra == 'asr'", specifier = ">=2.10,<3" },
     { name = "torchvision", marker = "extra == 'wemm'", specifier = ">=0.25,<1" },
+    { name = "transformers", marker = "extra == 'clap'", specifier = "==5.2.0" },
     { name = "transformers", marker = "extra == 'wemm'", specifier = "==5.2.0" },
     { name = "uvicorn", specifier = ">=0.34,<1" },
 ]
-provides-extras = ["asr", "wemm"]
+provides-extras = ["clap", "asr", "wemm"]
 
 [package.metadata.requires-dev]
 dev = [
