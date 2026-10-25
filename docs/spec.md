@@ -479,6 +479,8 @@ func PrincipalFrom(ctx context.Context) (Principal, bool)
 
 #### library
 
+上传会话持久化在 `video_upload`（迁移 `0002`）：`video_id`、`object_key`、`upload_id`、`size_bytes`、`part_size`。完成上传核对所属工作区、会话凭据、分片集合及对象实际字节数；S3 调用在事务外执行。成功后才写入 `source_key`，未成功启动的上传与恢复由 R4 补偿。
+
 - **职责**：项目、视频的业务规则与存取；上传、导入的登记；范围解析。
 - **不负责**：处理视频（pipeline 负责）、检索（search 负责）。
 
