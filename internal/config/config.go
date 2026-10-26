@@ -100,10 +100,11 @@ type MediaConfig struct {
 }
 
 type SearchConfig struct {
-	K             int     `yaml:"k"`
-	RRFK          float64 `yaml:"rrf_k"`
-	MergeGapCells int     `yaml:"merge_gap_cells"`
-	MaxLimit      int     `yaml:"max_limit"`
+	K              int                `yaml:"k"`
+	RRFK           float64            `yaml:"rrf_k"`
+	MergeGapCells  int                `yaml:"merge_gap_cells"`
+	MaxLimit       int                `yaml:"max_limit"`
+	ChannelWeights map[string]float64 `yaml:"channel_weights"`
 }
 
 type ImportConfig struct {

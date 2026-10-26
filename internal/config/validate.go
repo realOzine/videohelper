@@ -49,6 +49,23 @@ func (c Config) Validate(role Role) error {
 	require(c.S3.PresignTTL > 0, "s3.presign_ttl")
 	require(len(c.Channels) > 0, "channels_file")
 	require(c.Search.K > 0 && c.Search.RRFK > 0 && c.Search.MaxLimit > 0 && c.Search.MergeGapCells >= 0, "search")
+	for name, weight := range c.Search.ChannelWeights {
+		_, known := c.Channels[name]
+		require(known && weight >= 0 && !math.IsNaN(weight) && !math.IsInf(weight, 0), "search.channel_weights."+name)
+	}
+	if len(c.Search.ChannelWeights) > 0 {
+		enabled := false
+		for name, channel := range c.Channels {
+			multiplier := 1.0
+			if weight, ok := c.Search.ChannelWeights[name]; ok {
+				multiplier = weight
+			}
+			weight := channel.Weight * multiplier
+			require(!math.IsNaN(weight) && !math.IsInf(weight, 0), "search.channel_weights."+name+" effective weight")
+			enabled = enabled || weight > 0 && len(channel.Active) > 0
+		}
+		require(enabled, "search.channel_weights enabled route")
+	}
 	if role == RoleEval {
 		return errors.Join(errs...)
 	}

@@ -87,10 +87,14 @@ func (s *Service) routes(q Query) ([]route, map[string]bool, []error) {
 		if len(q.OnlyChannels) > 0 && !slices.Contains(q.OnlyChannels, channel.Name) {
 			continue
 		}
-		weight := channel.Weight
-		if override, ok := q.ChannelWeights[channel.Name]; ok {
-			weight *= override
+		multiplier := 1.0
+		if weight, ok := s.cfg.ChannelWeights[channel.Name]; ok {
+			multiplier = weight
 		}
+		if override, ok := q.ChannelWeights[channel.Name]; ok {
+			multiplier = override
+		}
+		weight := channel.Weight * multiplier
 		if weight == 0 {
 			continue
 		}
