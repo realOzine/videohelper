@@ -20,9 +20,9 @@ asr = ["videohelper-ml-funasr[inference]==0.1.0"]
 wemm = ["videohelper-ml-wemm[inference]==0.1.0"]
 
 [tool.uv.sources]
-videohelper-ml-wemm = {path = "plugins/wemm"}
-videohelper-ml-funasr = {path = "plugins/funasr"}
-videohelper-ml-clap = {path = "plugins/clap"}
+videohelper-ml-wemm = {path = "plugins/wemm", editable = true}
+videohelper-ml-funasr = {path = "plugins/funasr", editable = true}
+videohelper-ml-clap = {path = "plugins/clap", editable = true}
 
 [tool.setuptools.packages.find]
 include = ["app*"]

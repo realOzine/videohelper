@@ -2137,9 +2137,9 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.10,<3" },
     { name = "pyyaml", specifier = ">=6,<7" },
     { name = "uvicorn", specifier = ">=0.34,<1" },
-    { name = "videohelper-ml-clap", extras = ["inference"], marker = "extra == 'clap'", directory = "plugins/clap" },
-    { name = "videohelper-ml-funasr", extras = ["inference"], marker = "extra == 'asr'", directory = "plugins/funasr" },
-    { name = "videohelper-ml-wemm", extras = ["inference"], marker = "extra == 'wemm'", directory = "plugins/wemm" },
+    { name = "videohelper-ml-clap", extras = ["inference"], marker = "extra == 'clap'", editable = "plugins/clap" },
+    { name = "videohelper-ml-funasr", extras = ["inference"], marker = "extra == 'asr'", editable = "plugins/funasr" },
+    { name = "videohelper-ml-wemm", extras = ["inference"], marker = "extra == 'wemm'", editable = "plugins/wemm" },
 ]
 provides-extras = ["clap", "asr", "wemm"]
 
@@ -2149,15 +2149,15 @@ dev = [
     { name = "jsonschema", specifier = ">=4.23,<5" },
     { name = "pytest", specifier = ">=8,<9" },
     { name = "ruff", specifier = ">=0.11,<1" },
-    { name = "videohelper-ml-clap", directory = "plugins/clap" },
-    { name = "videohelper-ml-funasr", directory = "plugins/funasr" },
-    { name = "videohelper-ml-wemm", directory = "plugins/wemm" },
+    { name = "videohelper-ml-clap", editable = "plugins/clap" },
+    { name = "videohelper-ml-funasr", editable = "plugins/funasr" },
+    { name = "videohelper-ml-wemm", editable = "plugins/wemm" },
 ]
 
 [[package]]
 name = "videohelper-ml-clap"
 version = "0.1.0"
-source = { directory = "plugins/clap" }
+source = { editable = "plugins/clap" }
 dependencies = [
     { name = "videohelper-ml" },
 ]
@@ -2179,7 +2179,7 @@ provides-extras = ["inference"]
 [[package]]
 name = "videohelper-ml-funasr"
 version = "0.1.0"
-source = { directory = "plugins/funasr" }
+source = { editable = "plugins/funasr" }
 dependencies = [
     { name = "videohelper-ml" },
 ]
@@ -2201,7 +2201,7 @@ provides-extras = ["inference"]
 [[package]]
 name = "videohelper-ml-wemm"
 version = "0.1.0"
-source = { directory = "plugins/wemm" }
+source = { editable = "plugins/wemm" }
 dependencies = [
     { name = "videohelper-ml" },
 ]
