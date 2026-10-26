@@ -1,0 +1,30 @@
+models:
+- id: wemm-2b-cuda-experimental@r1
+  kind: embedder
+  adapter: wemm
+  weights: tencent/WeMM-Embedding-2B
+  revision: bbd6cd4bf52cfc6716f752a2df80b2706720bd95
+  device: cuda
+  dtype: float16
+  dim: 1024
+  metric: cosine
+  query_inputs:
+  - text
+  doc_inputs:
+  - text
+  - video
+  - image
+  max_batch: 32
+  max_span_ms: 30000
+  max_concurrency: 1
+  queue_limit: 8
+  preprocess:
+    adapter_version: 2
+    transformers_version: 5.2.0
+    use_fast: true
+    frames_per_clip: 4
+    image_min_pixels: 65536
+    image_max_pixels: 262144
+    video_min_pixels: 4096
+    video_max_pixels: 262144
+    max_tokens: 4096

@@ -1,0 +1,55 @@
+models:
+- id: paraformer-zh@r1
+  kind: transcriber
+  adapter: funasr
+  weights: funasr/paraformer-zh
+  revision: d7811ee3ac581fbcfdeb37c98c6ba674028433dc
+  device: cpu
+  dtype: float32
+  max_concurrency: 1
+  queue_limit: 4
+  max_window_ms: 900000
+  languages:
+  - zh
+  preprocess:
+    adapter_version: 2
+    funasr_version: 1.3.14
+    pred_timestamp: true
+    sample_rate: 16000
+    ncpu: 2
+    max_single_segment_time: 30000
+    batch_size_s: 30
+    batch_size_threshold_s: 30
+    vad_model:
+      weights: funasr/fsmn-vad
+      revision: df20e6b30c653645fa4ff125cacfcabd1020a669
+    punc_model:
+      weights: funasr/ct-punc
+      revision: d0e55e2b8722a78b63705ff443d09c4f86e5d750
+- id: clap-htsat-unfused@r1
+  kind: embedder
+  adapter: clap
+  weights: laion/clap-htsat-unfused
+  revision: 8fa0f1c6d0433df6e97c127f64b2a1d6c0dcda8a
+  device: cpu
+  dtype: float32
+  dim: 512
+  metric: cosine
+  query_inputs:
+  - text
+  doc_inputs:
+  - audio
+  max_batch: 32
+  max_span_ms: 10000
+  max_concurrency: 1
+  queue_limit: 8
+  query_concurrency: 1
+  query_queue_limit: 8
+  preprocess:
+    adapter_version: 1
+    transformers_version: 5.2.0
+    sample_rate: 48000
+    max_samples: 480000
+    padding: repeatpad
+    truncation: rand_trunc
+    max_text_tokens: 512

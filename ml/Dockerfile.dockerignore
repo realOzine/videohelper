@@ -1,0 +1,9 @@
+*
+!ml/
+!ml/**
+**/.venv
+**/__pycache__
+**/.pytest_cache
+**/.ruff_cache
+ml/tests
+ml/tools
