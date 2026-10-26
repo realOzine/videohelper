@@ -53,7 +53,7 @@ func New(d Deps) http.Handler {
 		"POST /v1/uploads": a.startUpload, "POST /v1/videos/{id}/complete": a.completeUpload,
 		"GET /v1/videos": a.videos, "GET /v1/videos/{id}": a.video, "DELETE /v1/videos/{id}": a.deleteVideo,
 		"POST /v1/videos/{id}/restore": a.restoreVideo, "POST /v1/videos/{id}/retry": a.retryVideo, "GET /v1/videos/{id}/playback": a.playback,
-		"POST /v1/search": a.search,
+		"POST /v1/search": a.search, "POST /v1/search/models": a.searchModels,
 	} {
 		private.Handle(pattern, serve(fn))
 	}

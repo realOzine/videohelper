@@ -39,30 +39,22 @@ type momentResponse struct {
 
 func (a api) search(r *http.Request) (int, any, error) {
 	var body struct {
-		Query     string     `json:"query"`
-		ProjectID *string    `json:"project_id"`
-		VideoIDs  []string   `json:"video_ids"`
-		TimeRange *rangeJSON `json:"time_range"`
-		Limit     int        `json:"limit"`
+		Query          string             `json:"query"`
+		ProjectID      *string            `json:"project_id"`
+		VideoIDs       []string           `json:"video_ids"`
+		TimeRange      *rangeJSON         `json:"time_range"`
+		Limit          int                `json:"limit"`
+		SpaceOverrides map[string]string  `json:"space_overrides"`
+		ChannelWeights map[string]float64 `json:"channel_weights"`
 	}
 	if err := decode(r, &body, false); err != nil {
 		return 0, nil, err
 	}
-	project, err := optionalID(body.ProjectID)
+	scope, err := searchScope(body.ProjectID, body.VideoIDs)
 	if err != nil {
 		return 0, nil, err
 	}
-	query := search.Query{Text: body.Query, Scope: library.Scope{ProjectID: project}, Limit: body.Limit}
-	if body.VideoIDs != nil {
-		query.Scope.VideoIDs = make([]int64, len(body.VideoIDs))
-		for i, raw := range body.VideoIDs {
-			id, err := parseID(raw)
-			if err != nil {
-				return 0, nil, err
-			}
-			query.Scope.VideoIDs[i] = id
-		}
-	}
+	query := search.Query{Text: body.Query, Scope: scope, Limit: body.Limit, SpaceOverride: body.SpaceOverrides, ChannelWeights: body.ChannelWeights}
 	if body.TimeRange != nil {
 		query.TimeRange = &timeline.Span{StartMs: body.TimeRange.StartMs, EndMs: body.TimeRange.EndMs}
 	}
@@ -96,6 +88,44 @@ func (a api) search(r *http.Request) (int, any, error) {
 		moments = append(moments, public)
 	}
 	return 200, map[string]any{"moments": moments, "skipped_channels": result.Skipped}, nil
+}
+
+func (a api) searchModels(r *http.Request) (int, any, error) {
+	var body struct {
+		ProjectID *string  `json:"project_id"`
+		VideoIDs  []string `json:"video_ids"`
+	}
+	if err := decode(r, &body, false); err != nil {
+		return 0, nil, err
+	}
+	scope, err := searchScope(body.ProjectID, body.VideoIDs)
+	if err != nil {
+		return 0, nil, err
+	}
+	channels, err := a.Search.Models(r.Context(), principal(r), scope)
+	if err != nil {
+		return 0, nil, err
+	}
+	return 200, map[string]any{"channels": channels}, nil
+}
+
+func searchScope(projectID *string, videoIDs []string) (library.Scope, error) {
+	project, err := optionalID(projectID)
+	if err != nil {
+		return library.Scope{}, err
+	}
+	scope := library.Scope{ProjectID: project}
+	if videoIDs != nil {
+		scope.VideoIDs = make([]int64, len(videoIDs))
+		for i, raw := range videoIDs {
+			id, err := parseID(raw)
+			if err != nil {
+				return library.Scope{}, err
+			}
+			scope.VideoIDs[i] = id
+		}
+	}
+	return scope, nil
 }
 
 // thumb signs the sprite tile of one cell; urls reuses signatures per sprite within a response.

@@ -162,10 +162,13 @@ func TestCoreHTTPIntegration(t *testing.T) {
 	var embeds atomic.Int32
 	var encodedID atomic.Value
 	encodedID.Store("")
+	var encodedSpace atomic.Value
+	encodedSpace.Store("")
 	encodingStarted, encodingCanceled := make(chan struct{}), make(chan struct{})
 	fingerprint := "sha256:" + strings.Repeat("a", 64)
 	maxSpan := 30000
 	metadata := mlclient.SpacesResponse{Spaces: []mlclient.SpaceInfo{{ID: "http-contract@r1", Dim: 3, Metric: "cosine", QueryInputs: []string{"text"}, DocInputs: []string{"video", "text", "image"}, MaxSpanMs: &maxSpan, MaxBatch: 8, Fingerprint: fingerprint}}, Transcribers: []mlclient.TranscriberInfo{}}
+	metadata.Spaces = append(metadata.Spaces, mlclient.SpaceInfo{ID: "http-choice@r1", Dim: 3, Metric: "cosine", QueryInputs: []string{"text"}, DocInputs: []string{"video", "audio"}, MaxSpanMs: &maxSpan, MaxBatch: 8, Fingerprint: fingerprint})
 	mlserver := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/v1/spaces" {
 			json.NewEncoder(w).Encode(metadata)
@@ -185,7 +188,8 @@ func TestCoreHTTPIntegration(t *testing.T) {
 			close(encodingCanceled)
 			return
 		}
-		json.NewEncoder(w).Encode(mlclient.EmbedResponse{Space: "http-contract@r1", Fingerprint: fingerprint, Dim: 3, Vectors: [][]float32{{1, 0, 0}}})
+		encodedSpace.Store(req.Space)
+		json.NewEncoder(w).Encode(mlclient.EmbedResponse{Space: req.Space, Fingerprint: fingerprint, Dim: 3, Vectors: [][]float32{{1, 0, 0}}})
 	}))
 	defer mlserver.Close()
 	var registry *space.Registry
@@ -194,18 +198,20 @@ func TestCoreHTTPIntegration(t *testing.T) {
 	if err := registry.Sync(ctx); err != nil {
 		t.Fatal(err)
 	}
-	channels, err := space.NewChannels(config.ChannelsConfig{"visual": {Doc: "video", Seg: timeline.GridSeg, Weight: 1, Active: []string{"http-contract@r1"}}, "speech": {Doc: "text", Seg: timeline.SentenceSeg, Weight: 1, Active: []string{"http-contract@r1"}}})
+	channels, err := space.NewChannels(config.ChannelsConfig{"visual": {Doc: "video", Seg: timeline.GridSeg, Weight: 1, Active: []string{"http-contract@r1"}, Shadow: []string{"http-choice@r1"}}, "speech": {Doc: "text", Seg: timeline.SentenceSeg, Weight: 1, Active: []string{"http-contract@r1"}}, "audio": {Doc: "audio", Seg: timeline.GridSeg, Weight: 1, Active: []string{"http-choice@r1"}}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, channel := range channels.List() {
-		if err := index.EnsureVectorIndex(ctx, pool, channel.Name, index.VectorSpace{ID: "http-contract@r1", Dim: 3, Metric: "cosine"}); err != nil {
-			t.Fatal(err)
+		for _, id := range append(channel.Active, channel.Shadow...) {
+			if err := index.EnsureVectorIndex(ctx, pool, channel.Name, index.VectorSpace{ID: id, Dim: 3, Metric: "cosine"}); err != nil {
+				t.Fatal(err)
+			}
 		}
 	}
 	pl := pipeline.New(pipeline.Deps{Pool: pool, Client: queueClient, Inspector: inspector, Redis: rdb, Channels: channels, Registry: registry, Worker: config.WorkerConfig{MaxRetry: 2, WorkspaceGPULimit: 1}})
 	lb := library.New(pool, objects, library.Config{}, pl, pl)
-	se := search.New(pool, lb, registry, channels, ml, config.SearchConfig{K: 10, RRFK: 60, MergeGapCells: 1, MaxLimit: 50})
+	se := search.New(pool, lb, registry, channels, ml, config.SearchConfig{K: 10, RRFK: 60, MergeGapCells: 1, MaxLimit: 50, ChannelWeights: map[string]float64{"audio": 0}})
 	server := httptest.NewServer(New(Deps{Authn: verifier, Workspace: workspace.New(pool), Library: lb, Pipeline: pl, Search: se, Blob: objects, Ready: pool.Ping}))
 	defer server.Close()
 	owner, foreign := token("http-owner"), token("http-foreign")
@@ -364,7 +370,9 @@ func TestCoreHTTPIntegration(t *testing.T) {
 	}
 	var vectors []index.VectorRow
 	for _, channel := range channels.List() {
-		vectors = append(vectors, index.VectorRow{VideoID: upload.Video.ID, WorkspaceID: wsID, Channel: channel.Name, SpaceID: "http-contract@r1", Seg: channel.Seg, Span: timeline.Span{StartMs: 1000, EndMs: 2000}, Vec: []float32{1, 0, 0}})
+		for _, id := range append(channel.Active, channel.Shadow...) {
+			vectors = append(vectors, index.VectorRow{VideoID: upload.Video.ID, WorkspaceID: wsID, Channel: channel.Name, SpaceID: id, Seg: channel.Seg, Span: timeline.Span{StartMs: 1000, EndMs: 2000}, Vec: []float32{1, 0, 0}})
+		}
 	}
 	if err := index.UpsertVectors(ctx, pool, vectors); err != nil {
 		t.Fatal(err)
@@ -418,6 +426,105 @@ func TestCoreHTTPIntegration(t *testing.T) {
 			t.Fatalf("invalid search accepted: %d %s", status, body)
 		}
 	}
+	t.Run("model catalog and explicit selection", func(t *testing.T) {
+		for _, tc := range []struct {
+			body, bearer string
+			headers      map[string]string
+			want         int
+		}{
+			{body: `{}`, want: 401},
+			{body: `{}`, bearer: foreign, headers: map[string]string{"X-Workspace-ID": workspaceID}, want: 403},
+			{body: `{"video_ids":["` + videoID + `"]}`, bearer: foreign, want: 404},
+			{body: `{"project_id":"` + project.Project.ID + `"}`, bearer: foreign, want: 404},
+			{body: `{"project_id":"` + project.Project.ID + `","video_ids":[]}`, bearer: owner, want: 400},
+		} {
+			if status, body := call("POST", "/v1/search/models", tc.body, tc.bearer, tc.headers); status != tc.want {
+				t.Fatalf("catalog authorization/scope: %d want %d: %s", status, tc.want, body)
+			}
+		}
+		catalog := func(scope, bearer string, eligible int, ready bool) {
+			t.Helper()
+			before := embeds.Load()
+			status, body := call("POST", "/v1/search/models", scope, bearer, nil)
+			var result struct {
+				Channels []search.ChannelModels `json:"channels"`
+			}
+			if err := json.Unmarshal(body, &result); status != 200 || err != nil || len(result.Channels) != 3 || embeds.Load() != before {
+				t.Fatalf("catalog response/inference: %d %s %v", status, body, err)
+			}
+			if strings.Contains(string(body), mlserver.URL) || strings.Contains(string(body), "endpoint") || strings.Contains(string(body), "explicit-http-contract-test") {
+				t.Fatalf("catalog leaked runtime configuration: %s", body)
+			}
+			for _, channel := range result.Channels {
+				if channel.DocInput == "" || len(channel.DefaultSpaceIDs) != 1 || len(channel.Models) != 2 || (channel.Channel == "audio" && channel.DefaultWeight != 0) {
+					t.Fatalf("catalog defaults/capabilities: %+v", channel)
+				}
+				for _, model := range channel.Models {
+					compatible := !(channel.Channel == "audio" && model.SpaceID == "http-contract@r1" || channel.Channel == "speech" && model.SpaceID == "http-choice@r1")
+					if len(model.DocInputs) == 0 || len(model.QueryInputs) != 1 || model.QueryInputs[0] != "text" {
+						t.Fatalf("missing model capabilities: %+v", model)
+					}
+					if !compatible {
+						if model.Status != "incompatible" {
+							t.Fatalf("incompatible model offered: %+v", model)
+						}
+						continue
+					}
+					indexed := 0
+					if ready {
+						indexed = eligible
+					}
+					if model.EligibleVideos != eligible || model.IndexedVideos != indexed || (ready && model.Status != "ready") {
+						t.Fatalf("scoped readiness: scope=%s model=%+v", scope, model)
+					}
+				}
+			}
+		}
+		catalog(`{}`, owner, 1, false)
+		catalog(`{"project_id":"`+project.Project.ID+`"}`, owner, 1, false)
+		catalog(`{"video_ids":["`+videoID+`"]}`, owner, 1, false)
+		catalog(`{"video_ids":[]}`, owner, 0, true)
+		catalog(`{}`, foreign, 0, true)
+		before := embeds.Load()
+		if status, body := call("POST", "/v1/search", `{"query":"显式选择","space_overrides":{"visual":"http-choice@r1"}}`, owner, nil); status != 409 || !strings.Contains(string(body), `"code":"not_ready"`) || embeds.Load() != before {
+			t.Fatalf("incomplete selection reached ML: %d %s", status, body)
+		}
+		for _, invalid := range []string{
+			`{"space_overrides":{"unknown":"http-choice@r1"}}`, `{"space_overrides":{"visual":""}}`, `{"space_overrides":{"visual":" "}}`, `{"space_overrides":{"visual":"missing@r1"}}`, `{"space_overrides":{"speech":"http-choice@r1"}}`,
+			`{"channel_weights":{"unknown":1}}`, `{"channel_weights":{"visual":-1}}`, `{"channel_weights":{"audio":"1"}}`, `{"space_overrides":{"visual":1}}`, `{"channel_weights":{"audio":1e999}}`,
+		} {
+			if status, body := call("POST", "/v1/search", `{"query":"选择验证",`+invalid[1:], owner, nil); status != 400 || embeds.Load() != before {
+				t.Fatalf("invalid selection reached ML: %d %s", status, body)
+			}
+		}
+		for _, channel := range channels.List() {
+			for _, id := range append(channel.Active, channel.Shadow...) {
+				info, _ := registry.Get(id)
+				name := "embed:" + channel.Name + ":" + id
+				output, err := json.Marshal(map[string]any{"plan": pipeline.StageDef{Name: name, Version: "v1", Options: pipeline.StageOptions{Channel: channel.Name, Seg: channel.Seg, Space: info}}})
+				if err != nil {
+					t.Fatal(err)
+				}
+				if _, err := pool.Exec(ctx, "INSERT INTO stage_run(video_id,stage,version,status,output) VALUES($1,$2,'http-test','done',$3)", upload.Video.ID, name, output); err != nil {
+					t.Fatal(err)
+				}
+			}
+		}
+		catalog(`{}`, owner, 1, true)
+		for _, tc := range []struct {
+			body, channel, space string
+		}{
+			{`{"query":"显式选择","space_overrides":{"visual":"http-choice@r1"},"channel_weights":{"speech":0}}`, "visual", "http-choice@r1"},
+			{`{"query":"音频保持关闭","space_overrides":{"audio":"http-choice@r1"},"channel_weights":{"speech":0}}`, "visual", "http-contract@r1"},
+			{`{"query":"显式开启音频","space_overrides":{"audio":"http-choice@r1"},"channel_weights":{"visual":0,"speech":0,"audio":1}}`, "audio", "http-choice@r1"},
+		} {
+			before := embeds.Load()
+			status, body := call("POST", "/v1/search", tc.body, owner, nil)
+			if err := json.Unmarshal(body, &found); status != 200 || err != nil || embeds.Load()-before != 1 || encodedSpace.Load() != tc.space || len(found.Moments) != 1 || len(found.Moments[0].Channels) != 1 || found.Moments[0].Channels[0].Channel != tc.channel || len(found.Skipped) != 0 {
+				t.Fatalf("selected route/weights: %d %s encoded=%v %v", status, body, encodedSpace.Load(), err)
+			}
+		}
+	})
 	t.Run("caller cancellation reaches ML", func(t *testing.T) {
 		callCtx, stop := context.WithCancel(ctx)
 		defer stop()
