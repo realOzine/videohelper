@@ -26,13 +26,13 @@ export default function Landing() {
         </div>
       </div>
       <main>
-        <Layer s={stack} i={0} card={false} aria-labelledby="viewh" className="flex min-h-svh items-center bg-ink px-(--m) py-24 max-sm:min-h-0 max-sm:py-20">
+        <Layer s={stack} i={0} card={false} aria-labelledby="viewh" className="flex min-h-svh items-center bg-ink px-(--m) py-16 max-sm:min-h-0 max-sm:py-20">
           <div className="grid w-full grid-cols-12 items-center gap-x-6 gap-y-10">
             <div className="col-span-5 max-xl:col-span-12">
-              <Rise as="h2" id="viewh" className={cx('disp text-[clamp(44px,4.8vw,80px)]', l ? 'max-sm:text-[12vw]' : 'max-sm:text-[9vw]')}>{t('view.h')}</Rise>
-              <Rise as="p" delay={80} className="mt-6 max-w-[40ch]">{t('view.p')}</Rise>
+              <Rise as="h2" id="viewh" className={cx('disp text-[clamp(52px,5.8vw,112px)]', l ? 'max-sm:text-[12vw]' : 'max-sm:text-[10vw]')}>{t('view.h')}</Rise>
+              <Rise as="p" delay={80} className="mt-10 max-w-[26em] text-[clamp(18px,1.25vw,22px)] leading-[1.7] max-sm:mt-6">{t('view.p')}</Rise>
             </div>
-            <Rise className="col-span-7 grid min-h-[620px] place-items-center rounded-[28px] bg-ink-2 p-10 max-xl:col-span-12 max-xl:min-h-0 max-sm:rounded-[18px] max-sm:p-3">
+            <Rise className="col-span-7 grid place-items-center rounded-[28px] bg-ink-2 p-[clamp(24px,3vw,56px)] max-xl:col-span-12 max-sm:rounded-[18px] max-sm:p-3">
               <Viewer l={l} />
             </Rise>
           </div>
@@ -127,8 +127,8 @@ function Viewer({ l }: { l: 0 | 1 }) {
     setAt(s);
   };
   return (
-    <div className="w-[min(560px,100%)] rounded-[14px] bg-ink-3 p-3.5 text-[15px] leading-[22px]">
-      <div className={cx(film, 'aspect-[16/10] rounded-lg')}>
+    <div className="w-full max-w-[880px] rounded-[14px] bg-ink-3 p-3.5 text-[15px] leading-[22px]">
+      <div className={cx(film, 'aspect-video rounded-lg')}>
         <video ref={hv} src={media('reef.mp4')} poster={media('reef.jpg')} muted loop playsInline autoPlay={!reduce} preload="auto" aria-label={t('hero.vid')}
           onTimeUpdate={(e) => { if (!scrubbing.current) setAt(e.currentTarget.currentTime); }} />
       </div>

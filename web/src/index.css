@@ -77,7 +77,7 @@
 
 @layer components {
   /* headings are set like film title cards: a heavy display serif, and heavy Song for Chinese; WONK off keeps Fraunces upright */
-  .disp { font-family: var(--font-disp); font-weight: 800; font-variation-settings: "WONK" 0; letter-spacing: -0.025em; line-height: 1; text-wrap: balance; }
+  .disp { font-family: var(--font-disp); font-weight: 800; font-variation-settings: "WONK" 0; letter-spacing: -0.025em; line-height: 1; text-wrap: balance; white-space: pre-line; }
   :lang(zh-CN) .disp { font-family: var(--font-cjk); font-weight: 900; letter-spacing: 0; line-height: 1.16; }
 
   /* entrances: rise into place once on screen (see Rise in ui.tsx) */

@@ -7,11 +7,11 @@ addStrings({
     'hero.lede': 'VideoHelper 是视频内容搜索工具：描述一个画面、一句台词或一种声音，它在你的视频里找到对应的那几秒，点一下就从那里播放。',
     'hero.btn': '现在就试试', 'hero.note': '时间码精确到 0.1 秒 · 画面、台词、声音三路一起找', 'hero.q': '珊瑚礁边的鱼群', 'hero.vid': '珊瑚礁边游动的鱼群', 'hero.strip': '片段时间线，移动指针查看画面',
     'ch.visual': '画面', 'ch.speech': '台词', 'ch.audio': '声音', rank: '{ch} 第 {n} 名',
-    'view.h': '拖一下 停在命中的那一秒', 'view.p': '每个结果都是一段时间。红线标出命中的几秒，在缩略帧上拖动就能逐帧预览；下面三格告诉你是画面、台词还是声音命中的。',
+    'view.h': '拖一下就停在\n命中的那一秒', 'view.p': '每个结果都是一段时间。红线标出命中的几秒，在缩略帧上拖动就能逐帧预览；下面三格告诉你是画面、台词还是声音命中的。',
     'app.search': '搜索', 'app.lib': '资料库', 'app.proc': '处理中', 'app.qlabel': '描述画面、台词或声音', 'app.go': '搜索', 'app.count': '{n} 个片段 · 按相关度排序', 'app.nomatch': '示例库里没找到「{q}」，试试下面这几句',
     'demo.views': '结果视图', 'demo.dir': '目录', 'demo.det': '详情', 'demo.back': '返回目录', 'demo.hits': '命中 {n} 处', 'demo.more': '还有 {n} 个视频 · 切到「详情」看全部片段', 'demo.ruler': '演示时间尺',
     'done': '完成', 'stage.visual': '画面编码', 'stage.asr': '语音转录', 'stage.audio': '声音编码',
-    'pl.h': '一个视频的全部线索', 'how.label': '处理步骤',
+    'pl.h': '一个视频的\n全部线索', 'how.label': '处理步骤',
     'cta.q1': '先传一段视频', 'cta.q2': '还是先看演示', 'cta.up': '上传视频', 'cta.or': '或', 'cta.demo': '打开完整工作台', 'cta.after': '工作台需要登录；上面的迷你版用的是示例视频。',
     'ft.what': 'VideoHelper · 在视频里找画面', 'ft.nav': '页脚', 'ft.search': '搜索', 'ft.library': '资料库', 'ft.faq': '常见问题',
 }, {
@@ -77,10 +77,10 @@ export const NOTES = [
   ];
 // [stop zh, title zh, detail zh, stop en, title en, detail en]
 export const STAGES = [
-    ['上传', '先把视频交给它', '浏览器按 16 MB 分片直接传到存储，不限大小。', 'Upload', 'First hand it the video', 'The browser sends 16 MB parts straight to storage, with no size limit.'],
-    ['预处理', '然后切成一格一格', '转成 720p 的标准视频，并生成缩略帧。画面和声音每 2.5 秒一格。', 'Prepare', 'Then cut it into cells', 'A 720p working copy and its thumbnails; picture and sound in 2.5-second cells.'],
-    ['编码', '接着三路同时编码', '画面和声音按格编码，台词先转成句子再编码。', 'Encode', 'Next three channels encode at once', 'Picture and sound by the cell; speech becomes sentences first.'],
-    ['搜索', '最后一句话找到它', '三路结果按名次合并成片段，点一下从那一秒播放。', 'Search', 'Finally one sentence finds it', 'The three ranks merge into spans; one click plays from that second.'],
+    ['上传', '先把视频交给它', '浏览器按 16 MB 分片直接传到存储，不限大小。', 'Upload', 'Start by handing it the video', 'The browser sends 16 MB parts straight to storage, with no size limit.'],
+    ['预处理', '然后切成一格一格', '转成 720p 的标准视频，并生成缩略帧。画面和声音每 2.5 秒一格。', 'Prepare', 'Then it is cut into cells', 'A 720p working copy and its thumbnails; picture and sound in 2.5-second cells.'],
+    ['编码', '接着三路同时编码', '画面和声音按格编码，台词先转成句子再编码。', 'Encode', 'Three channels encode at once', 'Picture and sound by the cell; speech becomes sentences first.'],
+    ['搜索', '最后一句话找到它', '三路结果按名次合并成片段，点一下从那一秒播放。', 'Search', 'One sentence finds the moment', 'The three ranks merge into spans; one click plays from that second.'],
   ];
 // [question zh, answer zh, question en, answer en]
 export const FAQ = [
