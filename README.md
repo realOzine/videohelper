@@ -1,6 +1,6 @@
 # VideoHelper
 
-本地视频处理与文字搜索：保留原片音轨，通过 WeMM 编码画面，通过 FunASR 转录后编码文字，通过 CLAP 编码声音，按 `visual`、`speech`、`audio` 三路检索。图片文档编码已提供 ML 接口；搜索输入为文字。设计与契约见 [docs/design.md](docs/design.md) 和 [docs/spec.md](docs/spec.md)。
+本地视频处理与文字搜索：保留原片音轨，通过 WeMM 编码画面，通过 FunASR 转录后编码文字，通过 CLAP 编码声音，保留 `visual`、`speech`、`audio` 三路索引。当前默认检索采用 K=5、RRF=60、gap=1，查询权重为 `visual:speech:audio=1:1:0`；变更依据、局限和回滚方法见 [Evaluation.md](docs/Evaluation.md)。图片文档编码已提供 ML 接口；搜索输入为文字。设计与契约见 [docs/design.md](docs/design.md) 和 [docs/spec.md](docs/spec.md)。
 
 需要 Go、Python 3.12、uv、FFmpeg/ffprobe 和 Docker Compose。当前真实模型清单使用 Apple Silicon MPS 运行 WeMM，CPU 运行 ASR、CLAP。以下命令在仓库根目录执行；每个终端先载入 `.env`。
 
@@ -37,10 +37,9 @@ bin/videohelper worker
 bin/videohelper local-upload /path/to/video.mp4
 bin/videohelper local-video 1
 bin/videohelper local-search '如何搜索视频内容'
-bin/videohelper local-search 'a dog barking'
 ```
 
-声音通道采用 edit-mind 同款 CLAP HTSAT unfused 的 Python 原版权重。查询文字原样传入，英文转换后续再做。启用新通道后重启 api/worker；已有视频在 worker 启动及定期对账时补建缺失的声音索引，保留原有 ASR/画面索引和 `ready` 状态；切片版本变更的重建另行处理。声音召回参与现有三通道融合，尚未针对声音查询调整权重。
+声音通道采用 edit-mind 同款 CLAP HTSAT unfused 的 Python 原版权重。查询文字原样传入，英文转换后续再做。启用新通道后重启 api/worker；已有视频在 worker 启动及定期对账时补建缺失的声音索引，保留原有 ASR/画面索引和 `ready` 状态；切片版本变更的重建另行处理。默认查询关闭声音召回，但继续生成声音索引。需要搜索环境音时，将 `search.channel_weights.audio` 设为 1 并重启 API；`local-search` 每次启动读取配置。内部调用也可用显式 `Query.ChannelWeights["audio"]=1` 覆盖默认值。`channels.yaml` 的基础权重保持为 1，ASR 和原始音轨不受查询默认值影响。
 
 ASR 允许起点有序的词、句时间重叠，合并范围取最早起点和最晚终点，保留原文。真实清单的 `adapter_version: 2` 会改变 ASR fingerprint；部署时同步更新并重启 Go 与 ML 服务。已有已完成索引仍可查询，旧计划和断点不会自动迁移到新 fingerprint，普通 retry 也不会改写它们；验证新行为请使用新上传或新的隔离 Eval run，保留旧基线。
 

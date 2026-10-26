@@ -54,7 +54,9 @@
 | `search.max_limit` | 50；不变 |
 | 通道基础权重、模型与索引 | 不变；三路基础权重仍为 1，继续索引 audio |
 
-默认乘数由 `SearchConfig.ChannelWeights` 提供，缺省通道按 1 处理；请求中的 `channel_weights` 按通道覆盖默认乘数，再乘 `config/channels.yaml` 的基础权重。因而请求显式传 `audio: 1` 可恢复该路，未传的通道保留默认。`audio: 0` 关闭本次检索的声音路线，不是将通道基础权重改成零；基础权重必须保持正值。配置入口为 [config.example.yaml](../config/config.example.yaml)与[local.yaml](../config/local.yaml)。
+默认乘数由 `SearchConfig.ChannelWeights` 提供，缺省通道按 1 处理；内部 `search.Query.ChannelWeights` 按通道覆盖默认乘数，再乘 `config/channels.yaml` 的基础权重。因而内部调用显式传 `audio: 1` 可恢复该路，未传的通道保留默认；Eval 桥接对应字段为 `channel_weights`，这次没有扩展生产 HTTP 请求字段。`audio: 0` 关闭本次检索的声音路线，不是将通道基础权重改成零；基础权重必须保持正值。配置入口为 [config.example.yaml](../config/config.example.yaml)与[local.yaml](../config/local.yaml)。
+
+默认参数落地提交为 `63721d2`，已合入 `main`；Eval runner 随之继承配置默认，并为 visual/speech 控制组显式保留乘数 1。旧配置省略 `search.channel_weights` 时保持三路乘数 1，不会自动改写已有部署的自定义配置。API 进程需重新加载配置后生效；本次没有重启运行中的服务。
 
 ### 实验：固定模型参数消融 ablation-v1
 
@@ -90,9 +92,13 @@ v2 没有改变同 cell RRF、传递合并、moment 最高分或 raw-rank speech
 
 ### 验证范围与回滚
 
-上述质量结论来自已归档的真实模型索引、检索与重复性实验。配置解析、默认与请求覆盖、零权重关闭等行为应由生产代码的单元测试验证；它们不能替代真实模型质量验收。既有实验没有覆盖本次配置入口的生产 HTTP/JWT 请求，也没有覆盖新真实视频盲测、大库、并发压力、长时间稳定性或 AWS。参数落地不能扩大这些结论的范围。
+上述质量结论来自已归档的真实模型索引、检索与重复性实验。本次合入 `main` 后，Go 的 `cmd/`、`internal/`、`migrations/` 和 Eval bridge 范围 race/vet 及主程序编译通过；51 项 Eval 工具单测、12 项 frozen ASR 回归通过。新增检查覆盖默认乘数、逐项覆盖、显式启用 audio、请求/配置 map 不变性、非法默认值、旧配置兼容和单通道控制组；另逐项核对两份发布配置的 K/RRF/gap 与最终有效权重等于冻结候选。报告链接、复跑 shell 语法及迁移后的快照/语料哈希也已校验。
+
+这些检查不能替代真实模型质量验收。本次未设置 `VH_TEST_*`，需要显式数据库/S3 的集成测试未执行；没有重新运行真实模型，也没有验证新配置入口的生产 HTTP/JWT 请求、新真实视频盲测、大库、并发压力、长时间稳定性或 AWS。已构建主程序，但未启动或重启服务，参数落地不能扩大原实验结论的范围。
 
 回滚 v1 时，同时将 `search.k` 恢复为 50，并将 `search.channel_weights` 恢复为 `{visual: 1, speech: 1, audio: 1}`；RRF60、gap1 与通道基础权重保持不变。无需更换模型或重建索引。仅把 audio 改回 1 并不等于回滚 v1；显式请求乘数也会继续覆盖相应默认值。
+
+本轮原始响应及快照已从实验 worktree 迁至主仓库 `Eval/runs/`、`Eval/snapshots/`，迁移核对 441 个运行文件、25 个快照文件字节不变，并校验全部 20 个对象与冻结语料哈希。历史快照中的原始绝对路径保留为证据；复用现有数据库须显式指定迁移后的 `Eval/.runtime/ablation-v2/state.json`，或恢复到新隔离资源，方法见 [RUNBOOK](../Eval/RUNBOOK.md)。已归档的机器报告与指标没有改写；本次没有重新运行真实模型质量评估。
 
 ## 后续版本如何记录
 

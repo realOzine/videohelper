@@ -15,7 +15,7 @@
 
 ## 当前实施范围（2026-10-25）
 
-本地处理链路为「视频 → 标准化视频 → WeMM 画面编码 / CLAP 声音编码 / ASR → WeMM 转录文本编码 → 文字检索 → 时间片段与证据」。WeMM-Embedding-2B 统一支持视频、文字、图片编码；图片是编码输入，本轮搜索入口只接受文字。启用 `visual`、`speech` 与 `audio`，保留音轨供 ASR 和 CLAP 使用。声音通道采用 edit-mind 同款 CLAP HTSAT unfused；查询文字原样传入，英文转换后续再做。LLM/Agent、AWS 部署与验收暂缓；前端（`web/`）已实现；下文相关章节保留为后续设计，不构成本轮实现要求。真实模型验证与显式 fake 的协议/流程测试分开。
+本地处理链路为「视频 → 标准化视频 → WeMM 画面编码 / CLAP 声音编码 / ASR → WeMM 转录文本编码 → 文字检索 → 时间片段与证据」。WeMM-Embedding-2B 统一支持视频、文字、图片编码；图片是编码输入，本轮搜索入口只接受文字。保留 `visual`、`speech` 与 `audio` 索引及供 ASR、CLAP 使用的音轨；当前默认查询权重为 `1:1:0`，每路召回 K=5，RRF=60、gap=1，实验依据与回退见 [Evaluation.md](Evaluation.md)。声音通道采用 edit-mind 同款 CLAP HTSAT unfused；查询文字原样传入，英文转换后续再做。LLM/Agent、AWS 部署与验收暂缓；前端（`web/`）已实现；下文相关章节保留为后续设计，不构成本轮实现要求。真实模型验证与显式 fake 的协议/流程测试分开。
 
 本轮提供本地上传、阶段状态/重试、项目范围和文字搜索。已就绪视频可自动补建新通道/空间缺失的编码阶段；URL 导入、上传分片续签、SSE 事件、到期 purge、配额计费仍是后续设计；软删除保留原片和处理文件。当前只记录索引时长。操作入口见 [README](../README.md)。
 
@@ -69,7 +69,7 @@ flowchart LR
 
 - 「海边有人弹吉他的画面」：主要靠画面通道。
 - 「他讲到滚动更新的地方」：主要靠转录通道。
-- 「有掌声的片段」：走 CLAP 声音召回；当前不翻译查询，可先使用英文描述验证，中文查询质量另行评估。
+- 「有掌声的片段」：显式启用 audio 查询权重后走 CLAP 声音召回；当前默认 audio=0，不翻译查询，可先使用英文描述验证，中文查询质量另行评估。
 - 后续 Agent 场景「张老师在白板前讲 maxSurge」：由 Agent 拆开，「张老师在白板前」交给画面通道，「maxSurge」交给转录通道。
 
 ---
@@ -506,15 +506,19 @@ sequenceDiagram
     S->>P: /v1/embed role=query（wemm-2b@r1）
     P-->>S: 查询向量
   and
-    S->>P: /v1/embed role=query（clap-htsat-unfused@r1，原样文字）
-    P-->>S: 声音查询向量
+    opt audio 有效权重大于 0（默认关闭）
+      S->>P: /v1/embed role=query（clap-htsat-unfused@r1，原样文字）
+      P-->>S: 声音查询向量
+    end
   end
-  par 三路召回，每路前 50
+  par 已启用的路线召回，每路前 5
     S->>G: 画面向量 Top-K
   and
     S->>G: 转录向量 Top-K
   and
-    S->>G: 声音向量 Top-K
+    opt audio 有效权重大于 0
+      S->>G: 声音向量 Top-K
+    end
   end
   S->>S: 映射到时间格子 → RRF → 合并成片段 → 定跳转点
   S-->>A: moments
@@ -525,10 +529,11 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-  Q["描述"] --> E["按 active space 编码<br/>同一 space 只编码一次"]
+  Q["描述"] --> W["默认查询权重 1:1:0<br/>显式请求逐项覆盖默认；跳过零权重"]
+  W --> E["按已启用的 active space 编码<br/>同一 space 只编码一次"]
   E --> R1["visual Top-K"]
   E --> R2["speech Top-K"]
-  E --> R3["audio Top-K"]
+  E --> R3["audio Top-K<br/>仅在显式启用时"]
   R1 --> M["命中映射到时间格子"]
   R2 --> M
   R3 --> M
@@ -542,7 +547,7 @@ flowchart LR
 - RRF 只看名次、不看分值，不同空间的分数不需要互相校准。
 - 某一路编码或召回失败时，跳过这一路继续，结果里标明缺了哪一路；所有通道都失败才报错（提议）。
 - 搜索不能被索引拖慢：Python 给查询编码单独一个小闸门，不排在批量编码后面；请求带上超时，排队已经超时的请求 Python 不再推理（提议）。
-- 每路取多少名、RRF 常数、权重、合并间隔都是参数，要用评估集来调。
+- 每路取多少名、RRF 常数、权重、合并间隔都是参数，版本与实验记录保存在 [Evaluation.md](Evaluation.md)。`search.channel_weights` 是默认查询乘数，`Query.ChannelWeights` 同名值替换它，再乘 `channels.yaml` 基础权重；省略值按 1 处理。改变查询默认值不重建索引或修改模型。
 
 ### 6.6 Agent 对话（暂缓）
 

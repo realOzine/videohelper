@@ -1,5 +1,7 @@
 # 固定模型参数消融结果
 
+本报告保存实验当时的设置与结论；后续已将候选作为 `main` 的默认参数，采用与回滚记录见 [Evaluation.md](../../../docs/Evaluation.md)。原始运行结果与快照现位于主仓库 `Eval/runs/`、`Eval/snapshots/`；迁移后的复用方式见 [RUNBOOK](../../RUNBOOK.md)。下方 v1 复跑命令显式声明三路乘数 1，避免受后来默认值影响。
+
 本轮在独立 `eval-ablation` worktree 中完成 **41 组不同参数、2 次重复运行，共 4515 条有效响应**。模型、语料、标签、查询原文和索引均固定。开发集选出的候选为 **K=5、RRF K=60、merge gap=1、visual:speech:audio=1:1:0**。它通过内部验证集的视频召回约束，显著改善片段定位；**全量跳转命中没有改善**，也没有解决无答案查询的拒答问题。
 
 这是本批数据的参数候选，生产默认配置和模型没有修改。权重是请求级乘数；`audio=0` 通过 `channel_weights` 关闭声音路线，不能直接写成 `config/channels.yaml` 中的零配置权重。当前合成库缺少独立自然声音金标，不能据此建议所有真实场景关闭 audio。
@@ -57,9 +59,9 @@ RUN=abl-check-01
 "$EVAL_PY" Eval/tools/run.py index --run-id "$SNAPSHOT"
 
 # 同一个索引上的默认、候选及重复运行；两次 build 之间不要混用二进制。
-"$EVAL_PY" Eval/tools/run.py retrieve --snapshot "$SNAPSHOT" --run-id "${RUN}-default" --k 50 --rrf-k 60 --merge-gap 1
+"$EVAL_PY" Eval/tools/run.py retrieve --snapshot "$SNAPSHOT" --run-id "${RUN}-default" --k 50 --rrf-k 60 --merge-gap 1 --visual-weight 1 --speech-weight 1 --audio-weight 1
 "$EVAL_PY" Eval/tools/run.py retrieve --snapshot "$SNAPSHOT" --run-id "${RUN}-candidate" --k 5 --rrf-k 60 --merge-gap 1 --visual-weight 1 --speech-weight 1 --audio-weight 0
-"$EVAL_PY" Eval/tools/run.py retrieve --snapshot "$SNAPSHOT" --run-id "${RUN}-default-repeat" --k 50 --rrf-k 60 --merge-gap 1
+"$EVAL_PY" Eval/tools/run.py retrieve --snapshot "$SNAPSHOT" --run-id "${RUN}-default-repeat" --k 50 --rrf-k 60 --merge-gap 1 --visual-weight 1 --speech-weight 1 --audio-weight 1
 "$EVAL_PY" Eval/tools/run.py retrieve --snapshot "$SNAPSHOT" --run-id "${RUN}-repeat" --k 5 --rrf-k 60 --merge-gap 1 --visual-weight 1 --speech-weight 1 --audio-weight 0
 "$EVAL_PY" Eval/tools/score.py compare --before "Eval/runs/${RUN}-default/report.json" --after "Eval/runs/${RUN}-candidate/report.json" --output "Eval/runs/${RUN}-comparison"
 "$EVAL_PY" Eval/tools/score.py compare --before "Eval/runs/${RUN}-default/report.json" --after "Eval/runs/${RUN}-default-repeat/report.json" --output "Eval/runs/${RUN}-default-repeat-check"

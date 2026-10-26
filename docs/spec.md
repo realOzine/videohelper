@@ -926,9 +926,10 @@ media:
   tmp_dir: /tmp/videohelper
 
 search:
-  k: 50                                # 每路召回数
+  k: 5                                 # 每路召回数；参数版本见 Evaluation.md
   rrf_k: 60
   merge_gap_cells: 1                   # 相邻命中间隔不超过 1 格就合并
+  channel_weights: {visual: 1, speech: 1, audio: 0} # 默认查询乘数，保留三路索引
   max_limit: 50
 
 import:                                # 导入链接
@@ -2052,7 +2053,7 @@ Redis 里没有任何不能丢的数据。Redis 清空后，reconciler 会根据
 
 1. **校验**：`Text` 不能为空；`Limit` 不超过 `search.max_limit`。
 2. **解析范围**：`library.ResolveScope`。传了 project 就取项目里的视频；传了 video_ids 就逐个校验是否属于当前工作区；都没传就是当前工作区的全部视频（nil）。范围解析为空时直接返回空结果。
-3. **确定召回列表**：从 channels 配置取每个通道的 active 空间（eval 可以用 `SpaceOverride` 覆盖），得到若干个 (channel, space)。权重为 0 的通道跳过。
+3. **确定召回列表**：从 channels 配置取每个通道的 active 空间（eval 可以用 `SpaceOverride` 覆盖），得到若干个 (channel, space)。查询乘数先取 `search.channel_weights[channel]`（缺省 1），若请求显式提供 `ChannelWeights[channel]` 则替换默认乘数；再乘 channels 配置中的基础权重。有效权重为 0 的通道在编码前跳过，不删除其索引或停止索引生成。默认乘数必须指向已配置通道、有限非负、乘积不溢出，且至少保留一路 active 正权重路线。
 4. **编码**：每个 (channel, space) 的查询文字是 `ChannelQueries[channel]`，没有就用 `Text`。按 (space, 文字) 去重后并行调用 `mlclient.Embed(role=query)`。某个编码失败（超时、503、504，或者空间已停用）时，用到它的通道记进 `Skipped`，不参与后面的召回（提议）。
 5. **召回**，全部并行：
    - 每个 (channel, space) 执行一次 `index.SearchVectors`，取前 K = `search.k` 条。
@@ -2060,7 +2061,7 @@ Redis 里没有任何不能丢的数据。Redis 清空后，reconciler 会根据
    - 某一路召回出错，也记进 `Skipped`，其余照常（提议）。所有通道都失败才返回错误。
 6. **取时长**：`library.Durations`，取所有命中视频的时长，用来计算格子。
 7. **映射到格子**：每条命中 → `timeline.CellsOverlapping(duration, hit.Span)`。画面、音频的命中本身就是一个格子；句子会覆盖一到多个格子。每个召回列表记作 l，命中在 l 里的名次记作 r。同一个格子在同一个列表里被多条命中覆盖时，取最好的名次。
-8. **RRF**：`score(格子) = Σ_l  w_l / (rrf_k + r_l(格子))`。其中 `w_l` = 通道权重（channels 配置里的值，乘以 `ChannelWeights` 里的覆盖值）。
+8. **RRF**：`score(格子) = Σ_l  w_l / (rrf_k + r_l(格子))`。其中 `w_l` = channels 配置的基础权重 × 第 3 步确定的查询乘数。显式请求覆盖默认乘数，因此 `ChannelWeights.audio=1` 可以重新启用默认关闭的声音路线。
 9. **合并成片段**：每个视频内，把有分数的格子按时间排序，间隔不超过 `merge_gap_cells` 个格子的连成一段：
    - 片段的时间段 = [第一格的起点, 最后一格的终点]。
    - 片段的分数 = 其中格子的最高分。
@@ -2073,15 +2074,16 @@ Redis 里没有任何不能丢的数据。Redis 清空后，reconciler 会根据
 
 ### 8.3 参数
 
-| 参数 | 初始值 | 说明 |
+| 参数 | 当前默认值（v2） | 说明 |
 |---|---|---|
-| `search.k` | 50 | 每路召回数 |
+| `search.k` | 5 | 每路召回数；不等于返回上限 |
 | `search.rrf_k` | 60 | RRF 常数，数值越大，名次之间的差距越小 |
 | `search.merge_gap_cells` | 1 | 相邻命中之间最多隔几个格子还算同一个片段 |
 | `search.max_limit` | 50 | 单次最多返回多少个片段 |
-| 通道权重 | 都是 1.0 | channels.yaml；Agent 可以在单次调用里覆盖 |
+| `search.channel_weights` | visual=1、speech=1、audio=0 | 默认查询乘数；请求逐项覆盖，未提供的项继承默认 |
+| 通道基础权重 | 都是 1.0 | channels.yaml，仍须大于 0；与查询乘数相乘 |
 
-所有初始值在实现时设定（已定），之后用评估集来调（第 11 章）。片段的长度上限暂时不处理（已定）。
+v1 基线为 K=50、RRF=60、gap=1、查询权重 1:1:1；v2 的实验记录、收益、回退和回滚配置见 [Evaluation.md](Evaluation.md)。未声明 `search.channel_weights` 的旧配置仍按每路乘数 1 处理。片段的长度上限暂时不处理（已定）。
 
 ---
 

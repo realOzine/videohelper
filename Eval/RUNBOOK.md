@@ -125,6 +125,8 @@ ml/.venv/bin/python Eval/tools/run.py retrieve --snapshot "$SNAPSHOT" --run-id "
 
 ## 4. 恢复快照，再验证固定索引检索
 
+本轮 `ablation-v2` 的原始快照已迁至主仓库 `Eval/snapshots/ablation-v2/`，运行证据在 `Eval/runs/`。快照清单保留实验时的绝对路径，不应为迁移改写历史哈希。若原数据库/桶仍保留，启动真实模型服务后，可用 `retrieve --snapshot ablation-v2 --state Eval/.runtime/ablation-v2/state.json --run-id <新ID>` 指向迁移后的运行配置，并显式传入要比较的参数。该旧运行配置仍为 v1 默认，不能依赖省略值得到 v2。若原资源不在，按以下 `restore` 流程创建新隔离资源；迁移记录及原始运行配置备份在 `Eval/.runtime/`，不纳入 Git。
+
 ```sh
 ml/.venv/bin/python Eval/tools/run.py restore --snapshot "$SNAPSHOT" --run-id "${RUN}-restored"
 ml/.venv/bin/python Eval/tools/run.py retrieve --snapshot "$SNAPSHOT" --run-id "${RUN}-restored-check" --state "Eval/.runtime/${RUN}-restored/state.json" --k 5 --rrf-k 60 --merge-gap 1 --visual-weight 1 --speech-weight 1 --audio-weight 0
