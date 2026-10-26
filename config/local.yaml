@@ -22,6 +22,7 @@ auth:                              # 认证服务待定；本地用 node web/dev
   jwks_url: "http://127.0.0.1:18001/jwks"
 
 ml:
+  model_endpoints: {}              # 同一 ID 有多个服务时，显式绑定到 endpoints 中的一个地址
   transcriber: paraformer-zh@r1    # 仅用于新计划；已有任务继续使用冻结的模型和指纹
   endpoints: ["http://127.0.0.1:18080"]    # 可以多个，比如候选模型单独一个容器
   token_env: VH_ML_TOKEN           # 服务间共享令牌（已定）；Python 端配置同一个值
