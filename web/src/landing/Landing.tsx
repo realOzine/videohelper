@@ -39,14 +39,18 @@ export default function Landing() {
         </Layer>
         <Layer s={stack} i={1} aria-labelledby="ph" className="relative bg-paper px-(--m) py-40 text-on-paper max-sm:py-24"><Plate l={l} /></Layer>
         <Layer s={stack} i={2} id="how" aria-labelledby="howh" className="relative grid min-h-svh grid-cols-2 bg-ink max-sm:min-h-0 max-sm:grid-cols-1"><How l={l} /></Layer>
-        <Layer s={stack} i={3} pin={false} id="faq" aria-labelledby="faqh" className="grid gap-[72px] bg-paper px-(--m) py-40 text-on-paper max-sm:gap-14 max-sm:py-24">
-          <Rise className="grid grid-cols-12 items-baseline gap-x-6 max-lg:block"><h2 id="faqh" className={cx('disp col-span-6 text-(length:--step-head)', l ? 'max-sm:text-[12vw]' : 'max-sm:text-[10vw]')}>{l ? 'Questions' : '常见问题'}</h2></Rise>
-          {FAQ.map((f, i) => (
-            <Rise key={i} delay={(i % 3) * 60} className="grid grid-cols-12 items-baseline gap-x-6 max-lg:block">
-              <h3 className="col-span-6 text-(length:--step-lead) leading-[1.15] font-bold max-sm:text-2xl">{f[l * 2]}</h3>
-              <p className="col-start-8 col-end-[-1] max-w-[40ch] max-lg:mt-3 max-lg:max-w-none">{f[l * 2 + 1]}</p>
-            </Rise>
-          ))}
+        <Layer s={stack} i={3} pin={false} id="faq" aria-labelledby="faqh" className="bg-paper px-(--m) py-40 text-on-paper max-sm:py-24">
+          <div className="mx-auto max-w-[1120px]">
+            <Rise as="h2" id="faqh" className={cx('disp text-center text-(length:--step-head)', l ? 'max-sm:text-[12vw]' : 'max-sm:text-[10vw]')}>{l ? 'Questions' : '常见问题'}</Rise>
+            <div className="mt-20 border-t border-on-paper/15 max-sm:mt-12">
+              {FAQ.map((f, i) => (
+                <Rise key={i} delay={(i % 3) * 60} className="grid grid-cols-[minmax(0,5fr)_minmax(0,7fr)] items-baseline gap-x-14 border-b border-on-paper/15 py-10 max-lg:block max-lg:py-8">
+                  <h3 className="text-[clamp(22px,1.8vw,30px)] leading-[1.3] font-bold">{f[l * 2]}</h3>
+                  <p className="text-[clamp(17px,1.15vw,20px)] leading-[1.75] text-on-paper/85 max-lg:mt-3">{f[l * 2 + 1]}</p>
+                </Rise>
+              ))}
+            </div>
+          </div>
         </Layer>
         <section aria-labelledby="ch1" style={{ zIndex: 4 }} className="relative grid min-h-[86svh] grid-rows-[auto_1fr_auto] bg-red-fill pt-8 pr-(--mr) pb-6 pl-(--m) text-center text-white">
           <h2 id="ch1" className={cx('disp', l ? 'text-(length:--step-display) max-sm:text-[16vw]' : 'text-[clamp(56px,7vw,120px)] max-sm:text-[12vw]')}>{t('cta.q1')}</h2>

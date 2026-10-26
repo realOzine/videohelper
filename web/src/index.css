@@ -65,7 +65,7 @@
   body { background: var(--color-ink); color: var(--color-fg); -webkit-font-smoothing: antialiased; font-variant-numeric: tabular-nums; }
   :focus-visible { outline: 2px solid var(--color-red); outline-offset: 3px; }
   button { cursor: pointer; }
-  ::selection { background: var(--color-red); color: var(--color-on-paper); }
+  ::selection { background: var(--color-red-fill); color: #fff; }
 }
 
 /* the landing page's margins and five type steps: display, head, lead, body, small */
