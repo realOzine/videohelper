@@ -21,7 +21,7 @@ export default function Landing() {
       <div className="overflow-hidden py-3" aria-hidden>
         <div className="-mx-5 -rotate-[1.2deg] overflow-hidden bg-red-fill text-white">
           <ul className={cx('flex w-max animate-run gap-12 py-3.5', l ? 'font-disp text-[23px] font-bold italic' : 'font-cjk text-xl font-black')}>
-            {[...SETS, ...SETS].map((s, i) => <li key={i} className="whitespace-nowrap after:ml-12 after:align-middle after:text-[0.6em] after:content-['◆']">{s.q[l]}</li>)}
+            {[...SETS, ...SETS, ...SETS, ...SETS].map((s, i) => <li key={i} className="whitespace-nowrap after:ml-12 after:align-middle after:text-[0.6em] after:content-['◆']">{s.q[l]}</li>)}
           </ul>
         </div>
       </div>
@@ -88,9 +88,9 @@ function Hero({ l }: { l: 0 | 1 }) {
       </div>
       <div className="flex flex-col justify-center pt-[88px] pr-8 pb-8 pl-(--m) max-[900px]:px-(--m) max-[900px]:pt-9 max-[900px]:pb-12 max-sm:pt-7">
         <div className="w-fit max-w-full self-center max-[900px]:self-start">
-        <h1 className={cx('disp', l ? 'text-[clamp(48px,5vw,88px)] max-[900px]:text-[11vw] max-sm:text-[12.5vw]' : 'text-[clamp(44px,4.86vw,84px)] max-[900px]:text-[8vw] max-sm:text-[11vw]')}>
+        <h1 className={cx('disp whitespace-nowrap', l ? 'text-[clamp(40px,3.9vw,76px)] max-[900px]:text-[8.4vw] max-sm:text-[9.6vw]' : 'text-[clamp(44px,4.86vw,84px)] max-[900px]:text-[8vw] max-sm:text-[10vw] tracking-[0.03em]')}>
           <span className="block overflow-hidden pb-[0.04em]"><span className={cx(line, !shown && 'translate-y-[105%]')}>{t('hero.h1a')}</span></span>
-          <span className="block overflow-hidden pb-[0.04em] text-red"><span className={cx(line, 'delay-[110ms]', !shown && 'translate-y-[105%]')}>{t('hero.h1b')}</span></span>
+          <span className={cx('mt-[0.16em] block overflow-hidden pb-[0.04em] text-red', l ? 'pl-[1em]' : 'pl-[1.5em] max-sm:pl-[1em]')}><span className={cx(line, 'delay-[110ms]', !shown && 'translate-y-[105%]')}>{t('hero.h1b')}</span></span>
         </h1>
         <div className={cx('transition-opacity delay-500 duration-700', shown ? 'opacity-100' : 'opacity-0')}>
           <p className="mt-8 max-w-[44ch]">{t('hero.lede')}</p>

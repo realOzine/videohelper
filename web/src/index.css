@@ -46,7 +46,7 @@
   --breakpoint-lg: 60rem;     /* 960: landing notes stack */
   --breakpoint-xl: 68.75rem;  /* 1100: tablet */
 
-  --animate-run: run 38s linear infinite;
+  --animate-run: run 76s linear infinite;
   --animate-enter: enter 420ms var(--ease-out) both;
   --animate-beat: beat 1.6s ease-in-out infinite;
 
