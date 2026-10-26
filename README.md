@@ -88,6 +88,7 @@ curl --fail-with-body "$API_URL/v1/search" \
 | Profile | 平台 | 模型 |
 |---|---|---|
 | `wemm-mps` | Mac arm64 原生 | WeMM，MPS float16 |
+| `wemm-cpu` | Mac arm64 / Linux amd64 | WeMM，CPU float32，独立向量空间 |
 | `speech-audio-cpu` | Mac arm64 / Linux amd64 | FunASR、CLAP，CPU float32 |
 | `wemm-cuda` | Linux amd64 + NVIDIA GPU | WeMM CUDA 候选，独立向量空间 |
 
@@ -106,6 +107,8 @@ make ml-prepare ML_PROFILE=speech-audio-cpu
 ML_FAKE=0 HF_HUB_OFFLINE=1 make ml-serve ML_PROFILE=wemm-mps ML_PORT=18080
 ML_FAKE=0 HF_HUB_OFFLINE=1 make ml-serve ML_PROFILE=speech-audio-cpu ML_PORT=18081
 ```
+
+WeMM 也可用纯 CPU：将安装、准备和启动命令中的 `ML_PROFILE=wemm-mps` 换成 `ML_PROFILE=wemm-cpu`。它沿用相同插件、固定权重和预处理，使用 `device: cpu`、`dtype: float32`；Linux 安装官方 CPU 版 Torch / Torchvision，无需 CUDA。空间 ID 为 `wemm-2b-cpu@r1`：新部署须为 visual、speech 执行 `space add` 并配置这个空间；已有 MPS 索引按下文 shadow 回填流程迁移，不能直接复用旧空间身份。CPU 推理性能尚未验收。
 
 `make ml-status ML_PORT=18080` 检查就绪；`videohelper-ml describe --models <清单>` 只展示校验后的配置。实际加载信息通过带 `X-Internal-Token`、`X-Request-ID` 的 `GET /v1/runtime` 查询，包含服务/插件/依赖版本、设备和 fingerprint。用 Ctrl-C 停止前台服务；停止不会删除缓存与索引。
 

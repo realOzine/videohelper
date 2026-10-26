@@ -89,7 +89,7 @@ videohelper/
 ├── ml/
 │   ├── app/                     # 通用 HTTP 服务、插件发现、缓存、闸门、共享类型
 │   ├── plugins/{wemm,funasr,clap}/ # 独立安装的模型插件包
-│   ├── profiles/                # wemm-mps / speech-audio-cpu / wemm-cuda
+│   ├── profiles/                # wemm-mps / wemm-cpu / speech-audio-cpu / wemm-cuda
 │   ├── pyproject.toml / uv.lock # 公共包与开发环境
 │   └── Dockerfile               # 按 profile 构建 Linux 模型镜像
 ├── web/                         # React + TypeScript + Tailwind，多页 Vite
@@ -2224,6 +2224,7 @@ ml/
 ├── plugins/{wemm,funasr,clap}/   # 三个独立 Python 包，各有 pyproject.toml
 ├── profiles/
 │   ├── wemm-mps/               # Mac arm64：WeMM
+│   ├── wemm-cpu/               # Mac arm64 / Linux amd64：WeMM CPU float32
 │   ├── speech-audio-cpu/       # Mac arm64 / Linux amd64：ASR + CLAP
 │   └── wemm-cuda/              # Linux amd64：WeMM CUDA 候选
 ├── tools/check_lifecycle.py    # 安装后的服务启动/请求/停止检查，无权重下载
@@ -2269,8 +2270,11 @@ wemm = "videohelper_ml_wemm:WeMMEmbedder"
 | Profile | 模型 / 设备 | 空间与用途 |
 |---|---|---|
 | `wemm-mps` | WeMM / MPS float16 | `wemm-2b@r1`，文字查询，文字/视频/图片编码 |
+| `wemm-cpu` | WeMM / CPU float32 | `wemm-2b-cpu@r1`，相同输入能力，独立空间，性能待验收 |
 | `speech-audio-cpu` | FunASR + CLAP / CPU float32 | `paraformer-zh@r1` 转录，`clap-htsat-unfused@r1` 声音编码 |
 | `wemm-cuda` | WeMM / CUDA float16 | `wemm-2b-cuda-experimental@r1`，未经真实 GPU 验收的候选 |
+
+`wemm-cpu` 使用相同 WeMM 插件；Linux 从官方 CPU 索引安装 Torch / Torchvision，Mac 使用原生 wheel。部署图中的 WeMM 进程可改用此 profile；float32 改变 fingerprint，必须登记独立空间，不能把结果写入原有 MPS 空间。
 
 WeMM 固定 `tencent/WeMM-Embedding-2B` revision `bbd6cd4bf52cfc6716f752a2df80b2706720bd95` 与 Transformers 5.2.0，并检查远程模型代码 SHA256。2048 维按官方 MRL 截至 1024 维后归一化；每段抽 4 帧，图片像素范围 65536–262144，视频每帧 4096–262144，输入最多 4096 token。单批最多 32 项、逐项推理。
 
