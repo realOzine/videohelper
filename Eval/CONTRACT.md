@@ -18,7 +18,7 @@
 - inspect 输入只有共同字段。输出 `passed`、`violations`、`index_sha256`、`videos`、`spaces`、`text_spans`。检查 ready、必需阶段完成、归属、非空 ASR、切片覆盖、向量维度/有限数值/非零、有效 HNSW 和模型空间身份。视觉/声音使用 `timeline.Cells`；speech 使用实际 ASR 经 `MergeSentences` 的范围。哈希应含实际向量、文本与稳定媒体/空间元数据，以稳定顺序计算；读取用一致性事务，不包括检查时间。
 - search 另有 `query_id`、`mode`（visual/speech/fused）、`text`、`limit`。输出 `query_id`、`mode`、`latency_ms`、`moments`、`skipped`、`error`；moment 字段为 `video_id,start_ms,end_ms,jump_ms,score,channels,snippet`。搜索实际调用 `search.Service.Search`；对所有指定视频搜索。每题失败保留 error，继续后面的查询；输入/初始化错误必须返回非零退出码。
 
-仅 fused 请求可带 `channel_weights`，键为已配置通道，值为有限非负乘数；每个未显式指定的通道继承 `search.channel_weights`，配置中缺少的通道为 1。请求值逐通道覆盖默认乘数，最终有效权重为 `channels.yaml` 中基础权重 × 解析后的乘数；0 关闭该通道，不允许全部有效权重为 0。桥接直接传给已有 `search.Query.ChannelWeights`，不复制或修改排序实现。runner 的 `--visual-weight`、`--speech-weight`、`--audio-weight` 只影响 fused，省略时继承所选快照或恢复状态的运行配置；旧配置没有默认乘数字段时仍为 1/1/1。visual/speech 单通道对照不受影响。
+仅 fused 请求可带 `channel_weights`，键为已配置通道，值为有限非负乘数；每个未显式指定的通道继承 `search.channel_weights`，配置中缺少的通道为 1。请求值逐通道覆盖默认乘数，最终有效权重为 `channels.yaml` 中基础权重 × 解析后的乘数；0 关闭该通道，不允许全部有效权重为 0。桥接直接传给已有 `search.Query.ChannelWeights`，不复制或修改排序实现。runner 的 `--visual-weight`、`--speech-weight`、`--audio-weight` 只影响 fused，省略时继承所选快照或恢复状态的运行配置；旧配置没有默认乘数字段时仍为 1/1/1。visual/speech 单通道对照由桥接显式设置对应通道乘数为 1，不继承融合默认乘数，也不接受用户传入权重。
 
 ## Python 评分接口
 
