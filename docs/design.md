@@ -161,7 +161,7 @@ flowchart LR
 | 句子（sentence） | 转录的切片单位：ASR 输出的一句话，过短的与相邻句合并 |
 | 通道（channel） | 一路向量召回：visual（画面）、speech（ASR 转录语义）、audio（环境声音与音乐） |
 | 向量空间（space） | 一个模型的一个版本产生的向量空间，如 `wemm-2b@r1`。只有同一空间的向量才能互相比较 |
-| active / shadow | 某通道当前用于查询的空间是 active；正在回填、等待评估的候选空间是 shadow |
+| active / shadow | 某通道默认查询空间是 active；回填、等待评估的候选空间是 shadow，索引就绪后可被单次请求显式选择 |
 | 切片版本（seg） | 切片规则的版本号，如 `grid@v1`、`sentence@v1`。规则一变，版本号就变 |
 | 片段（moment） | 返回给用户的结果：同一视频里相邻命中合并后的时间段，带跳转点和证据。查询时计算，不入库 |
 | 阶段（stage） | 一个视频要经过的处理步骤，如 probe、prepare_media、asr、`embed:visual:wemm-2b@r1` |
@@ -242,7 +242,7 @@ flowchart TB
 | Web 前端 | 登录、上传、项目、阶段轮询、重试、搜索、播放界面 | Agent 对话暂缓；业务校验由 Go 执行 |
 | api 进程 | REST、鉴权与工作区识别、项目和媒体管理、搜索、投递初始任务 | 不执行长时媒体处理；SSE、Agent、URL 导入暂缓 |
 | worker 进程 | Asynq 消费、阶段依赖、断点重试、补投与 embedding 回填；调用 ffmpeg 和 ML | 不提供对外业务接口；yt-dlp 导入暂缓 |
-| search（api 内） | 查询编码 → 多路召回 → 融合 → 合并片段和证据 | 不调用 LLM |
+| search（api 内） | 按范围列出模型与索引状态；校验每路选择 → 查询编码 → 多路召回 → 融合与证据 | 不调用 LLM；不安装插件或自动回填 |
 | space / mlclient（各 Go 进程内） | 多端点发现、身份校验、模型 ID 路由、HTTP 契约 | 不加载模型；不提供负载均衡或任意故障转移 |
 | 公共 ML 服务 `videohelper-ml` | HTTP、内部鉴权、媒体缓存、输入输出校验、模型注册与并发限制、runtime 诊断 | 不连业务数据库、队列或向量索引 |
 | 模型插件安装包 | 权重准备、模型加载、采样与预处理、embed / transcribe | 同 Python 进程内执行，不另设插件 HTTP 服务 |
@@ -257,7 +257,7 @@ flowchart TB
 ```mermaid
 flowchart TB
   HTTP["httpapi"] -->|"函数调用"| WS["workspace / library"]
-  HTTP -->|"函数调用"| SEARCH["search"]
+  HTTP -->|"模型目录 / 搜索选择"| SEARCH["search"]
   HTTP -->|"状态 / 重试"| PIPE["pipeline"]
   PIPE -->|"RunFunc 阶段处理"| ST["pipeline/stages"]
   PIPE -->|"任务 / 状态"| INF["platform：db · blob · queue · authn"]
@@ -265,7 +265,7 @@ flowchart TB
   SEARCH -->|"范围与元数据"| WS
   SEARCH -->|"编码空间 / 端点"| SPACE
   SEARCH -->|"查询编码"| ML["mlclient：HTTP 契约"]
-  SEARCH -->|"向量召回 / 原文"| IDX["index：pgvector / text_span"]
+  SEARCH -->|"索引就绪 / 向量召回 / 原文"| IDX["index：pgvector / text_span / stage_run"]
   ST -->|"编码 / 转录"| ML
   ST -->|"结果写入"| IDX
   ST -->|"探测 / 转码 / 缩略图"| MEDIA["media：ffprobe / ffmpeg"]
@@ -539,9 +539,20 @@ sequenceDiagram
   participant C as ML 进程 speech-audio-cpu
   participant G as Postgres / pgvector
 
-  B->>A: POST /v1/search
+  opt 调用方需要选择模型
+    B->>A: POST /v1/search/models（项目或视频范围）
+    A->>S: 函数调用 Models（工作区 + 范围）
+    S->>G: 查有效向量索引和匹配模型的已完成编码阶段
+    S-->>A: 各通道模型、默认值、索引状态与视频计数
+    A-->>B: channels（仅 status=ready 可选）
+  end
+  B->>A: POST /v1/search（可带 space_overrides、channel_weights）
   A->>S: 函数调用 Search（工作区 + 范围 + 原样查询）
-  S->>S: 校验范围与权重；选择 active 空间并解析端点
+  S->>S: 校验范围与权重；默认 active 或显式指定空间
+  opt 显式选择模型
+    S->>G: 再次检查对应索引与范围内完整覆盖
+    Note over A,G: 不兼容 400、未建完 409、模型不可用 503；不替换为其他模型
+  end
   par 按 space + 查询文本去重后编码
     S->>M: HTTP /v1/embed role=query
     M->>M: gate 内函数调用 WeMM 插件
@@ -573,8 +584,9 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-  Q["描述"] --> W["默认查询权重 1:1:0<br/>显式请求逐项覆盖默认；跳过零权重"]
-  W --> E["按已启用的 active space 编码<br/>同一 space + 同一查询文本只编码一次"]
+  Q["描述 + 范围 + 可选各路模型"] --> V["鉴权与范围校验<br/>显式模型：检查能力、在线状态与完整索引"]
+  V --> W["默认查询权重 1:1:0<br/>channel_weights 逐项覆盖；跳过零权重"]
+  W --> E["按默认 active 或显式空间编码<br/>同一 space + 同一查询文本只编码一次"]
   E --> R1["visual Top-K"]
   E --> R2["speech Top-K"]
   E --> R3["audio Top-K<br/>仅在显式启用时"]
@@ -592,6 +604,12 @@ flowchart LR
 - 某一路编码或召回失败时，跳过这一路继续，结果里标明缺了哪一路；全部可用路线失败才报错；这是当前实现。
 - 当前真实 WeMM 查询和文档编码共用串行闸门，查询可能等待索引；CLAP 可单独配置查询闸门。排队超时不开始推理；已开始的模型线程在 HTTP 超时后仍占名额直至结束，不能宣称查询与索引已完全隔离。
 - 每路取多少名、RRF 常数、权重、合并间隔都是参数，版本与实验记录保存在 [Evaluation.md](Evaluation.md)。`search.channel_weights` 是默认查询乘数，`Query.ChannelWeights` 同名值替换它，再乘 `channels.yaml` 基础权重；省略值按 1 处理。改变查询默认值不重建索引或修改模型。
+
+**按通道选模型的边界**：`POST /v1/search/models` 按当前工作区及请求范围返回可选项；`POST /v1/search` 的 `space_overrides` 为每路指定一个空间，未指定的沿用 active。选项要求支持文字查询，并分别支持 video（visual）、text（speech）、audio（audio）文档输入；视频、声音模型还须能处理 2.5 秒格子。同一个多模态空间可以出现在多路中；ASR 转录模型不在此列表。当前 WeMM 支持视频、文字、图片，不支持声音编码。
+
+安装插件、加载模型和完成索引是三件事。新空间先在 ML 服务加载并被发现，执行 `space add` 建索引，再加入对应通道的 shadow 并重启 worker 回填。目录依据该范围内 ready、未删除且具有对应媒体的视频，检查冻结空间 ID、fingerprint、切片版本匹配的编码阶段是否全部 done；写了一部分向量不算完成，静音 speech 正常完成但没有句子仍算完成。检查以整段视频为单位，不按 `time_range` 放宽；没有适用视频时计数为 0/0，不代表有检索结果。
+
+显式模型未就绪会在编码前拒绝请求，不会自动回退或触发回填；运行中发生故障仍按 `skipped_channels` 报告。选择模型不会开启权重为 0 的声音通道，须同时传 `channel_weights.audio=1`。选择仅对本次请求有效，不改 active、后台索引计划或部署结构。接口已提供，Web 模型选择控件由后续前端工作接入。
 
 ### 6.6 Agent 对话（未来设计，暂缓）
 
@@ -638,7 +656,8 @@ flowchart LR
   EP --> C["videohelper space add<br/>登记 + 建部分索引"]
   C --> D["channels.yaml 加 shadow<br/>重启 Go 进程加载配置"]
   D --> E["reconciler 回填 ready 视频<br/>新计划同时编码候选空间"]
-  E --> F{"eval：效果达标？<br/>所需覆盖率达标？"}
+  E --> SEL["POST /v1/search/models 检查范围<br/>ready 后可显式选择候选进行搜索"]
+  SEL --> F{"eval：效果达标？<br/>所需覆盖率达标？"}
   F -->|"是"| G["配置提为 active<br/>重启 Go；保留旧空间用于回滚"]
   F -->|"否"| H["移出 shadow 并重载配置<br/>确认无旧任务后显式清理"]
   G --> I["旧任务完成且回滚窗口结束后<br/>显式清理旧向量、停止旧服务"]

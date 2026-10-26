@@ -1,5 +1,5 @@
 # 召回通道：每个通道用哪个 space。改这里就能换模型，Go 代码不用动。
-# active：参与查询；shadow：只回填和评估，不参与查询。
+# active：默认查询；shadow：回填与评估，索引就绪后可被单次请求显式选择。
 channels:
   visual:
     doc: video              # 文档输入类型，必须在 space 的 doc_inputs 里
