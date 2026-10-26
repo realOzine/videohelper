@@ -1,0 +1,151 @@
+services:
+  postgres:
+    image: pgvector/pgvector:0.8.7-pg16-bookworm
+    platform: linux/amd64
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: videohelper
+      POSTGRES_PASSWORD: ${VH_DB_PASSWORD:?set VH_DB_PASSWORD}
+      POSTGRES_DB: videohelper
+    volumes:
+      - /var/lib/videohelper/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, pg_isready -U videohelper -d videohelper]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    stop_grace_period: 60s
+
+  redis:
+    image: redis:7.4.7-alpine
+    platform: linux/amd64
+    restart: unless-stopped
+    command: [redis-server, --appendonly, 'yes', --appendfsync, everysec]
+    volumes:
+      - /var/lib/videohelper/redis:/data
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+    stop_grace_period: 60s
+
+  auth:
+    image: node:24.21.0-alpine
+    platform: linux/amd64
+    restart: unless-stopped
+    command: [node, /srv/demo-auth.mjs, serve]
+    volumes:
+      - ./demo-auth.mjs:/srv/demo-auth.mjs:ro
+      - /var/lib/videohelper/auth:/data
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://127.0.0.1:18001/jwks').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    stop_grace_period: 15s
+
+  speech-audio:
+    image: ${ML_CPU_IMAGE:?set ML_CPU_IMAGE}
+    platform: linux/amd64
+    restart: unless-stopped
+    init: true
+    environment: &ml-environment
+      ML_INTERNAL_TOKEN: ${ML_INTERNAL_TOKEN:?set ML_INTERNAL_TOKEN}
+      AWS_REGION: ${AWS_REGION:?set AWS_REGION}
+      HF_HUB_OFFLINE: '1'
+      ML_FAKE: '0'
+      ML_CACHE_MAX_BYTES: '5000000000'
+      OMP_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+      TOKENIZERS_PARALLELISM: 'false'
+    volumes:
+      - /var/lib/videohelper/speech-audio-cache:/cache
+    healthcheck: &ml-healthcheck
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/readyz', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10m
+    stop_grace_period: 90s
+
+  wemm-cuda:
+    image: ${ML_CUDA_IMAGE:?set ML_CUDA_IMAGE}
+    platform: linux/amd64
+    restart: unless-stopped
+    init: true
+    environment: *ml-environment
+    volumes:
+      - /var/lib/videohelper/wemm-cache:/cache
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    healthcheck: *ml-healthcheck
+    stop_grace_period: 90s
+
+  api:
+    image: ${GO_IMAGE:?set GO_IMAGE}
+    platform: linux/amd64
+    restart: unless-stopped
+    init: true
+    command: [-config, /etc/videohelper/config.yaml, api]
+    environment: &go-environment
+      VH_DB_URL: ${VH_DB_URL:?set VH_DB_URL}
+      VH_REDIS_ADDR: ${VH_REDIS_ADDR:?set VH_REDIS_ADDR}
+      VH_ML_TOKEN: ${VH_ML_TOKEN:?set VH_ML_TOKEN}
+      AWS_REGION: ${AWS_REGION:?set AWS_REGION}
+    volumes: &go-volumes
+      - ./config.yaml:/etc/videohelper/config.yaml:ro
+      - ./channels.yaml:/etc/videohelper/channels.yaml:ro
+      - /var/lib/videohelper/.local:/var/lib/videohelper/.local
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      auth: {condition: service_healthy}
+      speech-audio: {condition: service_healthy}
+      wemm-cuda: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, curl, -fsS, --max-time, '3', http://127.0.0.1:8080/readyz]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+    stop_grace_period: 30s
+
+  worker:
+    image: ${GO_IMAGE:?set GO_IMAGE}
+    platform: linux/amd64
+    restart: unless-stopped
+    init: true
+    command: [-config, /etc/videohelper/config.yaml, worker]
+    environment: *go-environment
+    volumes: *go-volumes
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      speech-audio: {condition: service_healthy}
+      wemm-cuda: {condition: service_healthy}
+    stop_grace_period: 90s
+
+  web:
+    image: ${WEB_IMAGE:?set WEB_IMAGE}
+    platform: linux/amd64
+    restart: unless-stopped
+    ports:
+      - 127.0.0.1:8080:80
+    depends_on:
+      api: {condition: service_healthy}
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, http://127.0.0.1/healthz]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    stop_grace_period: 30s
+
+networks:
+  default:
+    driver: bridge
