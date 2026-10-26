@@ -592,6 +592,7 @@ func (r *Registry) Sync(ctx context.Context) error             // 启动时执�
 func (r *Registry) Get(id string) (Info, bool)
 func (r *Registry) Resolve(id string) (endpoint string, ok bool) // 传给 mlclient
 func (r *Registry) Transcriber() (info mlclient.TranscriberInfo, endpoint string, ok bool)
+func (r *Registry) GetTranscriber(id string) (info mlclient.TranscriberInfo, endpoint string, ok bool)
 
 type Channel struct {
     Name   string   // visual | speech | audio
@@ -614,6 +615,10 @@ func (c *Channels) Validate(ctx context.Context, r *Registry) error
 | 表里有，fingerprint 一致 | 无事 |
 | 表里有，fingerprint 不一致 | 标记 `disabled=true`，打错误日志并告警；这个空间不再写入，也不再查询 |
 | 维度和表里不一致 | 同上 |
+| 同 ID 多个提供者，未显式绑定 | 不提供路由；不因此永久禁用数据库中的空间 |
+| 已绑定端点不可用 | 不回退到其他提供者，待下次发现恢复 |
+
+`Transcriber()` 选择配置中的新任务模型；`GetTranscriber(id)` 用于旧任务冻结的模型 ID，调用方继续核对 fingerprint。
 
 `Channels.Validate` 在启动时检查 channels.yaml 里的每个 (channel, space)：已经登记、文档类型被这个空间支持，并且部分索引存在且有效（`index.VectorIndexReady`）。缺了就拒绝启动，并提示先执行 `space add`。
 
@@ -2024,7 +2029,7 @@ Redis 里没有任何不能丢的数据。Redis 清空后，reconciler 会根据
 
 ```text
 {bucket}/
-├── models/{model_id}/            # 模型权重（提议）：从 HF、ModelScope 同步过来的固定版本，ml 启动时从这里加载
+├── models/{model_id}/            # 预留；S3 权重分发尚未实现，当前使用 prepare + HF 缓存
 └── workspaces/{workspace_id}/videos/{video_id}/
     ├── source.{ext}              # 原片：上传或导入的文件
     └── runs/{generation}/{attempt}/
@@ -2039,7 +2044,7 @@ Redis 里没有任何不能丢的数据。Redis 清空后，reconciler 会根据
 | 预签名有效期 | 上传分片 1 小时（过期后用 `upload-parts` 接口重新签发）；播放、缩略图 1 小时 |
 | 浏览器 | 只拿到预签名 URL，不直接拥有任何 S3 权限 |
 | bucket 的 CORS | 浏览器从前端域名直传 S3，所以 bucket 要允许前端来源的 PUT 和 GET，并暴露 `ETag` 响应头。不暴露的话，浏览器读不到每个分片的 ETag，就没法调用 complete |
-| Python 的权限 | 只读，并且只能读 `workspaces/*/videos/*/normalized_video.mp4` 和 `models/*`（后者是提议） |
+| Python 的权限 | 只读业务媒体；未来采用 S3 权重分发时再增加 `models/*` 的只读权限 |
 | worker 的权限 | 读写 `workspaces/*` |
 | 保留期 | 软删除到期后随视频一起清除；具体期限待定（设计文档问题 8） |
 
@@ -2468,7 +2473,7 @@ ml/.venv/bin/python Eval/tools/score.py compare --before Eval/runs/baseline-v1-a
 
 - **密钥**：数据库地址、Redis 地址、LLM key、S3 凭证都只放环境变量。配置文件里只写环境变量的名字。
 - **平台登录态**：首版不给 yt-dlp 配置任何平台账号（已定）。
-- **ml 服务**：只在内网可达，并且校验共享令牌（已定）；S3 权限只读，且只能读标准化视频和模型权重（`models/*`，提议）。
+- **ml 服务**：只在内网可达，并且校验共享令牌；S3 权限只读业务媒体。插件与服务共享进程权限，依赖和模型代码须来自受信任来源。
 - **数据库**：RDS 放在私有子网，安全组只放行 api 和 worker；连接走 TLS；主账号和应用用的账号分开，密码放 Secrets Manager。
 - **上传**：不设大小上限（已定）；`content_type` 白名单。真正能不能识别，由 probe 判断。
 - **跨域**：API 只允许 `server.cors_origins` 里的前端来源。令牌放在 `Authorization` 头里，不用 cookie 鉴权，所以不需要额外防 CSRF。
@@ -2550,7 +2555,7 @@ MinIO 源码固定为 `v0.0.0-20251015172955-9e49d5e7a648`。本地默认凭证�
 - **迁移要向后兼容**：滚动发布时新旧代码同时在跑，所以表结构「先加后删」，不在同一次发布里删掉旧代码还在用的字段。回滚时只回滚代码，不回滚数据库。
 - **密钥**：数据库地址、DeepSeek key、ML 共享令牌放在 AWS Secrets Manager，ECS 启动任务时注入。
 - **数据库不归部署流程管**：RDS 实例由 `infra/` 创建一次，之后一直保留。`deploy.yml` 只执行迁移，不会重建数据库。
-- **ml 镜像**：只放代码和依赖，不打包模型权重；权重在启动时从 S3 的 `models/` 拉取并缓存到本地（10.3 节），否则镜像会有几十 GB。
+- **ml 镜像**：按 profile 安装代码与锁定依赖，不打包权重。先用 `prepare` 将固定修订下载到挂载缓存，再离线启动（10.3 节）。MPS 使用 Mac 原生环境；CUDA 镜像需要目标 Linux GPU 环境验收。
 - **staging 与审批**：要不要 staging 环境、生产发布要不要人工审批，待定（设计文档问题 23）。
 
 ---
@@ -2633,4 +2638,4 @@ MinIO 源码固定为 `v0.0.0-20251015172955-9e49d5e7a648`。本地默认凭证�
 
 - **29. 短链解析**：`b23.tv` 短链由 Go 先解析成 `bilibili.com` 地址，再交给 yt-dlp（本文目前的做法），还是直接交给 yt-dlp 处理？前者 Go 要多发一次请求，但能在下载前确认落地域名在白名单里。
 - **31. 重新签发分片 URL**：上传不设上限之后，超大文件可能要传好几个小时，一开始签发的 URL 会过期，所以本文提议增加 `POST /v1/videos/{id}/upload-parts` 接口（4.4 节）。确认要加吗？
-- **32. 模型权重的来源**：原来文档里有三种说法：S3（14.4 节）、HF 仓库（10.3 节）、ModelScope（10.10 节），而 ml 服务的 S3 权限只能读标准化视频，从 S3 拉权重会被拒绝。本文提议统一成 S3（10.3 节）：用一个同步脚本把固定版本的权重从 HF、ModelScope 拷到 `models/`，ml 启动时从这里加载，同时开通 `models/*` 的只读权限。好处是线上不依赖外网、版本固定；代价是换模型时多一步同步。另一个做法是启动时直接从 HF、ModelScope 下载：少一步，但 ml 要能访问外网，还受对方限流影响。确认用 S3 吗？
+- **32. 模型权重的分发**：当前插件用 `prepare` 下载固定 Hugging Face 修订，部署时挂载缓存并离线启动。S3 镜像分发、同步与权限管理暂缓，未来有离线集群需求再补；不属于当前启动依赖。

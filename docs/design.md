@@ -138,7 +138,7 @@ flowchart LR
 | 换或新增 embedding 模型 | 安装实现现有契约的插件包，选择独立运行配置；执行 `videohelper space add` 建索引；`channels.yaml` 加候选 | Go 业务代码、表结构、对外 API |
 | 换 LLM，或接入 LLM gateway | 配置里的 `base_url` / 模型名 | 工具、检索、业务代码 |
 | 换向量库（pgvector → Qdrant） | Go 的 `index` 包 | 检索算法、流水线编排、API |
-| 加新通道（比如 OCR） | 新增一个产出阶段；`channels.yaml` 加一路；需要新模型时 Python 加 adapter | 检索融合、API、其他阶段 |
+| 加新通道（比如 OCR） | 新增产出阶段与证据契约；`channels.yaml` 加一路；模型通过插件提供 | 已有通道的处理阶段 |
 | 改切片规则 | Go 的 `timeline` 包 + 切片版本号 + 回填（存量视频重跑的入口首版不做，见问题 25） | 引用、跳转（按时间锚定） |
 | 换 ASR 模型 | 安装插件并显式选择转录模型；旧任务仍按冻结的模型 ID 与指纹执行；存量重跑入口另行实现（问题 25） | 已有转录契约、业务代码 |
 | 扩容 | 部署配置：同一镜像多开副本 | 代码 |
