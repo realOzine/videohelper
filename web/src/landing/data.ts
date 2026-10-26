@@ -77,10 +77,10 @@ export const NOTES = [
   ];
 // [stop zh, title zh, detail zh, stop en, title en, detail en]
 export const STAGES = [
-    ['上传', '先把视频交给它', '浏览器按 16 MB 分片直接传到存储，不限大小。', 'Upload', 'Start by handing it the video', 'The browser sends 16 MB parts straight to storage, with no size limit.'],
-    ['预处理', '然后切成一格一格', '转成 720p 的标准视频，并生成缩略帧。画面和声音每 2.5 秒一格。', 'Prepare', 'Then it is cut into cells', 'A 720p working copy and its thumbnails; picture and sound in 2.5-second cells.'],
-    ['编码', '接着三路同时编码', '画面和声音按格编码，台词先转成句子再编码。', 'Encode', 'Three channels encode at once', 'Picture and sound by the cell; speech becomes sentences first.'],
-    ['搜索', '最后一句话找到它', '三路结果按名次合并成片段，点一下从那一秒播放。', 'Search', 'One sentence finds the moment', 'The three ranks merge into spans; one click plays from that second.'],
+    ['上传', '先把视频\u200b交给它', '浏览器按 16 MB 分片直接传到存储，不限大小。', 'Upload', 'Start by handing it the video', 'The browser sends 16 MB parts straight to storage, with no size limit.'],
+    ['预处理', '然后\u200b切成一格一格', '转成 720p 的标准视频，并生成缩略帧。画面和声音每 2.5 秒一格。', 'Prepare', 'Then it is cut into cells', 'A 720p working copy and its thumbnails; picture and sound in 2.5-second cells.'],
+    ['编码', '接着\u200b三路同时编码', '画面和声音按格编码，台词先转成句子再编码。', 'Encode', 'Three channels encode at once', 'Picture and sound by the cell; speech becomes sentences first.'],
+    ['搜索', '最后\u200b一句话找到它', '三路结果按名次合并成片段，点一下从那一秒播放。', 'Search', 'One sentence finds the moment', 'The three ranks merge into spans; one click plays from that second.'],
   ];
 // [question zh, answer zh, question en, answer en]
 export const FAQ = [

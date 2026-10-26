@@ -231,7 +231,7 @@ function How({ l }: { l: 0 | 1 }) {
     return () => clearTimeout(timer);
   }, [i, shown]);
   const s = STAGES[shown], o = l * 3;
-  const pic = <div className={cx(film, 'mb-3 aspect-[16/10] rounded-lg')}><img src={media('surf.jpg')} width={720} height={405} alt={l ? 'Surfers waiting for a wave' : '海上等浪的冲浪者'} /></div>;
+  const pic = <div className={cx(film, 'mb-3 aspect-video rounded-lg')}><img src={media('surf.jpg')} width={720} height={405} alt={l ? 'Surfers waiting for a wave' : '海上等浪的冲浪者'} /></div>;
   const bar = (p: number) => <div className="mt-1.5 mb-2.5 h-1.5 overflow-hidden rounded-[3px] bg-ink-4"><i className="block h-full origin-left bg-red" style={{ transform: `scaleX(${p})` }} /></div>;
   const frag = [
     <>{pic}<div className="text-fg-soft">{l ? 'Uploading' : '正在上传'}</div><b>surf_tel_aviv.mp4</b>{bar(0.41)}<div className="text-fg-soft">{l ? '3 / 7 parts · 104 MB · 41%' : '3 / 7 分片 · 104 MB · 41%'}</div></>,
@@ -243,24 +243,25 @@ function How({ l }: { l: 0 | 1 }) {
   const fade = cx('transition-opacity duration-200', fading && 'opacity-0');
   return (
     <>
-      <div className="bg-ink px-(--m) pt-[72px] pb-[150px] max-sm:pt-7 max-sm:pb-6">
-        <h2 id="howh" className={cx('disp max-w-[9em] text-[clamp(44px,4.8vw,80px)]', l ? 'max-sm:text-[12vw]' : 'max-sm:text-[9vw]', fade)}>{s[1 + o]}</h2>
-        <p className={cx('mt-6 max-w-[40ch]', fade)}>{s[2 + o]}</p>
+      <div className="flex flex-col justify-center bg-ink py-24 pr-[clamp(24px,5vw,96px)] pl-(--m) max-sm:px-(--m) max-sm:pt-7 max-sm:pb-8">
+        <p className="font-semibold text-red-text tabular-nums">0{shown + 1}<span className="text-fg-soft"> / 04 · {s[o]}</span></p>
+        <h2 id="howh" className={cx('disp mt-5 max-w-[10em] text-[clamp(40px,4.6vw,104px)]', l ? 'max-sm:text-[12vw]' : 'break-keep max-sm:text-[10vw]', fade)}>{s[1 + o]}</h2>
+        <p className={cx('mt-8 min-h-[3.4em] max-w-[26em] text-[clamp(18px,1.25vw,22px)] leading-[1.7] max-sm:mt-5', fade)}>{s[2 + o]}</p>
+        <div className="mt-16 max-w-[560px] max-sm:mt-10">
+          <label htmlFor="stage" className="sr-only">{t('how.label')}</label>
+          <input id="stage" type="range" min={0} max={3} step={1} value={i} onChange={(e) => setI(Number(e.target.value))} aria-valuetext={`${STAGES[i][o]}: ${STAGES[i][1 + o]}`}
+            className="stage-range" style={{ '--pass': `${i / 3 * 100}%` } as React.CSSProperties} />
+          <ol className="mt-2.5 grid grid-cols-4 text-(length:--step-small) text-fg-soft">
+            {STAGES.map((st, k) => (
+              <li key={k} aria-current={k === i ? 'step' : undefined} className={cx(k === i && 'text-fg', k === 1 && 'text-center -translate-x-[17%]', k === 2 && 'text-center translate-x-[17%]', k === 3 && 'text-right')}>
+                <button type="button" className="py-1 transition-colors hover:text-fg" onClick={() => setI(k)}>{st[o]}</button>
+              </li>
+            ))}
+          </ol>
+        </div>
       </div>
-      <div className="grid place-items-center bg-ink-2 px-7 pt-[72px] pb-[150px] max-sm:order-first max-sm:min-h-[46svh] max-sm:px-4 max-sm:py-7">
-        <div className={cx('w-[min(600px,100%)] rounded-[14px] bg-ink-3 p-4 text-[15px] leading-[22px]', fade)}>{frag}</div>
-      </div>
-      <div className="absolute right-(--mr) bottom-9 left-(--m) max-sm:static max-sm:pr-(--mr) max-sm:pb-6 max-sm:pl-(--m)">
-        <label htmlFor="stage" className="sr-only">{t('how.label')}</label>
-        <input id="stage" type="range" min={0} max={3} step={1} value={i} onChange={(e) => setI(Number(e.target.value))} aria-valuetext={`${STAGES[i][o]}: ${STAGES[i][1 + o]}`}
-          className="stage-range" style={{ '--pass': `${i / 3 * 100}%` } as React.CSSProperties} />
-        <ol className="mt-2.5 grid grid-cols-4 text-(length:--step-small) text-fg-soft max-sm:grid-cols-2 max-sm:gap-x-3 max-sm:gap-y-1">
-          {STAGES.map((st, k) => (
-            <li key={k} aria-current={k === i ? 'step' : undefined} className={cx(k === i && 'text-fg', k === 1 && 'text-center -translate-x-[17%]', k === 2 && 'text-center translate-x-[17%]', k === 3 && 'text-right', 'max-sm:translate-x-0 max-sm:text-left')}>
-              <button type="button" className="py-1 transition-colors hover:text-fg" onClick={() => setI(k)}>{st[o]}</button>
-            </li>
-          ))}
-        </ol>
+      <div className="grid place-items-center bg-ink-2 px-[clamp(24px,4vw,72px)] py-24 max-sm:order-first max-sm:px-4 max-sm:py-7">
+        <div className={cx('w-full max-w-[720px] rounded-[14px] bg-ink-3 p-4 text-[15px] leading-[22px]', fade)}>{frag}</div>
       </div>
     </>
   );
