@@ -733,7 +733,7 @@ func (s *Service) Search(ctx context.Context, p workspace.Principal, q Query) (R
 
 #### agent（暂缓）
 
-- **职责**：用 ADK 组装 Agent；把一条用户消息变成产品事件流，细节见[第 9 章](#9-agent)。
+- **职责**：用 ADK 组装 Agent；把一条用户消息变成产品事件流，细节见[第 9 章](#9-agent暂缓)。
 - **不负责**：直接写 SQL；HTTP 细节。所有 ADK 类型都不出这个包。
 
 ```go

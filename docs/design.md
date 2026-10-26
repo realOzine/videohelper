@@ -519,7 +519,7 @@ stateDiagram-v2
 ```mermaid
 stateDiagram-v2
   [*] --> pending: 生成计划
-  pending --> queued: 依赖全部完成，已投递
+  pending --> queued: 依赖满足，提交后投递
   queued --> running: worker 取出
   running --> done: 成功提交
   running --> queued: 出错，等待重试
