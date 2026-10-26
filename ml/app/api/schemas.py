@@ -95,6 +95,7 @@ class RuntimeResponse(Schema):
     runtime_version: Literal[1]
     service_version: str
     python_version: str
+    packages: dict[str, str]
     fake: bool
     models: list[RuntimeModel]
 

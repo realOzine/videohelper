@@ -10,7 +10,14 @@ def describe_runtime(registry, *, fake: bool) -> RuntimeResponse:
         service_version = version("videohelper-ml")
     except PackageNotFoundError:
         service_version = "uninstalled"
-    infos = {info.id: info for info in registry.spaces().spaces + registry.spaces().transcribers}
+    packages = {}
+    for name in ("torch", "torchvision", "torchaudio", "transformers", "funasr", "numpy", "av"):
+        try:
+            packages[name] = version(name)
+        except PackageNotFoundError:
+            pass
+    spaces = registry.spaces()
+    infos = {info.id: info for info in spaces.spaces + spaces.transcribers}
     models = []
     for config in registry.configs.values():
         distribution = None if fake else adapter_distribution(config.adapter)
@@ -32,6 +39,7 @@ def describe_runtime(registry, *, fake: bool) -> RuntimeResponse:
         runtime_version=1,
         service_version=service_version,
         python_version=platform.python_version(),
+        packages=packages,
         fake=fake,
         models=models,
     )

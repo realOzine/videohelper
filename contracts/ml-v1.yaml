@@ -602,6 +602,11 @@ components:
         python_version:
           title: Python Version
           type: string
+        packages:
+          additionalProperties:
+            type: string
+          title: Packages
+          type: object
         fake:
           title: Fake
           type: boolean
@@ -614,6 +619,7 @@ components:
       - runtime_version
       - service_version
       - python_version
+      - packages
       - fake
       - models
       title: RuntimeResponse

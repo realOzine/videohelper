@@ -6,8 +6,8 @@ dependencies = [
   "videohelper-ml==0.1.0",
   "videohelper-ml-funasr[inference]==0.1.0",
   "videohelper-ml-clap[inference]==0.1.0",
-  "torch==2.10.0",
-  "torchaudio==2.10.0",
+  "torch==2.14.1",
+  "torchaudio==2.11.0",
 ]
 
 [tool.uv]

@@ -5,7 +5,7 @@ models:
   weights: tencent/WeMM-Embedding-2B
   revision: bbd6cd4bf52cfc6716f752a2df80b2706720bd95
   device: cuda
-  dtype: bfloat16
+  dtype: float16
   dim: 1024
   metric: cosine
   query_inputs:
