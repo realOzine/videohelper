@@ -35,18 +35,30 @@ func TestASRAndEmbeddingCheckpointsIntegration(t *testing.T) {
 	embedCalls := 0
 	var speechInputs []mlclient.EmbedInput
 	failASR := true
+	var asrMode atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/v1/spaces":
 			span := 30000
-			json.NewEncoder(w).Encode(mlclient.SpacesResponse{Spaces: []mlclient.SpaceInfo{{ID: "wemm-2b@r1", Dim: 2, Metric: "cosine", QueryInputs: []string{"text"}, DocInputs: []string{"video", "text", "image"}, MaxSpanMs: &span, MaxBatch: 2, Fingerprint: spaceFingerprint}}, Transcribers: []mlclient.TranscriberInfo{{ID: "paraformer-zh@r1", Languages: []string{"zh"}, MaxWindowMs: 6000, Fingerprint: asrFingerprint}}})
+			models := []mlclient.TranscriberInfo{{ID: "replacement-asr@r1", Languages: []string{"zh"}, MaxWindowMs: 6000, Fingerprint: "sha256:" + strings.Repeat("c", 64)}}
+			if asrMode.Load() != 1 {
+				fingerprint := asrFingerprint
+				if asrMode.Load() == 2 {
+					fingerprint = models[0].Fingerprint
+				}
+				models = append(models, mlclient.TranscriberInfo{ID: "paraformer-zh@r1", Languages: []string{"zh"}, MaxWindowMs: 6000, Fingerprint: fingerprint})
+			}
+			json.NewEncoder(w).Encode(mlclient.SpacesResponse{Spaces: []mlclient.SpaceInfo{{ID: "wemm-2b@r1", Dim: 2, Metric: "cosine", QueryInputs: []string{"text"}, DocInputs: []string{"video", "text", "image"}, MaxSpanMs: &span, MaxBatch: 2, Fingerprint: spaceFingerprint}}, Transcribers: models})
 		case "/v1/transcribe":
 			var request mlclient.TranscribeRequest
 			if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
 				t.Error(err)
 				w.WriteHeader(400)
 				return
+			}
+			if request.Model != "paraformer-zh@r1" {
+				t.Errorf("frozen plan called replacement ASR: %s", request.Model)
 			}
 			mu.Lock()
 			asrCalls[request.StartMs]++
@@ -89,9 +101,9 @@ func TestASRAndEmbeddingCheckpointsIntegration(t *testing.T) {
 	}))
 	defer server.Close()
 	var registry *space.Registry
-	mlConfig := config.MLConfig{Endpoints: []string{server.URL}, Token: "fixture", QueryTimeout: time.Second, EmbedTimeout: time.Second, TranscribeTimeout: time.Second, EmbedBatch: 2, TranscribeChunkMS: 2000, TranscribeOverlapMS: 500}
+	mlConfig := config.MLConfig{Transcriber: "replacement-asr@r1", Endpoints: []string{server.URL}, Token: "fixture", QueryTimeout: time.Second, EmbedTimeout: time.Second, TranscribeTimeout: time.Second, EmbedBatch: 2, TranscribeChunkMS: 2000, TranscribeOverlapMS: 500}
 	client := mlclient.New(mlConfig, func(id string) (string, bool) { return registry.Resolve(id) })
-	registry = space.New(pool, client)
+	registry = space.New(pool, client, mlConfig)
 	if err := registry.Sync(ctx); err != nil {
 		t.Fatal(err)
 	}
@@ -105,6 +117,10 @@ func TestASRAndEmbeddingCheckpointsIntegration(t *testing.T) {
 	video, err := library.GetForWorker(ctx, pool, videoID)
 	if err != nil {
 		t.Fatal(err)
+	}
+	newPlan, err := pipeline.ExpandPlan(video, nil, registry)
+	if err != nil || newPlan[1].Options.Transcriber != "replacement-asr@r1" || newPlan[1].Options.Fingerprint == asrFingerprint {
+		t.Fatalf("new plan did not freeze configured replacement: %+v %v", newPlan, err)
 	}
 	h := New(pool, objects, client, registry, Config{ML: mlConfig, PresignTTL: time.Minute})
 	sc := &pipeline.StageCtx{Video: video, Payload: queue.StagePayload{WorkspaceID: workspaceID, VideoID: videoID, Stage: "asr", Version: "v1.asr"}, Attempt: 1, Def: pipeline.StageDef{Options: pipeline.StageOptions{Transcriber: "paraformer-zh@r1", Fingerprint: asrFingerprint, MaxWindowMs: 6000}}}
@@ -193,6 +209,21 @@ func TestASRAndEmbeddingCheckpointsIntegration(t *testing.T) {
 			}
 		})
 	}
+	checkpoint := append([]byte(nil), sc.Progress...)
+	for _, mode := range []int32{1, 2} {
+		asrMode.Store(mode)
+		if err := registry.Sync(ctx); err != nil {
+			t.Fatal(err)
+		}
+		_, err := h.ASR(ctx, sc)
+		want := apperr.Unavailable
+		if mode == 2 {
+			want = apperr.Invalid
+		}
+		if apperr.KindOf(err) != want || !bytes.Equal(sc.Progress, checkpoint) {
+			t.Fatalf("frozen ASR absence/drift accepted or rewrote checkpoint: mode=%d err=%v", mode, err)
+		}
+	}
 	info, _ := registry.Get("wemm-2b@r1")
 	sc.Def.Options = pipeline.StageOptions{Channel: "visual", Seg: "grid@v1", Space: info}
 	sc.Payload.Stage = "embed:visual:wemm-2b@r1"
@@ -271,7 +302,7 @@ func TestModelAbsenceAndIdentityDriftIntegration(t *testing.T) {
 	}))
 	defer server.Close()
 	client := mlclient.New(config.MLConfig{Endpoints: []string{server.URL}, Token: "fixture"}, nil)
-	registry := space.New(pool, client)
+	registry := space.New(pool, client, config.MLConfig{Transcriber: "asr@r1"})
 	if err := registry.Sync(ctx); err != nil {
 		t.Fatal(err)
 	}

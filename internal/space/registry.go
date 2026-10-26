@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/ozine/videohelper/internal/config"
 	"github.com/ozine/videohelper/internal/mlclient"
 	"github.com/ozine/videohelper/internal/platform/db"
 	"github.com/ozine/videohelper/internal/space/spacedb"
@@ -32,6 +33,7 @@ type transcriber struct {
 }
 
 type Registry struct {
+	selectedASR  string
 	pool         *pgxpool.Pool
 	ml           *mlclient.Client
 	syncMu       sync.Mutex
@@ -40,8 +42,8 @@ type Registry struct {
 	transcribers map[string]transcriber
 }
 
-func New(pool *pgxpool.Pool, client *mlclient.Client) *Registry {
-	return &Registry{pool: pool, ml: client, spaces: map[string]Info{}, transcribers: map[string]transcriber{}}
+func New(pool *pgxpool.Pool, client *mlclient.Client, cfg config.MLConfig) *Registry {
+	return &Registry{selectedASR: cfg.Transcriber, pool: pool, ml: client, spaces: map[string]Info{}, transcribers: map[string]transcriber{}}
 }
 
 // Sync discovers outside the transaction and preserves persisted identity on fingerprint drift.
@@ -145,13 +147,13 @@ func (r *Registry) Resolve(id string) (string, bool) {
 }
 
 func (r *Registry) Transcriber() (mlclient.TranscriberInfo, string, bool) {
+	return r.GetTranscriber(r.selectedASR)
+}
+
+func (r *Registry) GetTranscriber(id string) (mlclient.TranscriberInfo, string, bool) {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	ids := slices.Sorted(maps.Keys(r.transcribers))
-	if len(ids) == 0 {
-		return mlclient.TranscriberInfo{}, "", false
-	}
-	selected := r.transcribers[ids[0]]
+	selected, ok := r.transcribers[id]
 	selected.info.Languages = slices.Clone(selected.info.Languages)
-	return selected.info, selected.endpoint, true
+	return selected.info, selected.endpoint, ok
 }

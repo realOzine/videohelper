@@ -137,7 +137,7 @@ func TestSearchPostgresIntegration(t *testing.T) {
 	defer server.Close()
 	var registry *space.Registry
 	ml := mlclient.New(config.MLConfig{Endpoints: []string{server.URL}, Token: "explicit-contract-test", QueryTimeout: time.Second}, func(id string) (string, bool) { return registry.Resolve(id) })
-	registry = space.New(pool, ml)
+	registry = space.New(pool, ml, config.MLConfig{})
 	if err := registry.Sync(ctx); err != nil {
 		t.Fatal(err)
 	}

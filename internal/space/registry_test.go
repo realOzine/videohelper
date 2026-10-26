@@ -40,6 +40,41 @@ func TestCollectEndpointIdentity(t *testing.T) {
 	}
 }
 
+func TestConfiguredAndFrozenTranscribers(t *testing.T) {
+	metadata := fixtureMetadata()
+	old := metadata.Transcribers[0]
+	replacement := old
+	replacement.ID = "replacement-asr@r1"
+	replacement.Fingerprint = "sha256:" + strings.Repeat("c", 64)
+	metadata.Transcribers = append(metadata.Transcribers, replacement)
+	_, models, _ := collect(map[string]mlclient.SpacesResponse{"http://ml": metadata})
+	registry := New(nil, nil, config.MLConfig{Transcriber: replacement.ID})
+	registry.transcribers = models
+	selected, endpoint, ok := registry.Transcriber()
+	if !ok || selected.ID != replacement.ID || endpoint != "http://ml" {
+		t.Fatalf("configured model not selected: %+v %q %v", selected, endpoint, ok)
+	}
+	frozen, _, ok := registry.GetTranscriber(old.ID)
+	if !ok || frozen.ID != old.ID || frozen.Fingerprint != old.Fingerprint {
+		t.Fatalf("frozen model unavailable after selection switch: %+v %v", frozen, ok)
+	}
+	frozen.Languages[0] = "mutated"
+	frozen, _, _ = registry.GetTranscriber(old.ID)
+	if frozen.Languages[0] != "zh" {
+		t.Fatal("caller mutated transcriber metadata")
+	}
+	delete(registry.transcribers, old.ID)
+	if _, _, ok := registry.GetTranscriber(old.ID); ok {
+		t.Fatal("removed frozen model fell back to configured replacement")
+	}
+	for _, id := range []string{"", "missing@r1"} {
+		registry.selectedASR = id
+		if _, _, ok := registry.Transcriber(); ok {
+			t.Fatalf("missing configured model %q fell back to an available model", id)
+		}
+	}
+}
+
 func TestRegistryIntegration(t *testing.T) {
 	dsn := os.Getenv("VH_TEST_SPACE_DB_URL")
 	if dsn == "" {
@@ -75,7 +110,7 @@ func TestRegistryIntegration(t *testing.T) {
 	defer server.Close()
 	var registry *Registry
 	client := mlclient.New(config.MLConfig{Endpoints: []string{server.URL}, Token: "test"}, func(id string) (string, bool) { return registry.Resolve(id) })
-	registry = New(pool, client)
+	registry = New(pool, client, config.MLConfig{Transcriber: "paraformer-zh@r1"})
 	if err := registry.Sync(ctx); err != nil {
 		t.Fatal(err)
 	}
