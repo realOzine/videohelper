@@ -1,14 +1,19 @@
-// Search: the hit lanes are the scrubber, one row per channel across the whole video; the playhead runs through all three.
+// Search, seen two ways. The gallery lays the moments out one row per video; picking one opens the detail, where the
+// hit lanes are the scrubber (one row per channel, the playhead through all three). Back returns to the gallery.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { get, post, type Moment, type Video } from '../api.ts';
 import { t, useLang } from '../i18n.ts';
-import { CHANNELS, tc, ticks } from '../lib.ts';
+import { byVideo, CHANNELS, defaultView, tc, ticks } from '../lib.ts';
 import { newProject, panel, PanelHead, Shell, TitleRow, useNotice, useWorkspace } from '../Shell.tsx';
 import { btn, btnPrimary, Ch, cx, Icon, Rich, select, TcBadge, Thumb } from '../ui.tsx';
 
 interface Entry { id: string; v: Video; url: string; dur: number }
+type View = 'dir' | 'detail';
 const params = new URLSearchParams(location.search);
 const q = (params.get('q') || '').trim(), project = params.get('project') || '';
+const viewOf = () => { const v = new URLSearchParams(location.search).get('view'); return v === 'dir' || v === 'detail' ? v : null; };
+// the view and moment live in the URL, so the browser's Back leaves the detail for the gallery
+const urlWith = (extra: Record<string, string>) => `?${new URLSearchParams({ q, ...(project && { project }), ...extra })}`;
 
 export default function Search() {
   useLang();
@@ -18,6 +23,10 @@ export default function Search() {
   const [picked, setPicked] = useState(-1);
   const [entry, setEntry] = useState<Entry | null>(null);
   const [playing, setPlaying] = useState(false);
+  const [view, setView] = useState<View | null>(viewOf);
+  const [fromDir, setFromDir] = useState<boolean>(!!history.state?.fromDir);
+  const [last, setLast] = useState(-1);
+  const [meta, setMeta] = useState<Record<string, Video>>({});
   const vid = useRef<HTMLVideoElement>(null), plot = useRef<HTMLSpanElement>(null), ph = useRef<HTMLSpanElement>(null), time = useRef<HTMLSpanElement>(null);
   const loaded = useRef(new Map<string, Promise<Entry>>()), pickedRef = useRef(-1), entryRef = useRef<Entry | null>(null), pending = useRef<number | null>(null);
   const ms = found?.ms ?? [];
@@ -64,20 +73,52 @@ export default function Search() {
     if (jump) requestAnimationFrame(() => seek(m.jump_ms, true));
   }, [ms, load, seek, fail]);
 
-  useEffect(() => { if (ms.length) choose(0); }, [ms, choose]);
+  useEffect(() => { if (ms.length) choose(Math.min(Number(params.get('m')) || 0, ms.length - 1)); }, [ms, choose]);
+  // a new search opens on the gallery when it reaches several videos, on the detail when it reaches one
+  useEffect(() => { if (found) setView((v) => v ?? defaultView(found.ms)); }, [found]);
+  // the gallery's rows need each video's length to place the moment on it
+  useEffect(() => {
+    const ids = [...new Set(ms.map((x) => x.video_id))];
+    Promise.all(ids.map((id) => get<{ video: Video }>(`/v1/videos/${id}`).then((d) => [id, d.video] as const).catch(() => null)))
+      .then((rows) => setMeta(Object.fromEntries(rows.filter((r) => r !== null))));
+  }, [ms]);
+  useEffect(() => {
+    const onPop = () => {
+      const st = history.state || {};
+      setView(viewOf() ?? defaultView(ms));
+      setFromDir(!!st.fromDir);
+      if (typeof st.m === 'number') choose(st.m);
+      if (viewOf() !== 'detail') requestAnimationFrame(() => scrollTo(0, st.scroll || 0));
+    };
+    addEventListener('popstate', onPop);
+    return () => removeEventListener('popstate', onPop);
+  }, [ms, choose]);
+
+  // a card opens the detail as a new history entry; the gallery's entry keeps its scroll position
+  const open = (i: number) => {
+    history.replaceState({ ...history.state, scroll: scrollY }, '');
+    history.pushState({ m: i, fromDir: true }, '', urlWith({ view: 'detail', m: String(i) }));
+    setView('detail'); setFromDir(true); setLast(i); choose(i);
+    scrollTo(0, 0);
+  };
+  // switching by hand changes this search's view only, without a history entry
+  const switchTo = (v: View) => {
+    history.replaceState({ m: pickedRef.current }, '', urlWith({ view: v, ...(v === 'detail' && { m: String(Math.max(0, pickedRef.current)) }) }));
+    setView(v); setFromDir(false);
+  };
 
   const step = useCallback((d: number) => choose((pickedRef.current + d + ms.length) % ms.length), [choose, ms.length]);
   const toggle = useCallback(() => { const v = vid.current; if (v) (v.paused ? v.play().catch(fail) : v.pause()); }, [fail]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement;
-      if (!ms.length || el.closest('input, select, textarea') || e.metaKey || e.ctrlKey || e.altKey) return;
+      if (!ms.length || view !== 'detail' || el.closest('input, select, textarea') || e.metaKey || e.ctrlKey || e.altKey) return;
       if (e.key === 'j') step(1); else if (e.key === 'k') step(-1);
       else if (e.key === ' ' && !el.closest('button, a')) { e.preventDefault(); toggle(); }
     };
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
-  }, [ms.length, step, toggle]);
+  }, [ms.length, view, step, toggle]);
 
   // seeking: a click or drag on the lanes moves the playhead; landing inside a hit selects that moment
   const seekAt = (e: React.PointerEvent) => {
@@ -103,12 +144,23 @@ export default function Search() {
   const CH = Object.fromEntries(CHANNELS.map((c) => [c, t(`ch.${c}`)]));
   const note = found?.skipped.length ? ` ${t('s.skipped', { chs: found.skipped.map((c) => CH[c] || c).join(t('and')) })}` : '';
   const best = ms[0];
+  const groups = byVideo(ms);
 
   return (
     <Shell page="search" query={q} ws={ws} notice={notice} onNewProject={() => newProject(reload, fail)}>
       <TitleRow title={q ? `“${q}”` : t('s.title')} sub={!q ? t('s.empty') : !found ? ' ' : !ms.length ? t('s.none') + note : (
         <><Rich k="s.sub" vars={{ n: ms.length, v: new Set(ms.map((x) => x.video_id)).size, title: best.video_title, tc: tc(best.start_ms), chs: best.channels.map((h) => CH[h.channel]).join(t('and')) }} />{note}</>
       )}>
+        {ms.length > 0 && (
+          <div role="group" aria-label={t('a.views')} className="flex gap-0.5 rounded-lg bg-ink-2 p-[3px]">
+            {(['dir', 'detail'] as const).map((v) => (
+              <button key={v} type="button" aria-pressed={view === v} onClick={() => switchTo(v)}
+                className="inline-flex h-[26px] items-center justify-center gap-1.5 rounded-md px-2.5 text-[13px] font-medium text-fg-soft transition-colors hover:text-fg aria-pressed:bg-ink-3 aria-pressed:text-fg">
+                {v === 'dir' ? <Icon.grid className="size-3.5" /> : <Icon.detail className="size-3.5" />}{t(v === 'dir' ? 'v.dir' : 'v.det')}
+              </button>
+            ))}
+          </div>
+        )}
         <label htmlFor="scope" className="sr-only">{t('h.scope')}</label>
         <select id="scope" className={select} value={project} onChange={(e) => { location.search = String(new URLSearchParams({ q, ...(e.target.value && { project: e.target.value }) })); }}>
           <option value="">{t('opt.all')}</option>
@@ -116,7 +168,49 @@ export default function Search() {
         </select>
       </TitleRow>
 
-      {ms.length > 0 && (
+      {ms.length > 0 && view === 'dir' && (
+        <div className="grid animate-enter gap-10">
+          {groups.map((g) => {
+            const v = meta[g.id], dur = v?.duration_ms;
+            return (
+              <section key={g.id} aria-labelledby={`g${g.id}`}>
+                <header className="mb-3.5 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-ink-3 pb-2.5">
+                  <h2 id={`g${g.id}`} className="text-[17px] font-semibold">{g.items[0].m.video_title}</h2>
+                  {dur ? <span className="text-fg-soft">{tc(dur)}</span> : null}
+                  <span className="inline-flex h-5 items-center rounded-full bg-ink-3 px-[7px] text-xs">{t('s.hits', { n: g.items.length })}</span>
+                  <a className="ml-auto inline-flex items-center gap-0.5 font-medium text-fg-soft transition-colors hover:text-fg" href={`video.html?id=${g.id}`}>{t('s.openvideo')}<Icon.chevron className="size-3" /></a>
+                </header>
+                <div className="grid grid-cols-4 gap-6 max-xl:grid-cols-3 max-md:grid-cols-2 max-xs:grid-cols-1">
+                  {g.items.map(({ m: x, i }) => (
+                    <button key={i} type="button" onClick={() => open(i)} className="group -m-2 flex flex-col justify-start rounded-xl p-2 text-left transition-colors duration-200 hover:bg-ink-2">
+                      <span className={cx('block overflow-hidden rounded-lg', i === last && 'ring-2 ring-red')}>
+                        <Thumb thumb={x.thumbnail} label={t('frame.of', { t: x.video_title })} className="w-full">
+                          <span className="absolute inset-0 grid place-items-center opacity-0 transition-opacity duration-200 group-hover:opacity-100"><span className="grid size-11 place-items-center rounded-full bg-ink/70"><Icon.play className="size-4 text-fg" /></span></span>
+                          <span className="absolute right-1.5 bottom-2 rounded-[4px] bg-ink/80 px-1.5 text-xs leading-5 text-white">{tc(x.jump_ms)}</span>
+                          {dur ? <span className="absolute inset-x-0 bottom-0 h-[3px] bg-ink/60"><i className="absolute inset-y-0 min-w-[3px] bg-red" style={{ left: `${(x.start_ms / dur) * 100}%`, width: `${((x.end_ms - x.start_ms) / dur) * 100}%` }} /></span> : null}
+                        </Thumb>
+                      </span>
+                      <span className="mt-2.5 flex justify-between gap-2"><span className="font-semibold">{tc(x.start_ms, true)} – {tc(x.end_ms, true)}</span><span className="text-xs text-faint">{t('s.nth', { n: i + 1 })}</span></span>
+                      <span className="mt-1 flex flex-wrap gap-x-2.5 gap-y-1">{x.channels.map((h) => <Ch key={h.channel} c={h.channel}>{t('rank', { ch: CH[h.channel], n: h.rank })}</Ch>)}</span>
+                      {x.snippet && <span className="mt-1.5 block truncate text-[13px] text-fg-soft">“{x.snippet}”</span>}
+                    </button>
+                  ))}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+      )}
+
+      {ms.length > 0 && view === 'detail' && fromDir && (
+        <p className="-mt-1.5 mb-3.5">
+          <button type="button" onClick={() => history.back()} className="inline-flex items-center gap-1 font-medium text-fg-soft transition-colors hover:text-fg">
+            <Icon.chevron className="size-3 rotate-180" />{t('s.back', { n: groups.length })}
+          </button>
+        </p>
+      )}
+
+      {ms.length > 0 && view === 'detail' && (
         <div className="grid animate-enter grid-cols-12 items-start gap-6">
           <section aria-label={t('a.player')} className="col-span-7 min-w-0 overflow-hidden rounded-[10px] bg-ink-2 shadow-edge max-md:col-span-12">
             <div className="relative aspect-video bg-black">

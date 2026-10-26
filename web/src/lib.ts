@@ -61,6 +61,21 @@ export function ticks(dur: number) {
   return out;
 }
 
+// Moments grouped by video, keeping each moment's index; videos come in the order of their best moment,
+// since the API returns moments ranked.
+export function byVideo<M extends { video_id: string }>(ms: M[]) {
+  const groups = new Map<string, { id: string; items: { m: M; i: number }[] }>();
+  ms.forEach((m, i) => {
+    const g = groups.get(m.video_id) ?? { id: m.video_id, items: [] };
+    g.items.push({ m, i });
+    groups.set(m.video_id, g);
+  });
+  return [...groups.values()];
+}
+
+// A search that reaches several videos opens on the gallery; one video opens straight on the detail.
+export const defaultView = (ms: { video_id: string }[]): 'dir' | 'detail' => (new Set(ms.map((m) => m.video_id)).size > 1 ? 'dir' : 'detail');
+
 // Only a page name of this app may follow sign-in, never another site.
 export const safeNext = (next: string | null) => (/^[a-z]+\.html(\?[^#]*)?$/.test(next || '') ? (next as string) : 'search.html');
 

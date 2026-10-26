@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { channelState, eachLimit, marks, partRange, pipeline, safeNext, tc, ticks } from './lib.ts';
+import { byVideo, channelState, defaultView, eachLimit, marks, partRange, pipeline, safeNext, tc, ticks } from './lib.ts';
+
+test('gallery groups moments by video in rank order, and picks the opening view', () => {
+  const ms = [{ video_id: '7' }, { video_id: '3' }, { video_id: '7' }, { video_id: '9' }];
+  assert.deepEqual(byVideo(ms).map((g) => [g.id, g.items.map((x) => x.i)]), [['7', [0, 2]], ['3', [1]], ['9', [3]]]);
+  assert.equal(defaultView(ms), 'dir');
+  assert.equal(defaultView([{ video_id: '7' }, { video_id: '7' }]), 'detail');
+});
 
 const at = '2026-10-26T00:00:00Z';
 const stages = [

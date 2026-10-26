@@ -1,11 +1,11 @@
 // VideoHelper landing: the dark screening room (v6 structure), Cindy palette and type, screen.studio's staged product.
-// Sections: hero with a working viewer, a ticker of queries, the mini workbench on a stage, one annotated panel,
-// a drag-through of the pipeline, questions, the closing choice.
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+// Sections: hero with the live mini workbench, a ticker of queries, then a stack that pins: the viewer, the annotated
+// paper panel and the pipeline drag-through each slide over the last; questions and the closing choice scroll on.
+import { useEffect, useLayoutEffect, useRef, useState, type HTMLAttributes, type ReactNode } from 'react';
 import { t, useLang } from '../i18n.ts';
 import { cx, Icon, LangSwitch, Mark, Rise } from '../ui.tsx';
 import { CLIP, FAQ, NOTES, SETS, STAGES } from './data.ts';
-import MiniApp from './MiniApp.tsx';
+import HeroStage from './HeroDemo.tsx';
 import { media, rk, sec, span, title } from './util.ts';
 
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -14,6 +14,7 @@ const film = 'overflow-hidden bg-black [&>img]:size-full [&>img]:object-cover [&
 
 export default function Landing() {
   const l = useLang() === 'en' ? 1 : 0;
+  const stack = useStack(3);
   return (
     <div className="landing text-(length:--step-body) leading-[1.55]">
       <Hero l={l} />
@@ -25,21 +26,20 @@ export default function Landing() {
         </div>
       </div>
       <main>
-        <section id="try" aria-labelledby="tryh" className="px-(--m) pt-[140px] max-sm:pt-24">
-          <div className="mb-10 grid grid-cols-12 items-end gap-x-6">
-            <Rise as="h2" id="tryh" className={cx('disp col-span-7 text-(length:--step-head) max-xl:col-span-12', l ? 'max-sm:text-[12vw]' : 'max-sm:text-[10vw]')}>{t('try.h')}</Rise>
-            <Rise as="p" delay={80} className="col-start-9 col-end-[-1] max-w-[40ch] max-xl:col-span-12 max-xl:col-start-1 max-xl:mt-4">{t('try.p')}</Rise>
-          </div>
-          <Rise className="relative min-h-[720px] overflow-hidden rounded-[28px] bg-[#05050a] px-14 pt-14 max-xl:min-h-0 max-xl:px-5 max-xl:pt-7 max-sm:rounded-[18px] max-sm:px-2.5 max-sm:pt-4">
-            <div className={cx(film, 'absolute inset-0')} aria-hidden>
-              <video src={media('earth.mp4')} poster={media('earth.jpg')} muted loop playsInline autoPlay={!reduce} preload="metadata" className="animate-drift brightness-50 saturate-[1.2]" />
+        <Layer s={stack} i={0} card={false} aria-labelledby="viewh" className="flex min-h-svh items-center bg-ink px-(--m) py-24 max-sm:min-h-0 max-sm:py-20">
+          <div className="grid w-full grid-cols-12 items-center gap-x-6 gap-y-10">
+            <div className="col-span-5 max-xl:col-span-12">
+              <Rise as="h2" id="viewh" className={cx('disp text-[clamp(44px,4.8vw,80px)]', l ? 'max-sm:text-[12vw]' : 'max-sm:text-[9vw]')}>{t('view.h')}</Rise>
+              <Rise as="p" delay={80} className="mt-6 max-w-[40ch]">{t('view.p')}</Rise>
             </div>
-            <MiniApp l={l} />
-          </Rise>
-        </section>
-        <Plate l={l} />
-        <How l={l} />
-        <section id="faq" aria-labelledby="faqh" className="grid gap-[72px] bg-paper px-(--m) py-40 text-on-paper max-sm:gap-14 max-sm:py-24">
+            <Rise className="col-span-7 grid min-h-[620px] place-items-center rounded-[28px] bg-ink-2 p-10 max-xl:col-span-12 max-xl:min-h-0 max-sm:rounded-[18px] max-sm:p-3">
+              <Viewer l={l} />
+            </Rise>
+          </div>
+        </Layer>
+        <Layer s={stack} i={1} aria-labelledby="ph" className="relative bg-paper px-(--m) py-40 text-on-paper max-sm:py-24"><Plate l={l} /></Layer>
+        <Layer s={stack} i={2} id="how" aria-labelledby="howh" className="relative grid min-h-svh grid-cols-2 bg-ink max-sm:min-h-0 max-sm:grid-cols-1"><How l={l} /></Layer>
+        <Layer s={stack} i={3} pin={false} id="faq" aria-labelledby="faqh" className="grid gap-[72px] bg-paper px-(--m) py-40 text-on-paper max-sm:gap-14 max-sm:py-24">
           <Rise className="grid grid-cols-12 items-baseline gap-x-6 max-lg:block"><h2 id="faqh" className={cx('disp col-span-6 text-(length:--step-head)', l ? 'max-sm:text-[12vw]' : 'max-sm:text-[10vw]')}>{l ? 'Questions' : '常见问题'}</h2></Rise>
           {FAQ.map((f, i) => (
             <Rise key={i} delay={(i % 3) * 60} className="grid grid-cols-12 items-baseline gap-x-6 max-lg:block">
@@ -47,8 +47,8 @@ export default function Landing() {
               <p className="col-start-8 col-end-[-1] max-w-[40ch] max-lg:mt-3 max-lg:max-w-none">{f[l * 2 + 1]}</p>
             </Rise>
           ))}
-        </section>
-        <section aria-labelledby="ch1" className="grid min-h-[86svh] grid-rows-[auto_1fr_auto] bg-red pt-8 pr-(--mr) pb-6 pl-(--m) text-center text-on-paper">
+        </Layer>
+        <section aria-labelledby="ch1" style={{ zIndex: 4 }} className="relative grid min-h-[86svh] grid-rows-[auto_1fr_auto] bg-red pt-8 pr-(--mr) pb-6 pl-(--m) text-center text-on-paper">
           <h2 id="ch1" className={cx('disp', l ? 'text-(length:--step-display) max-sm:text-[16vw]' : 'text-[clamp(56px,7vw,120px)] max-sm:text-[12vw]')}>{t('cta.q1')}</h2>
           <div className="grid justify-items-center gap-4 self-center">
             <div className="flex items-center gap-10 max-sm:w-[72%] max-sm:flex-col max-sm:gap-3">
@@ -80,21 +80,21 @@ function Hero({ l }: { l: 0 | 1 }) {
   useEffect(() => { requestAnimationFrame(() => requestAnimationFrame(() => setShown(true))); }, []);
   const line = 'block transition-transform duration-[900ms] ease-out';
   return (
-    <header id="top" className="relative grid min-h-[min(100svh,940px)] grid-cols-2 max-[900px]:min-h-0 max-[900px]:grid-cols-1">
+    <header id="top" className="relative grid min-h-[min(100svh,940px)] grid-cols-[minmax(0,5fr)_minmax(0,7fr)] max-[900px]:min-h-0 max-[900px]:grid-cols-1">
       <a className="absolute top-[30px] left-(--m) z-[2] inline-flex items-center gap-2.5 font-semibold" href="#top"><Mark />VideoHelper</a>
       <div className="absolute top-[26px] right-(--mr) z-[2] flex items-center gap-5 text-(length:--step-small)">
         <a href="search.html" className="underline decoration-fg-soft underline-offset-[5px] max-sm:hidden">{t('nav.demo')}</a>
         <LangSwitch className="flex gap-0.5" button="h-11 min-w-11 whitespace-nowrap rounded-md px-2.5 text-fg-soft transition-colors duration-150 aria-pressed:bg-ink-3 aria-pressed:text-fg" />
       </div>
-      <div className="flex flex-col justify-end px-(--m) pt-[120px] pb-12 max-[900px]:pt-9 max-sm:pt-7">
-        <h1 className={cx('disp', l ? 'text-[clamp(56px,5.6vw,96px)] max-[900px]:text-[11vw] max-sm:text-[12.5vw]' : 'text-[clamp(52px,5.6vw,92px)] max-[900px]:text-[8vw] max-sm:text-[11vw]')}>
+      <div className="flex flex-col justify-end pt-[120px] pr-8 pb-12 pl-(--m) max-[900px]:px-(--m) max-[900px]:pt-9 max-sm:pt-7">
+        <h1 className={cx('disp', l ? 'text-[clamp(48px,5vw,88px)] max-[900px]:text-[11vw] max-sm:text-[12.5vw]' : 'text-[clamp(44px,4.86vw,84px)] max-[900px]:text-[8vw] max-sm:text-[11vw]')}>
           <span className="block overflow-hidden pb-[0.04em]"><span className={cx(line, !shown && 'translate-y-[105%]')}>{t('hero.h1a')}</span></span>
           <span className="block overflow-hidden pb-[0.04em] text-red"><span className={cx(line, 'delay-[110ms]', !shown && 'translate-y-[105%]')}>{t('hero.h1b')}</span></span>
         </h1>
         <div className={cx('transition-opacity delay-500 duration-700', shown ? 'opacity-100' : 'opacity-0')}>
           <p className="mt-6 max-w-[44ch]">{t('hero.lede')}</p>
           <div className="mt-8">
-            <a className={cx(btn, 'bg-red text-on-paper hover:bg-red-hi')} href="#try">{t('hero.btn')}<Icon.arrow /></a>
+            <a className={cx(btn, 'bg-red text-on-paper hover:bg-red-hi')} href="#demo-q" onClick={(e) => { e.preventDefault(); document.getElementById('demo-q')?.focus(); }}>{t('hero.btn')}<Icon.arrow /></a>
             <span className="mt-3 block text-(length:--step-small) whitespace-nowrap text-fg-soft max-sm:whitespace-normal">{t('hero.note')}</span>
           </div>
         </div>
@@ -107,8 +107,8 @@ function Hero({ l }: { l: 0 | 1 }) {
           ))}
         </ul>
       </div>
-      <div className="grid place-items-center bg-ink-2 px-10 pt-24 pb-16 max-[900px]:order-first max-[900px]:px-5 max-[900px]:pt-[84px] max-[900px]:pb-5 max-sm:px-4 max-sm:pt-[72px] max-sm:pb-4">
-        <Viewer l={l} />
+      <div className="pt-[88px] pr-8 pb-8 pl-2 max-[900px]:order-first max-[900px]:px-4 max-[900px]:pt-[84px] max-[900px]:pb-4 max-sm:pt-[72px]">
+        <HeroStage l={l} />
       </div>
     </header>
   );
@@ -125,7 +125,7 @@ function Viewer({ l }: { l: 0 | 1 }) {
     setAt(s);
   };
   return (
-    <div className="w-[min(480px,100%)] rounded-[14px] bg-ink-3 p-3.5 text-[15px] leading-[22px]">
+    <div className="w-[min(560px,100%)] rounded-[14px] bg-ink-3 p-3.5 text-[15px] leading-[22px]">
       <div className={cx(film, 'aspect-[16/10] rounded-lg')}>
         <video ref={hv} src={media('reef.mp4')} poster={media('reef.jpg')} muted loop playsInline autoPlay={!reduce} preload="auto" aria-label={t('hero.vid')}
           onTimeUpdate={(e) => { if (!scrubbing.current) setAt(e.currentTarget.currentTime); }} />
@@ -187,7 +187,7 @@ function Plate({ l }: { l: 0 | 1 }) {
   const blk = 'mt-3.5 border-t border-ink-3 pt-3 [&>h4]:mb-2 [&>h4]:text-[15px] [&>h4]:font-medium [&>h4]:text-fg-soft';
   const notes = 'relative col-span-4 min-h-[720px] max-lg:col-span-1 max-lg:grid max-lg:min-h-0 max-lg:grid-cols-2 max-lg:gap-x-5 max-lg:gap-y-4';
   return (
-    <section aria-labelledby="ph" className="relative bg-paper px-(--m) py-40 text-on-paper max-sm:py-24">
+    <>
       <div className="grid grid-cols-12 items-start gap-x-6 max-lg:grid-cols-1">
         <Rise as="h2" id="ph" className="disp col-span-4 text-right text-[clamp(36px,3.4vw,56px)] max-lg:col-span-1 max-lg:mb-6 max-lg:text-left max-lg:text-[34px]">{t('pl.h')}</Rise>
       </div>
@@ -214,7 +214,7 @@ function Plate({ l }: { l: 0 | 1 }) {
         </Rise>
         <div className={cx(notes, 'max-lg:order-3')}>{NOTES.filter((_, i) => i % 2 === 1).map((n) => note(n, 'right'))}</div>
       </div>
-    </section>
+    </>
   );
 }
 
@@ -240,7 +240,7 @@ function How({ l }: { l: 0 | 1 }) {
   ][shown];
   const fade = cx('transition-opacity duration-200', fading && 'opacity-0');
   return (
-    <section id="how" aria-labelledby="howh" className="relative grid min-h-[88svh] grid-cols-2 max-sm:min-h-0 max-sm:grid-cols-1">
+    <>
       <div className="bg-ink px-(--m) pt-[72px] pb-[150px] max-sm:pt-7 max-sm:pb-6">
         <h2 id="howh" className={cx('disp max-w-[9em] text-[clamp(44px,4.8vw,80px)]', l ? 'max-sm:text-[12vw]' : 'max-sm:text-[9vw]', fade)}>{s[1 + o]}</h2>
         <p className={cx('mt-6 max-w-[40ch]', fade)}>{s[2 + o]}</p>
@@ -260,8 +260,53 @@ function How({ l }: { l: 0 | 1 }) {
           ))}
         </ol>
       </div>
+    </>
+  );
+}
+
+const cardEdge = 'sm:rounded-t-[44px] sm:shadow-[0_-20px_120px_-10px_rgba(0,0,0,0.32),0_-1px_0_rgba(255,255,255,0.04)]';
+type Stack = ReturnType<typeof useStack>;
+
+// One layer of the stack: it pins at the top (or at its own bottom when taller than the window) and the next layer
+// slides over it. Phones scroll normally.
+function Layer({ s, i, pin = true, card = true, className, children, ...rest }: { s: Stack; i: number; pin?: boolean; card?: boolean; className?: string; children: ReactNode } & HTMLAttributes<HTMLElement>) {
+  return (
+    <section ref={(e) => { s.secs.current[i] = e; }} {...rest} style={{ zIndex: i + 1 }} className={cx('relative', pin && 'sm:sticky')}>
+      <div ref={(e) => { s.inner.current[i] = e; }} className={cx('origin-top overflow-hidden', card && cardEdge, className)}>{children}</div>
+      {pin && <div ref={(e) => { s.dims.current[i] = e; }} aria-hidden className={cx('pointer-events-none absolute inset-0 bg-black opacity-0', card && 'sm:rounded-t-[44px]')} />}
     </section>
   );
+}
+
+// Pins the first `n` layers and, as each next layer covers one, shrinks it, dims it and rounds its corners.
+// Styles are written straight to the elements on scroll, so scrolling never re-renders the page.
+function useStack(n: number) {
+  const secs = useRef<(HTMLElement | null)[]>([]), inner = useRef<(HTMLElement | null)[]>([]), dims = useRef<(HTMLElement | null)[]>([]);
+  useEffect(() => {
+    const wide = matchMedia('(width >= 47.5rem)');
+    let raf = 0;
+    const layout = () => secs.current.slice(0, n).forEach((el) => { if (el) el.style.top = wide.matches ? `${Math.min(0, innerHeight - el.offsetHeight)}px` : ''; });
+    const paint = () => {
+      raf = 0;
+      for (let i = 0; i < n; i++) {
+        const next = secs.current[i + 1], box = inner.current[i], dim = dims.current[i];
+        if (!next || !box || !dim) continue;
+        const p = wide.matches && !reduce ? Math.max(0, Math.min(1, 1 - next.getBoundingClientRect().top / innerHeight)) : 0;
+        box.style.transform = p ? `scale(${1 - 0.06 * p})` : '';
+        box.style.borderRadius = p ? `${44 * p}px` : '';
+        dim.style.opacity = String(0.4 * p);
+      }
+    };
+    const onScroll = () => { if (!raf) raf = requestAnimationFrame(paint); };
+    const ro = new ResizeObserver(() => { layout(); onScroll(); });
+    secs.current.forEach((el) => el && ro.observe(el));
+    addEventListener('scroll', onScroll, { passive: true });
+    addEventListener('resize', onScroll);
+    wide.addEventListener('change', layout);
+    layout(); paint();
+    return () => { ro.disconnect(); removeEventListener('scroll', onScroll); removeEventListener('resize', onScroll); wide.removeEventListener('change', layout); cancelAnimationFrame(raf); };
+  }, [n]);
+  return { secs, inner, dims };
 }
 
 const CREDITS: [string, string, string, string][] = [

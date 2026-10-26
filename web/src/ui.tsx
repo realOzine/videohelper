@@ -17,6 +17,8 @@ export const Icon = {
   x: (p: { className?: string }) => <svg {...svg} strokeWidth={3.2} className={p.className}><path d="M7 7l10 10M17 7L7 17" /></svg>,
   menu: (p: { className?: string }) => <svg {...svg} strokeWidth={1.6} className={p.className}><path d="M4 7h16M4 12h16M4 17h16" /></svg>,
   arrow: (p: { className?: string }) => <svg {...svg} strokeWidth={2.2} className={p.className}><path d="M7 17 17 7M9 7h8v8" /></svg>,
+  grid: (p: { className?: string }) => <svg {...svg} strokeWidth={1.7} className={p.className}><rect x="3" y="4" width="8" height="7" rx="1.5" /><rect x="13" y="4" width="8" height="7" rx="1.5" /><rect x="3" y="13" width="8" height="7" rx="1.5" /><rect x="13" y="13" width="8" height="7" rx="1.5" /></svg>,
+  detail: (p: { className?: string }) => <svg {...svg} strokeWidth={1.7} className={p.className}><rect x="3" y="4" width="11" height="16" rx="1.5" /><path d="M17 5h4M17 10h4M17 15h4M17 19h4" /></svg>,
   chevron: (p: { className?: string }) => <svg {...svg} strokeWidth={1.5} viewBox="0 0 12 12" className={p.className}><path d="M4.5 2.5 8 6l-3.5 3.5" strokeLinejoin="round" /></svg>,
 };
 

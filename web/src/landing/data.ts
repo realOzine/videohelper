@@ -7,12 +7,10 @@ addStrings({
     'hero.lede': 'VideoHelper 是视频内容搜索工具：描述一个画面、一句台词或一种声音，它在你的视频里找到对应的那几秒，点一下就从那里播放。',
     'hero.btn': '现在就试试', 'hero.note': '时间码精确到 0.1 秒 · 画面、台词、声音三路一起找', 'hero.q': '珊瑚礁边的鱼群', 'hero.vid': '珊瑚礁边游动的鱼群', 'hero.strip': '片段时间线，移动指针查看画面',
     'ch.visual': '画面', 'ch.speech': '台词', 'ch.audio': '声音', rank: '{ch} 第 {n} 名',
-    'try.h': '亲手试试工作台', 'try.p': '这是工作台的缩小版，能点、能搜、能播放。换一句描述，或者去资料库里点开一个视频。',
-    'app.search': '搜索', 'app.lib': '资料库', 'app.proc': '处理中', 'app.projects': '项目', 'app.p1': '海洋', 'app.p2': '太空', 'app.p3': '动画',
-    'app.qlabel': '描述画面、台词或声音', 'app.go': '搜索', 'app.count': '{n} 个片段 · 按相关度排序', 'app.nomatch': '示例库里没找到「{q}」，试试下面这几句', 'app.this': '这个视频里的命中',
-    'st.ready': '可搜索', 'st.run': '处理中', 'st.bad': '失败', 'retry': '重试', 'done': '完成', 'wait': '等待', 'running': '进行中',
-    'stage.probe': '读取媒体信息', 'stage.prep': '转码与缩略图', 'stage.visual': '画面编码', 'stage.asr': '语音转录', 'stage.audio': '声音编码', 'stage.speech': '台词编码', 'stage.fin': '完成',
-    'proc.sub': '{n} / 7 完成 · 画面编码完成就能先按画面搜', 'proc.ok': '全部完成，可以搜索了', 'proc.bad': '语音转录失败，点重试只重跑没完成的部分',
+    'view.h': '拖一下，停在命中的那一秒', 'view.p': '每个结果都是一段时间。红线标出命中的几秒，在缩略帧上拖动就能逐帧预览；下面三格告诉你是画面、台词还是声音命中的。',
+    'app.search': '搜索', 'app.lib': '资料库', 'app.proc': '处理中', 'app.qlabel': '描述画面、台词或声音', 'app.go': '搜索', 'app.count': '{n} 个片段 · 按相关度排序', 'app.nomatch': '示例库里没找到「{q}」，试试下面这几句',
+    'demo.auto': '自动演示中 · 点任意处接管', 'demo.paused': '已暂停 · 8 秒后继续演示', 'demo.views': '结果视图', 'demo.dir': '目录', 'demo.det': '详情', 'demo.back': '返回目录', 'demo.hits': '命中 {n} 处', 'demo.more': '还有 {n} 个视频 · 切到「详情」看全部片段', 'demo.ruler': '演示时间尺',
+    'done': '完成', 'stage.visual': '画面编码', 'stage.asr': '语音转录', 'stage.audio': '声音编码',
     'pl.h': '一个视频的全部线索', 'how.label': '处理步骤',
     'cta.q1': '先传一段视频，', 'cta.q2': '还是先看演示？', 'cta.up': '上传视频', 'cta.or': '或', 'cta.demo': '打开完整工作台', 'cta.after': '工作台需要登录；上面的迷你版用的是示例视频。',
     'ft.what': 'VideoHelper · 在视频里找画面', 'ft.nav': '页脚', 'ft.search': '搜索', 'ft.library': '资料库', 'ft.faq': '常见问题',
@@ -22,12 +20,10 @@ addStrings({
     'hero.lede': 'VideoHelper searches inside video: describe a scene, a line someone said or a sound, and it finds those seconds in your videos. One click plays from there.',
     'hero.btn': 'Try it now', 'hero.note': 'Timecodes to a tenth of a second · picture, speech and sound together', 'hero.q': 'fish along the coral reef', 'hero.vid': 'Fish swimming along a coral reef', 'hero.strip': 'Clip timeline: move the pointer to see the frame',
     'ch.visual': 'Picture', 'ch.speech': 'Speech', 'ch.audio': 'Sound', rank: '{ch} #{n}',
-    'try.h': 'Try the workbench', 'try.p': 'A small copy of the real workbench: click, search, play. Change the sentence or open a video from the library.',
-    'app.search': 'Search', 'app.lib': 'Library', 'app.proc': 'Processing', 'app.projects': 'Projects', 'app.p1': 'Ocean', 'app.p2': 'Space', 'app.p3': 'Animation',
-    'app.qlabel': 'Describe a scene, a line or a sound', 'app.go': 'Search', 'app.count': '{n} moments · by relevance', 'app.nomatch': 'Nothing for “{q}” in the sample library; try one of these', 'app.this': 'Hits in this video',
-    'st.ready': 'Searchable', 'st.run': 'Processing', 'st.bad': 'Failed', 'retry': 'Retry', 'done': 'Done', 'wait': 'Waiting', 'running': 'Running',
-    'stage.probe': 'Read media info', 'stage.prep': 'Transcode and thumbnails', 'stage.visual': 'Picture encoding', 'stage.asr': 'Transcription', 'stage.audio': 'Sound encoding', 'stage.speech': 'Speech encoding', 'stage.fin': 'Finish',
-    'proc.sub': '{n} / 7 done · picture search opens when picture encoding is done', 'proc.ok': 'All done: ready to search', 'proc.bad': 'Transcription failed; a retry reruns only what is left',
+    'view.h': 'Scrub to the second it matched', 'view.p': 'Every result is a span of time. The red line marks the seconds that matched; drag across the frames to preview them, and the three tiles below say whether picture, speech or sound matched.',
+    'app.search': 'Search', 'app.lib': 'Library', 'app.proc': 'Processing', 'app.qlabel': 'Describe a scene, a line or a sound', 'app.go': 'Search', 'app.count': '{n} moments · by relevance', 'app.nomatch': 'Nothing for “{q}” in the sample library; try one of these',
+    'demo.auto': 'Auto demo · click anywhere to take over', 'demo.paused': 'Paused · the demo resumes in 8 s', 'demo.views': 'Result view', 'demo.dir': 'Gallery', 'demo.det': 'Detail', 'demo.back': 'Back to gallery', 'demo.hits': '{n} hits', 'demo.more': '{n} more videos · switch to Detail for every moment', 'demo.ruler': 'Demo timeline',
+    'done': 'Done', 'stage.visual': 'Picture encoding', 'stage.asr': 'Transcription', 'stage.audio': 'Sound encoding',
     'pl.h': 'Everything one video can tell you', 'how.label': 'Processing steps',
     'cta.q1': 'Upload a video,', 'cta.q2': 'or see the demo?', 'cta.up': 'Upload a video', 'cta.or': 'or', 'cta.demo': 'Open the full workbench', 'cta.after': 'The workbench needs sign-in; the mini version above runs on sample clips.',
     'ft.what': 'VideoHelper · find moments in video', 'ft.nav': 'Footer', 'ft.search': 'Search', 'ft.library': 'Library', 'ft.faq': 'Questions',
@@ -49,6 +45,27 @@ export const SETS: { q: [string, string]; keys: string[]; rows: Hit[] }[] = [
     { q: ['森林里的大胖兔子', 'a big rabbit in the forest'], keys: ['兔', '森林', 'rabbit', 'bunny', 'forest'], rows: [['bunny', [['visual', 1]], 0, 2.5], ['sintel', [['visual', 6]], 2.5, 5]] },
     { q: ['夕阳下的古城废墟', 'ruins at sunset'], keys: ['古城', '废墟', '夕阳', '沙漠', 'ruin', 'sunset', 'desert', 'city'], rows: [['sintel', [['visual', 1]], 0, 5], ['earth', [['visual', 9]], 5, 7.5]] },
   ];
+// The hero demo's results per query (same order as SETS): videos, each with its moments.
+// Moment: clip (a file in media/), timecode label, span label, [channel, rank]…, where it sits in the video (%, %), crop.
+export interface DemoMoment { clip: string; tc: string; range: string; chs: [string, number][]; at: number; len: number; pos: string }
+export interface DemoVideo { title: [string, string]; dur: string; hits: DemoMoment[] }
+const m = (clip: string, tc: string, range: string, chs: [string, number][], at: number, len: number, pos = '50% 50%'): DemoMoment => ({ clip, tc, range, chs, at, len, pos });
+export const DEMO: DemoVideo[][] = [
+  [{ title: ['幻影水母合集', 'Phantom jellyfish reel'], dur: '24:30', hits: [m('jelly', '08:21', '08:20 – 09:05', [['visual', 1], ['speech', 2]], 34, 3), m('jelly', '14:41', '14:40 – 15:05', [['visual', 3], ['audio', 2]], 60, 2, '35% 40%')] },
+    { title: ['珊瑚礁鱼群', 'Coral reef fishes'], dur: '58:00', hits: [m('reef', '12:32', '12:30 – 13:40', [['speech', 1], ['visual', 2]], 21, 2), m('reef', '22:11', '22:10 – 22:30', [['speech', 3]], 38, 1, '30% 60%'), m('reef', '45:00', '45:00 – 45:12', [['visual', 6]], 77, 1, '70% 40%')] },
+    { title: ['特拉维夫冲浪', 'Surfing in Tel Aviv'], dur: '12:44', hits: [m('surf', '00:20', '00:20 – 00:25', [['visual', 7]], 3, 1)] }],
+  [{ title: ['夜间火箭发射', 'Night rocket launch'], dur: '05:30', hits: [m('rocket', '00:01', '00:01 – 00:04', [['visual', 1], ['audio', 2]], 4, 10), m('rocket', '00:04', '00:04 – 00:06', [['visual', 3]], 14, 6, '70% 30%')] },
+    { title: ['空间站与地球', 'The station over Earth'], dur: '08:00', hits: [m('iss', '01:10', '01:10 – 01:15', [['visual', 4]], 15, 2)] },
+    { title: ['空间站俯瞰地球', 'Earth from the ISS'], dur: '08:05', hits: [m('earth', '00:33', '00:33 – 00:38', [['visual', 7]], 7, 2)] }],
+  [{ title: ['空间站俯瞰地球', 'Earth from the ISS'], dur: '08:05', hits: [m('earth', '00:33', '00:33 – 00:40', [['visual', 1]], 7, 2), m('earth', '01:05', '01:05 – 01:12', [['visual', 3]], 13, 2, '30% 70%'), m('earth', '03:02', '03:02 – 03:20', [['visual', 5]], 37, 4, '70% 30%')] },
+    { title: ['空间站与地球', 'The station over Earth'], dur: '08:00', hits: [m('iss', '01:12', '01:12 – 01:20', [['visual', 2]], 15, 2)] }],
+  [{ title: ['特拉维夫冲浪', 'Surfing in Tel Aviv'], dur: '12:44', hits: [m('surf', '00:00', '00:00 – 00:05', [['visual', 1], ['audio', 3]], 0, 1), m('surf', '00:30', '00:30 – 00:35', [['visual', 2]], 4, 1, '30% 40%'), m('surf', '06:10', '06:10 – 06:20', [['visual', 4]], 48, 2, '70% 60%')] },
+    { title: ['珊瑚礁鱼群', 'Coral reef fishes'], dur: '58:00', hits: [m('reef', '05:05', '05:05 – 05:10', [['visual', 5]], 9, 1)] }],
+  [{ title: ['Big Buck Bunny 片段', 'Big Buck Bunny cuts'], dur: '09:56', hits: [m('bunny', '00:00', '00:00 – 00:05', [['visual', 1]], 0, 2), m('bunny', '00:04', '00:04 – 00:08', [['visual', 2], ['speech', 3]], 1, 2, '30% 50%'), m('bunny', '03:40', '03:40 – 03:48', [['visual', 4]], 37, 2, '70% 50%')] },
+    { title: ['Sintel 预告片', 'Sintel trailer'], dur: '00:52', hits: [m('sintel', '00:26', '00:26 – 00:30', [['visual', 6]], 50, 8)] }],
+  [{ title: ['Sintel 预告片', 'Sintel trailer'], dur: '00:52', hits: [m('sintel', '00:24', '00:24 – 00:29', [['visual', 1]], 46, 9), m('sintel', '00:28', '00:28 – 00:32', [['visual', 3]], 54, 8, '30% 40%')] },
+    { title: ['空间站俯瞰地球', 'Earth from the ISS'], dur: '08:05', hits: [m('earth', '00:38', '00:38 – 00:43', [['visual', 9]], 8, 1)] }],
+];
 // [part of the panel, title zh, text zh, title en, text en]
 export const NOTES = [
     ['frame', '画面', '每 2.5 秒一格编码，搜到的那一格就是这一帧。', 'The frame', 'Picture is encoded every 2.5 seconds; the matching cell is this frame.'],

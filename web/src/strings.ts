@@ -2,7 +2,7 @@
 import { addStrings } from './i18n.ts';
 
 addStrings({
-    'a.nav': '主导航', 'a.closenav': '关闭导航', 'st.importing': '导入中', 'top.account': '账号与登录', 'top.ws': '工作区 {id}',
+    'a.nav': '主导航', 'a.closenav': '关闭导航', 'a.views': '结果视图', 'v.dir': '目录', 'v.det': '详情', 's.back': '返回目录 · {n} 个视频', 's.hits': '命中 {n} 处', 's.nth': '第 {n} 个', 's.openvideo': '打开视频', 'st.importing': '导入中', 'top.account': '账号与登录', 'top.ws': '工作区 {id}',
     'stage.probe': '读取媒体信息', 'stage.prepare_media': '转码与缩略图', 'stage.visual': '画面编码', 'stage.asr': '语音转录', 'stage.speech': '台词编码', 'stage.audio': '声音编码', 'stage.finalize': '完成',
     queued: '排队中', 'err.network': '连不上 API（{base}），请检查地址和服务是否在运行。', 'p.name': '项目名称',
     's.title': '搜索', 's.empty': '输入一句话，在全部视频里找画面、台词或声音。', 's.none': '没有找到相关片段。', 's.skipped': '{chs}暂时不可用，结果只来自其余通道。',
@@ -38,7 +38,7 @@ addStrings({
     'th.video': '视频', 'th.status': '状态', 'th.dur': '时长', 'th.proj': '项目', 'th.added': '添加时间', 'th.actions': '操作',
     'h.progress': '处理进度', 'h.vsearch': '在这个视频里搜索', 'b.search': '搜索', 'h.info': '视频信息', 'a.video': '视频', 'a.player': '播放器',
 }, {
-    'a.nav': 'Main navigation', 'a.closenav': 'Close navigation', 'st.importing': 'Importing', 'top.account': 'Account and sign-in', 'top.ws': 'Workspace {id}',
+    'a.nav': 'Main navigation', 'a.closenav': 'Close navigation', 'a.views': 'Result view', 'v.dir': 'Gallery', 'v.det': 'Detail', 's.back': 'Back to gallery · {n} videos', 's.hits': '{n} hits', 's.nth': '#{n}', 's.openvideo': 'Open video', 'st.importing': 'Importing', 'top.account': 'Account and sign-in', 'top.ws': 'Workspace {id}',
     'stage.probe': 'Read media info', 'stage.prepare_media': 'Transcode and thumbnails', 'stage.visual': 'Picture encoding', 'stage.asr': 'Transcription', 'stage.speech': 'Speech encoding', 'stage.audio': 'Sound encoding', 'stage.finalize': 'Finish',
     queued: 'Queued', 'err.network': 'Cannot reach the API at {base}. Check the address and that the service is running.', 'p.name': 'Project name',
     's.title': 'Search', 's.empty': 'Describe a scene, a line or a sound to search every video.', 's.none': 'No matching moments.', 's.skipped': '{chs} unavailable for now; results come from the other channels.',
