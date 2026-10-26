@@ -59,16 +59,17 @@ type AuthConfig struct {
 }
 
 type MLConfig struct {
-	Transcriber         string        `yaml:"transcriber"`
-	Endpoints           []string      `yaml:"endpoints"`
-	TokenEnv            string        `yaml:"token_env"`
-	Token               string        `yaml:"-" json:"-"`
-	QueryTimeout        time.Duration `yaml:"query_timeout"`
-	EmbedTimeout        time.Duration `yaml:"embed_timeout"`
-	EmbedBatch          int           `yaml:"embed_batch"`
-	TranscribeChunkMS   int           `yaml:"transcribe_chunk_ms"`
-	TranscribeOverlapMS int           `yaml:"transcribe_overlap_ms"`
-	TranscribeTimeout   time.Duration `yaml:"transcribe_timeout"`
+	Transcriber         string            `yaml:"transcriber"`
+	ModelEndpoints      map[string]string `yaml:"model_endpoints"`
+	Endpoints           []string          `yaml:"endpoints"`
+	TokenEnv            string            `yaml:"token_env"`
+	Token               string            `yaml:"-" json:"-"`
+	QueryTimeout        time.Duration     `yaml:"query_timeout"`
+	EmbedTimeout        time.Duration     `yaml:"embed_timeout"`
+	EmbedBatch          int               `yaml:"embed_batch"`
+	TranscribeChunkMS   int               `yaml:"transcribe_chunk_ms"`
+	TranscribeOverlapMS int               `yaml:"transcribe_overlap_ms"`
+	TranscribeTimeout   time.Duration     `yaml:"transcribe_timeout"`
 }
 
 type LLMConfig struct {

@@ -62,6 +62,29 @@ func TestExampleLoadsEnvironmentAndChannels(t *testing.T) {
 	}
 }
 
+func TestValidateModelEndpointBindings(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		bindings map[string]string
+		valid    bool
+	}{
+		{name: "omitted", valid: true},
+		{name: "declared provider", bindings: map[string]string{"asr@r1": "http://ml:8000"}, valid: true},
+		{name: "undeclared provider", bindings: map[string]string{"asr@r1": "http://other:8000"}},
+		{name: "empty provider", bindings: map[string]string{"asr@r1": ""}},
+		{name: "invalid model", bindings: map[string]string{"bad/id": "http://ml:8000"}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			c := Config{Database: DatabaseConfig{URL: "postgres://db/videohelper", MaxConns: 2},
+				ML: MLConfig{Endpoints: []string{"http://ml:8000"}, ModelEndpoints: test.bindings, Token: "test", QueryTimeout: time.Second, EmbedTimeout: time.Second}}
+			err := c.Validate(RoleSpace)
+			if (err == nil) != test.valid || err != nil && !strings.Contains(err.Error(), "ml.model_endpoints") {
+				t.Fatalf("valid=%v error=%v", test.valid, err)
+			}
+		})
+	}
+}
+
 func TestMigrateOnlyRequiresDatabase(t *testing.T) {
 	c := Config{Database: DatabaseConfig{URL: "postgres://db/videohelper", MaxConns: 2}}
 	if err := c.Validate(RoleMigrate); err != nil {

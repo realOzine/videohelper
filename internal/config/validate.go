@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math"
 	"net/url"
+	"regexp"
+	"slices"
 	"strings"
 )
 
@@ -17,6 +19,8 @@ const (
 	RoleEval    Role = "eval"
 	RoleSpace   Role = "space"
 )
+
+var modelID = regexp.MustCompile(`^[a-z0-9@._-]+$`)
 
 func (c Config) Validate(role Role) error {
 	var errs []error
@@ -39,12 +43,15 @@ func (c Config) Validate(role Role) error {
 	for _, endpoint := range c.ML.Endpoints {
 		require(httpURL(endpoint), "ml.endpoints")
 	}
+	for id, endpoint := range c.ML.ModelEndpoints {
+		require(modelID.MatchString(id) && slices.Contains(c.ML.Endpoints, endpoint), "ml.model_endpoints."+id)
+	}
 	require(strings.TrimSpace(c.ML.Token) != "", "ml.token_env")
 	require(c.ML.QueryTimeout > 0 && c.ML.EmbedTimeout > 0, "ml timeouts")
 	if role == RoleSpace {
 		return errors.Join(errs...)
 	}
-	require(strings.TrimSpace(c.ML.Transcriber) != "" && c.ML.Transcriber == strings.TrimSpace(c.ML.Transcriber), "ml.transcriber")
+	require(modelID.MatchString(c.ML.Transcriber), "ml.transcriber")
 
 	require(c.S3.Bucket != "" && c.S3.Region != "", "s3.bucket / s3.region")
 	require(c.S3.Endpoint == "" || httpURL(c.S3.Endpoint), "s3.endpoint")
