@@ -7,7 +7,10 @@ ADAPTER_GROUP = "videohelper.ml.adapters.v1"
 def _entry_point(name: str) -> EntryPoint:
     matches = list(entry_points(group=ADAPTER_GROUP, name=name))
     if not matches:
-        raise ValueError(f"Real adapter {name!r} is not installed ({ADAPTER_GROUP})")
+        raise ValueError(
+            f"Real adapter {name!r} is not installed ({ADAPTER_GROUP}). "
+            "Install its plugin package or sync the selected locked profile."
+        )
     if len(matches) != 1:
         raise ValueError(f"Duplicate providers for adapter {name!r} ({ADAPTER_GROUP})")
     return matches[0]

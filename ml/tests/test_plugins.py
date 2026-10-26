@@ -68,8 +68,10 @@ def test_missing_duplicate_and_incompatible_plugins_fail_clearly(monkeypatch, fa
     entries = [] if fault == "missing" else [entry, entry] if fault == "duplicate" else [entry]
     monkeypatch.setattr("app.core.plugins.entry_points", lambda **kwargs: entries)
     match = {"missing": "not installed", "duplicate": "Duplicate", "import": "Cannot import"}
-    with pytest.raises(ValueError, match=match.get(fault, "Incompatible")):
+    with pytest.raises(ValueError, match=match.get(fault, "Incompatible")) as error:
         load_adapter("external", "embedder")
+    if fault == "missing":
+        assert "Install its plugin package" in str(error.value)
 
 
 def test_explicit_fake_never_discovers_plugins(monkeypatch):
