@@ -174,20 +174,20 @@ flowchart LR
 
 ```mermaid
 flowchart LR
-  U(["用户 · 浏览器"])
+  U(["用户"])
   WEB["Web：React / TypeScript / Tailwind"]
   VH["VideoHelper<br/>Go API / Worker + Python 模型进程"]
   AUTH["JWT / JWKS 签发方<br/>本地开发：devauth"]
   OBJ[("对象存储<br/>本地 MinIO / S3 接口")]
-  U --> WEB
+  AUTH -->|"本地终端打印令牌"| U
+  U -->|"粘贴令牌与 API 地址"| WEB
   WEB -->|"HTTP REST：上传、项目、状态、搜索"| VH
-  WEB -->|"获取令牌"| AUTH
   VH -->|"HTTP：获取 JWKS，进程内校验 JWT"| AUTH
   WEB -->|"预签名 HTTP：上传、播放"| OBJ
   VH -->|"S3 API：媒体与推理输出"| OBJ
 ```
 
-托管认证供应商仍待定；LLM/Agent、URL 导入和 SSE 不在当前运行链路中，未来流程见第 6 章。
+当前 Web 没有获取令牌接口；用户粘贴签发方提供的令牌，本地 `devauth` 只打印令牌并提供 `/jwks`。托管认证供应商仍待定；LLM/Agent、URL 导入和 SSE 不在当前运行链路中，未来流程见第 6 章。
 
 ### 5.2 模块与连接（当前）
 
@@ -281,7 +281,7 @@ pgvector 查询集中在 `index`，Python HTTP 契约集中在 `mlclient`，切�
 | 接口 | 两端 | 当前形式 | 设计要点 |
 |---|---|---|---|
 | 对外 API | 浏览器 ↔ httpapi | HTTP REST / JSON；状态轮询 | JWT → workspace_id；大文件走预签名 URL；SSE 暂缓 |
-| ML 契约 v1 | Go ↔ 各 Python 服务进程 | HTTP/JSON，推理、发现与诊断 | 模型 ID / fingerprint；媒体传 S3 引用和时间段，文字直接传文本 |
+| ML 契约 v1 | Go ↔ 各 Python 服务进程 | HTTP/JSON，推理与发现 | 模型 ID / fingerprint；媒体传 S3 引用和时间段，文字直接传文本 |
 | 插件接口 | 公共 ML 服务 ↔ 已安装适配器 | 同进程 Python 函数调用 | entry point + 清单启用；共享输入与结果类型 |
 | Agent 工具（未来） | ADK ↔ Go 函数 | 设计为进程内调用 | 范围取自会话；不信任模型传入的 id |
 
@@ -758,7 +758,7 @@ erDiagram
 ### 9.3 公平与成本
 
 - GPU 任务按工作区限制并发数，超出的任务稍后执行，不算失败。每个工作区的名额要小于 GPU 总并发，否则一个工作区就能占满。
-- 换模型时的成批回填走低优先级队列，不和新视频抢 GPU（提议）。
+- 换模型时的成批回填已走 `gpu_low` 队列，调度优先级低于新视频的 `gpu` 任务；两者仍共享模型资源。
 - 当前只把索引时长记入 `usage_event`；GPU 时间、LLM token、配额检查与计费属于后续设计。具体额度待定。
 
 ### 9.4 安全
