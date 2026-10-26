@@ -6,7 +6,7 @@
 
 固定的小型合成视频库 `videohelper-synthetic-v1` 包含 **5 个视频，30 条有答案查询，5 条无答案查询，总长 8 分 18 秒**。真实索引验收、快照保存/恢复、固定索引检索和评分工具已实现；执行方法、结果判读与数据保留规则见 [基线运行说明](RUNBOOK.md)，接口与验收边界见 [评估契约](CONTRACT.md)。工具已实现不代表真实模型质量基线已经通过；以具体运行报告为准。
 
-固定模型参数消融已形成独立的[对比报告与复跑流程](experiments/ablation-v1/REPORT.md)：41 组参数及两次重复运行，候选改善定位，全量跳转仍未改善。机器可读对照保存在 `baselines/ablation-v1-default.json` 和 `baselines/ablation-v1-selected.json`；生产默认参数未修改。
+固定模型参数消融已形成独立的[对比报告与复跑流程](experiments/ablation-v1/REPORT.md)：41 组参数及两次重复运行，候选改善定位，全量跳转仍未改善。机器可读对照保存在 `baselines/ablation-v1-default.json` 和 `baselines/ablation-v1-selected.json`。实验当时未修改生产默认参数；当前已采用 K=5、RRF=60、merge gap=1、融合乘数 visual/speech/audio=1/1/0，采用依据与边界见[评估说明](../docs/Evaluation.md)。历史报告和分数保留原样。
 
 ## 先看成片
 
@@ -67,7 +67,7 @@ shasum -a 256 -c checksums.sha256
 
 [RUNBOOK.md](RUNBOOK.md) 给出可直接执行的命令。旧 `baseline-v2` 快照已清理，下一轮必须先新建索引：用 `tools/run.py index` 单独验收真实上传和索引并冻结快照，再用 `retrieve` 对同一索引执行两次完整检索，通过 `tools/score.py compare` 比较。`restore` 可将数据库和对象恢复到新的独立资源，再验证索引指纹。
 
-每轮都搜索全部 5 个视频，执行 35 条查询的 `visual`、`speech`、`fused` 三种模式；融合包含当前 active 的 `audio`，本库没有独立声音金标。查询、标注、字幕和参考讲解不作为视频内容导入。真实失败保留在报告中；不改本版标签或排除失败题来提高分数。
+每轮都搜索全部 5 个视频，执行 35 条查询的 `visual`、`speech`、`fused` 三种模式；融合按运行配置及显式覆盖后的有效权重选通道，当前默认关闭 `audio` 查询，但保留 CLAP 索引及声音源文件。本库没有独立声音金标。查询、标注、字幕和参考讲解不作为视频内容导入。真实失败保留在报告中；不改本版标签或排除失败题来提高分数。
 
 ## 目录与边界
 

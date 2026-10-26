@@ -58,7 +58,7 @@ func TestFusedChannelWeightsForwardedWithoutChangingControls(t *testing.T) {
 				if !reflect.DeepEqual(q.ChannelWeights, weights) || q.OnlyChannels != nil {
 					t.Fatalf("lost fused weights: %+v", q)
 				}
-			} else if q.ChannelWeights != nil || !reflect.DeepEqual(q.OnlyChannels, []string{mode}) {
+			} else if !reflect.DeepEqual(q.ChannelWeights, map[string]float64{mode: 1}) || !reflect.DeepEqual(q.OnlyChannels, []string{mode}) {
 				t.Fatalf("weights changed control: %+v", q)
 			}
 			return search.Result{}, nil

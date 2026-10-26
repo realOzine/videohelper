@@ -122,6 +122,7 @@ func searchOne(ctx context.Context, service searcher, r request) searchResponse 
 		q.ChannelWeights = r.ChannelWeights
 	} else {
 		q.OnlyChannels = []string{r.Mode}
+		q.ChannelWeights = map[string]float64{r.Mode: 1}
 	}
 	result, err := service.Search(ctx, workspace.Principal{UserID: r.UserID, WorkspaceID: r.WorkspaceID}, q)
 	out := searchResponse{QueryID: r.QueryID, Mode: r.Mode, LatencyMs: float64(time.Since(start).Microseconds()) / 1000, Moments: []moment{}, Skipped: result.Skipped}

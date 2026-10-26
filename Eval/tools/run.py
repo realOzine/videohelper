@@ -306,6 +306,20 @@ def restore_run(snapshot_id, run_id):
     print(f"restore passed: {state['runtime_dir']}/state.json", flush=True)
 
 
+def fused_multipliers(weights):
+    multipliers = dict.fromkeys(("visual", "speech", "audio"), 1.0)
+    if weights is not None and not isinstance(weights, dict):
+        raise ValueError("fused_weights must be a channel multiplier mapping")
+    for channel, value in (weights or {}).items():
+        if (channel not in multipliers or type(value) not in (int, float)
+                or not math.isfinite(value) or value < 0):
+            raise ValueError(f"invalid fused channel weight: {channel}={value}")
+        multipliers[channel] = value
+    if not any(multipliers.values()):
+        raise ValueError("at least one fused channel weight must be positive")
+    return multipliers
+
+
 def retrieve_run(snapshot_id, run_id, restored_state=None, overrides=None, fused_weights=None):
     from score import MODES, evaluate, write_report
 
@@ -317,24 +331,17 @@ def retrieve_run(snapshot_id, run_id, restored_state=None, overrides=None, fused
                 or flag != "merge-gap" and value == 0
                 or flag != "rrf-k" and type(value) is not int):
             raise ValueError(f"invalid search override: {flag}={value}")
-    multipliers = dict.fromkeys(("visual", "speech", "audio"), 1.0)
-    if fused_weights is not None and not isinstance(fused_weights, dict):
-        raise ValueError("fused_weights must be a channel multiplier mapping")
-    for channel, value in (fused_weights or {}).items():
-        if (channel not in multipliers or type(value) not in (int, float)
-                or not math.isfinite(value) or value < 0):
-            raise ValueError(f"invalid fused channel weight: {channel}={value}")
-        multipliers[channel] = value
-    if not any(multipliers.values()):
-        raise ValueError("at least one fused channel weight must be positive")
-    manifest, queries = corpus()
+    fused_multipliers(fused_weights)  # Reject invalid explicit input before reading corpus or services.
     _directory, snapshot = load_snapshot(snapshot_id)
     state = read_json(restored_state) if restored_state else snapshot["state"]
     config = config_for(state)
+    multipliers = fused_multipliers(config["search"].get("channel_weights"))
+    multipliers.update(fused_weights or {})
     channels = yaml.safe_load(Path(config["channels_file"]).read_text())["channels"]
     effective_weights = {channel: settings["weight"] * multipliers[channel] for channel, settings in channels.items()}
     if not all(math.isfinite(value) for value in effective_weights.values()) or not any(effective_weights.values()):
         raise ValueError("effective fused channel weights must be finite and not all zero")
+    manifest, queries = corpus()
     model_info = environment.verify_models(state["ml_endpoint"], environment.runtime_env(state)["VH_EVAL_ML_TOKEN"])
     if model_info != snapshot["state"]["models"]:
         raise ValueError("live models differ from snapshot")
@@ -449,8 +456,8 @@ def main():
     retrieve.add_argument("--rrf-k", type=float)
     retrieve.add_argument("--merge-gap", type=int)
     for channel in ("visual", "speech", "audio"):
-        retrieve.add_argument(f"--{channel}-weight", type=float, default=1.0,
-                              help=f"fused {channel} channel multiplier (0 disables route)")
+        retrieve.add_argument(f"--{channel}-weight", type=float,
+                              help=f"fused {channel} multiplier (default: config; 0 disables route)")
     restore = commands.add_parser("restore")
     restore.add_argument("--snapshot", required=True)
     restore.add_argument("--run-id", required=True)
@@ -469,7 +476,8 @@ def main():
         return 0 if retrieve_run(args.snapshot, args.run_id, args.state,
                                   {"k": args.k, "rrf-k": args.rrf_k, "merge-gap": args.merge_gap},
                                   {channel: getattr(args, channel + "_weight")
-                                   for channel in ("visual", "speech", "audio")}) else 1
+                                   for channel in ("visual", "speech", "audio")
+                                   if getattr(args, channel + "_weight") is not None}) else 1
     return 0
 
 

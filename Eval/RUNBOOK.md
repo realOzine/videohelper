@@ -2,6 +2,8 @@
 
 本流程将**索引验收**与**固定索引检索回归**分开：上传、worker 和索引推理只在 `index` 执行；`retrieve` 校验已有索引，再调用真实查询编码和业务搜索。命令在仓库根目录执行。本文提供操作步骤；已执行结果与质量指标见 [基线报告](BASELINE.md)。
 
+当前默认方案 v2 为 K=5、RRF=60、merge gap=1、融合乘数 visual/speech/audio=1/1/0，采用依据见[评估说明](../docs/Evaluation.md)。历史默认方案 v1 为 K=50、RRF=60、merge gap=1、1/1/1；这里的方案版本与历史索引运行 ID `baseline-v1` / `baseline-v2` 是两回事。下文显式固定 v2 参数，使新旧快照都能运行同一方案；复现 v1 必须显式指定 K=50 和三个乘数 1，不能依赖当前默认值。历史实验报告保持其运行当时的含义。
+
 `baseline-v1` 的失败及 ASR 修复后的 `baseline-v2` 索引、重复检索和恢复验证已形成历史结论，见[基线报告](BASELINE.md)。原始报告可从提交 `11a6668` 查看，例如 `git show 11a6668:Eval/runs/baseline-v2-index/report.md`。旧数据库、对象桶、快照和运行目录已清理，**不能跳过新一轮 `index` 直接使用 baseline-v2**。保留的 [baselines/baseline-v2.json](baselines/baseline-v2.json)仅用于评分比较，不能恢复索引。后续每轮须确认对应 `index-run.json` 为 `status: passed` 且完整快照已保存，才能执行检索与恢复。使用新的 ID，例如 `baseline-v3`。
 
 ## 前置条件与隔离资源
@@ -76,12 +78,12 @@ ml/.venv/bin/python Eval/tools/run.py index --run-id "$SNAPSHOT"
 ## 3. 在同一固定索引运行两次检索并比较
 
 ```sh
-ml/.venv/bin/python Eval/tools/run.py retrieve --snapshot "$SNAPSHOT" --run-id "${RUN}-a"
-ml/.venv/bin/python Eval/tools/run.py retrieve --snapshot "$SNAPSHOT" --run-id "${RUN}-b"
+ml/.venv/bin/python Eval/tools/run.py retrieve --snapshot "$SNAPSHOT" --run-id "${RUN}-a" --k 5 --rrf-k 60 --merge-gap 1 --visual-weight 1 --speech-weight 1 --audio-weight 0
+ml/.venv/bin/python Eval/tools/run.py retrieve --snapshot "$SNAPSHOT" --run-id "${RUN}-b" --k 5 --rrf-k 60 --merge-gap 1 --visual-weight 1 --speech-weight 1 --audio-weight 0
 ml/.venv/bin/python Eval/tools/score.py compare --before "Eval/runs/${RUN}-a/report.json" --after "Eval/runs/${RUN}-b/report.json" --output "Eval/runs/${RUN}-a-vs-b"
 ```
 
-每次针对全库 5 个视频执行 35 条查询 × `visual` / `speech` / `fused`，共 105 个响应，每题最多取 10 个 moment。检索前后检查索引指纹与模型身份；不重新上传或启动 worker。查询文字原样传给模型，当前没有英文转换。`fused` 使用当前 active 的全部通道，包含 `audio`；没有独立声音金标，不能据此单独验收 CLAP。
+每次针对全库 5 个视频执行 35 条查询 × `visual` / `speech` / `fused`，共 105 个响应，每题最多取 10 个 moment。检索前后检查索引指纹与模型身份；不重新上传或启动 worker。查询文字原样传给模型，当前没有英文转换。上述 v2 命令的 `fused` 使用 visual/speech，audio 乘数为 0；这不移除 CLAP 索引，也不改变源音频。没有独立声音金标，不能据此单独验收 CLAP。
 
 `report.json` / `report.md` 为汇总，`per_query.jsonl` 为逐题评分，`raw-responses.jsonl` 保存桥接原始输出，`results.jsonl` 补充稳定 `media_id`，`metadata.json` 记录代码、模型、索引、通道与检索参数；新增的 `runtime` 明确记录本次实际数据库和桶，恢复验证必须核对为恢复资源。`requests.jsonl`、前后 `inspection-*.json` 与 `search.log` 用于追查失败。`passed=true` 仅表示响应有效且索引稳定，**没有设定质量达标阈值**。
 
@@ -95,10 +97,19 @@ ml/.venv/bin/python Eval/tools/score.py compare --before Eval/baselines/baseline
 
 本轮重新索引，与旧基线的比较属于跨索引比较；以比较报告中的身份检查为准，不能称作旧 baseline-v2 的固定索引回归。同一新快照内的 A/B、调参与恢复验证仍按固定索引规则判读。
 
+在同一新索引上对比历史默认方案 v1 与当前 v2：
+
+```sh
+ml/.venv/bin/python Eval/tools/run.py retrieve --snapshot "$SNAPSHOT" --run-id "${RUN}-v1" --k 50 --rrf-k 60 --merge-gap 1 --visual-weight 1 --speech-weight 1 --audio-weight 1
+ml/.venv/bin/python Eval/tools/score.py compare --before "Eval/runs/${RUN}-v1/report.json" --after "Eval/runs/${RUN}-a/report.json" --output "Eval/runs/${RUN}-v1-vs-v2"
+```
+
+这是固定索引的参数对比，检索条件不同；不是相同条件重复回归。
+
 固定索引上试验召回数、RRF 常数和合并间隙时，使用新 run ID，参数进入报告，不改快照：
 
 ```sh
-ml/.venv/bin/python Eval/tools/run.py retrieve --snapshot "$SNAPSHOT" --run-id "${RUN}-tuned" --k 100 --rrf-k 30 --merge-gap 0
+ml/.venv/bin/python Eval/tools/run.py retrieve --snapshot "$SNAPSHOT" --run-id "${RUN}-tuned" --k 100 --rrf-k 30 --merge-gap 0 --visual-weight 1 --speech-weight 1 --audio-weight 0
 ml/.venv/bin/python Eval/tools/score.py compare --before "Eval/runs/${RUN}-a/report.json" --after "Eval/runs/${RUN}-tuned/report.json" --output "Eval/runs/${RUN}-a-vs-tuned"
 ```
 
@@ -110,13 +121,13 @@ ml/.venv/bin/python Eval/tools/score.py compare --before "Eval/runs/${RUN}-a/rep
 ml/.venv/bin/python Eval/tools/run.py retrieve --snapshot "$SNAPSHOT" --run-id "${RUN}-weights" --visual-weight 1 --speech-weight 2 --audio-weight 0
 ```
 
-三个参数是原配置权重的乘数，仅作用于 fused；0 会关闭对应查询通道，不能全部为 0。模型、索引和查询文字保持不变，单通道对照仍按原参数运行。实际乘数、有效权重和参与通道保存在 metadata 中。多组参数比较用 `tools/ablate.py summarize --plan <plan.json> --reports <report.json>... --output <directory>`；先固定题目划分和选择规则，候选冻结后才使用 `--verify` 检查内部核验集。
+三个参数是 `channels.yaml` 基础权重的乘数，仅作用于 fused；省略的参数继承所选快照或恢复状态的 `search.channel_weights`，该配置中缺少的通道乘数为 1，显式参数逐通道覆盖默认值。旧快照没有此字段时仍为 1/1/1，不能仅因代码更新就认定其使用 v2。0 会关闭对应查询通道，不能使全部有效权重为 0。模型、索引和查询文字保持不变，单通道对照仍按原参数运行。metadata 中的 `search_config` 保留默认配置，`fused_channel_weights` 保存应用覆盖后的实际完整乘数和有效权重，`channels` 保存参与通道。多组参数比较用 `tools/ablate.py summarize --plan <plan.json> --reports <report.json>... --output <directory>`；先固定题目划分和选择规则，候选冻结后才使用 `--verify` 检查内部核验集。
 
 ## 4. 恢复快照，再验证固定索引检索
 
 ```sh
 ml/.venv/bin/python Eval/tools/run.py restore --snapshot "$SNAPSHOT" --run-id "${RUN}-restored"
-ml/.venv/bin/python Eval/tools/run.py retrieve --snapshot "$SNAPSHOT" --run-id "${RUN}-restored-check" --state "Eval/.runtime/${RUN}-restored/state.json"
+ml/.venv/bin/python Eval/tools/run.py retrieve --snapshot "$SNAPSHOT" --run-id "${RUN}-restored-check" --state "Eval/.runtime/${RUN}-restored/state.json" --k 5 --rrf-k 60 --merge-gap 1 --visual-weight 1 --speech-weight 1 --audio-weight 0
 ml/.venv/bin/python Eval/tools/score.py compare --before "Eval/runs/${RUN}-a/report.json" --after "Eval/runs/${RUN}-restored-check/report.json" --output "Eval/runs/${RUN}-a-vs-restored"
 ```
 
@@ -156,4 +167,4 @@ runner 不自动删除数据库、桶、快照或运行目录。下一轮索引�
 
 归档名若已存在，应换一个未使用的路径。下一轮 `index` 会自行启动独立 Redis 并检查空队列；归档操作不删除数据库、桶或失败证据。旧 baseline-v1/v2 的队列归档已随本次运行数据一起清理。
 
-开发按 [AGENTS.md](AGENTS.md) 的小单元进行：并行任务使用独立 `Eval/.worktrees/`、`gpt-6.1-sol` / high effort；各单元运行相应检查后独立 commit，协调者评审并合并到 `eval`，再删除已合并 worktree，不直接集成到 `main`。提交时检查 diff 和忽略规则，只提交对应单元及真实证据；本说明不代替实际执行记录或运行报告。
+开发按 [AGENTS.md](AGENTS.md) 的小单元进行：并行任务使用独立 `Eval/.worktrees/`、`gpt-6.1-sol` / high effort；各单元运行相应检查后独立 commit，协调者评审并合并到 `main`，再删除已合并 worktree。提交时检查 diff 和忽略规则，只提交对应单元及真实证据；本说明不代替实际执行记录或运行报告。
