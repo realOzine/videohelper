@@ -1702,9 +1702,9 @@ Go 用 `ml.transcriber` 选择新 ASR 计划的模型，随后将 ID、fingerpri
 | 调用方 | 接口 | 时机 | 超时 | 批量 |
 |---|---|---|---|---|
 | `space.Registry`（api、worker） | `/v1/spaces` | 启动时，之后每 5 分钟 | 5 秒 | — |
-| `search`（api） | `/v1/embed`，`role=query` | 每次搜索，每个 (space, 查询文字) 一次 | 5 秒 | 1 |
-| `pipeline` embed 阶段（worker） | `/v1/embed`，`role=document` | 每批 | 60 秒 | 32 与 `max_batch` 中较小的 |
-| `pipeline` asr 阶段（worker） | `/v1/transcribe` | 每 10 分钟一段，窗口前后各多取 30 秒 | 每段 10 分钟 | — |
+| `search`（api） | `/v1/embed`，`role=query` | 每次搜索，每个 (space, 查询文字) 一次 | `ml.query_timeout`（local：30 秒） | 1 |
+| `pipeline` embed 阶段（worker） | `/v1/embed`，`role=document` | 每批 | `ml.embed_timeout`（local：5 分钟） | `min(ml.embed_batch, max_batch)`（local：最多 8） |
+| `pipeline` asr 阶段（worker） | `/v1/transcribe` | 按 `ml.transcribe_chunk_ms` 分段，前后增加 `ml.transcribe_overlap_ms`（local：10 分钟 / 30 秒） | `ml.transcribe_timeout`（local：每段 10 分钟） | — |
 
 Go 收到响应后校验以下内容，不通过则拒绝本批结果、不写入向量或推进断点。注册表发现同 ID 身份漂移时另行停用空间；单次输出错误不等于自动修改空间登记：
 
@@ -1812,7 +1812,7 @@ sequenceDiagram
 
 1. **解析载荷**。
 2. **检查**：只读地查一次这个阶段。查不到（视频已删除）或者已经是 done，直接返回成功（幂等）。
-3. **限流**：gpu 队列的任务申请工作区 GPU 名额，fetch 阶段申请平台下载名额（6.6 节）；gpu_low 的任务不申请。名额不够就返回 `ErrThrottled`，稍后重试，不计失败。这时阶段还是 queued，执行次数也不变。
+3. **限流**：gpu 队列的任务申请工作区 GPU 名额（6.6 节）；gpu_low 的任务不申请。fetch 与平台下载名额仍属规划。名额不够就返回 `ErrThrottled`，稍后重试，不计失败。这时阶段还是 queued，执行次数也不变。
 4. **认领**：执行 3.4 节的认领 SQL，状态改为 running，执行次数加 1。返回 0 行说明检查之后视频被删除了，或者阶段已经完成：释放名额，直接返回成功。
 5. **状态可见**：详情接口读取持久化状态；事件发布/SSE 暂缓。
 6. **执行** `Deps.Runs` 中对应的 `RunFunc`。耗时阶段调用 `SaveProgress(ctx, progress, commit)`，在同一事务写入一批产出和断点。
@@ -1914,25 +1914,18 @@ sequenceDiagram
 2. 先 `blob.DeletePrefix(VideoPrefix)` 删 S3 上的文件，再删除 video 行（其余数据级联删除）。顺序不能反：如果先删了行、删文件时失败，S3 上就会留下没人认领的孤儿文件。
 3. 可以重复执行。
 
-### 6.6 名额：工作区 GPU 并发、平台下载并发
+### 6.6 工作区 GPU 名额与规划的下载限流
 
-两种名额用同一套机制，只是键和上限不同：
+当前 `runner.acquireGPU` 仅对 `gpu` 队列申请工作区名额；`gpu_low` 不申请。平台下载限流随 fetch 规划，尚未接入 runner。
 
-| 名额 | Redis 键 | 上限 | 目的 |
+| 名额 | Redis 键 | 上限 | 当前状态 |
 |---|---|---|---|
-| 工作区 GPU 并发 | `vh:gpu:{workspace_id}` | `worker.workspace_gpu_limit`，默认 1，必须小于 `gpu_concurrency` | 一个工作区的大批量上传不堵住其他工作区 |
-| 平台下载并发 | `vh:fetch:{platform}`（全局共享） | `import.platforms.{平台}.max_concurrency`，默认 2 | 避免被平台限流或封禁出口 IP |
+| 工作区 GPU 并发 | `vh:gpu:{workspace_id}` | `worker.workspace_gpu_limit`（local：1，必须小于 `gpu_concurrency`） | 已实现；限制在途 gpu 任务 |
+| 平台下载并发 | `vh:fetch:{platform}` | `import.platforms.{平台}.max_concurrency` | 规划 |
 
-- **Redis 结构**：有序集合。成员是任务 id，分值是租约到期时间（毫秒时间戳）。
-- **申请**：用一段 Lua 脚本原子执行：
-  1. 删掉已过期的成员。
-  2. 如果这个任务 id 已在集合里，或者成员数小于上限，就写入（分值 = 现在 + 阶段超时），返回成功。
-  3. 否则返回名额不足。
-- **释放**：执行完删除这个成员。
-- **为什么用租约**：worker 崩溃时来不及释放名额，租约到期后名额会自动收回，不会永久卡住。
-- **以后**：工作区 GPU 名额可以按套餐区分。
-- **上限要小于总并发**：工作区名额等于 `gpu_concurrency` 时，一个工作区就能占满所有 GPU 并发，其他工作区只能等。代价是只有一个工作区在用时，GPU 并发用不满。
-- **gpu_low 不占工作区名额**（提议）：回填是系统发起的，不该占用户自己的名额；它能用多少 GPU，由队列权重限制。
+工作区名额使用有序集合和 Lua 脚本原子申请：先回收过期成员，未满时写入随机租约 token，分值为当前时间加阶段超时及 1 分钟余量；满时返回 `ErrThrottled`。任务退出时删除自己的 token，worker 崩溃则等待租约到期回收。
+
+队列权重决定 `gpu` / `gpu_low` 的消费优先级，不是设备容量配额。回填也会占用同一个 Python gate；多个模型进程共享 GPU 时，总显存和总并发仍须由部署控制。
 
 ### 6.7 reconciler
 
@@ -1952,9 +1945,9 @@ sequenceDiagram
 |---|---|---|
 | `asynq:*` | Asynq 内部 | 队列、重试、调度 |
 | `vh:gpu:{workspace_id}` | 有序集合 | 工作区 GPU 名额（6.6 节） |
-| `vh:fetch:{platform}` | 有序集合 | 平台下载名额（6.6 节） |
-| `vh:ev:video:{video_id}` | pub/sub 频道 | 单个视频的进度事件 |
-| `vh:ev:workspace:{workspace_id}` | pub/sub 频道 | 工作区维度的事件，视频列表页用 |
+| `vh:fetch:{platform}`（规划） | 有序集合 | 后续平台下载名额 |
+| `vh:ev:video:{video_id}`（规划） | pub/sub 频道 | 单个视频的进度事件 |
+| `vh:ev:workspace:{workspace_id}`（规划） | pub/sub 频道 | 工作区维度的事件，视频列表页用 |
 
 Redis 里没有任何不能丢的数据。Redis 清空后，reconciler 会根据 `stage_run` 把任务补回来。
 
@@ -2496,6 +2489,12 @@ flowchart TB
 | `make build` / `make generate` | 构建 Go 二进制 / 按包重新生成 sqlc 代码 |
 | `make test-go` | 已实现 Go 包的 race 测试，排除 `model-test/` |
 | `make vet` / `make fmt` | Go 静态检查 / 格式化 |
+| `make test-web` | Web 纯函数测试 |
+| `make ml-install ML_PROFILE=<profile>` | 用 profile 锁文件安装普通包与推理依赖 |
+| `make ml-prepare ML_PROFILE=<profile>` | 准备对应清单的固定权重 |
+| `make ml-serve ML_PROFILE=<profile> ML_PORT=<port>` | 前台启动该 profile；离线模式需另设 `HF_HUB_OFFLINE=1` |
+| `make ml-status ML_PORT=<port>` | 检查该端口的 `/readyz`；不抓取 runtime 元数据 |
+| `make test-ml-lifecycle` | 临时环境中构建 / 安装公共 wheel，显式 fake 检查启动、请求与停止，无权重下载 |
 | `cd ml && uv run pytest` | Python 协议与 fake 测试 |
 | `cd ml && uv run ruff check .` | Python 静态检查 |
 
