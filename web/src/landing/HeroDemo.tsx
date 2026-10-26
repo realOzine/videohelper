@@ -85,9 +85,6 @@ export default function HeroStage({ l }: { l: 0 | 1 }) {
           <span className="h-[30px] rounded-md bg-ink-3 px-[11px] leading-[30px] font-semibold">{t('app.search')}</span>
           <span className="h-[30px] px-[11px] leading-[30px] text-fg-soft">{t('app.lib')} 8</span>
           <span className="h-[30px] px-[11px] leading-[30px] text-fg-soft">{t('app.proc')} <b className="text-red">2</b></span>
-          {!reduce && <span className="ml-auto inline-flex items-center gap-1.5 text-[13px] text-fg-soft" aria-live="polite">
-            <i className={cx('size-1.5 rounded-full transition-colors', held ? 'bg-faint' : 'bg-red')} /><span className="@max-xl:hidden">{held ? t('demo.paused') : t('demo.auto')}</span>
-          </span>}
         </div>
 
         <form role="search" onSubmit={search} className="flex h-[58px] flex-none items-center gap-2 px-3 py-2.5">
@@ -104,9 +101,8 @@ export default function HeroStage({ l }: { l: 0 | 1 }) {
           <div className="flex min-w-0 flex-1 gap-1.5 overflow-hidden @max-xl:[&>*:nth-child(n+3)]:hidden">
             {SETS.map((s, i) => ({ s, i })).slice(first, first + 4).map(({ s, i }) => (
               <button key={i} type="button" onClick={() => grab({ q: i, t: TYPE + 1000, sel: 0 })}
-                className={cx('relative h-7 flex-none overflow-hidden rounded-full px-2.5 text-[12.5px] transition-colors duration-200', i === c.q ? 'bg-red-fill font-medium text-white' : 'bg-ink-3 hover:bg-ink-4')}>
+                className={cx('h-7 flex-none rounded-full px-2.5 text-[12.5px] transition-colors duration-200', i === c.q ? 'bg-red-fill font-medium text-white' : 'bg-ink-3 hover:bg-ink-4')}>
                 {s.q[l]}
-                {i === c.q && !held && !reduce && <i className="absolute bottom-0 left-0 h-0.5 bg-white/55" style={{ width: `${(c.t / CYCLE) * 100}%`, transition: c.t < 200 ? 'none' : 'width 100ms linear' }} />}
               </button>
             ))}
           </div>
