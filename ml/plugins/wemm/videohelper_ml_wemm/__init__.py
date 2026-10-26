@@ -29,6 +29,10 @@ class WeMMEmbedder:
             raise ValueError("WeMM supports text queries and text/video/image documents")
         if config["max_concurrency"] != 1:
             raise ValueError("WeMM has mutable position state and requires max_concurrency=1")
+        if config["device"].split(":")[0] == "cuda" and self.preprocess.get("adapter_version") != 2:
+            raise ValueError(
+                "CUDA requires preprocess.adapter_version=2 for a distinct fingerprint"
+            )
 
     @staticmethod
     def prepare(config: dict) -> Path:
@@ -66,9 +70,20 @@ class WeMMEmbedder:
                 "Install videohelper-ml-wemm[inference] (or uv sync --extra wemm)"
             ) from exc
 
-        if self.config["device"] not in ("cpu", "mps"):
-            raise ValueError("Local WeMM supports device cpu or mps")
         self.device = self.config["device"]
+        try:
+            device = torch.device(self.device)
+        except (RuntimeError, ValueError) as exc:
+            raise ValueError("WeMM supports device cpu, mps, cuda or cuda:N") from exc
+        if self.device not in ("cpu", "mps") and device.type != "cuda":
+            raise ValueError("WeMM supports device cpu, mps, cuda or cuda:N")
+        if device.type == "cuda":
+            if not torch.cuda.is_available():
+                raise ValueError(
+                    "CUDA is unavailable; install a CUDA-enabled PyTorch on a GPU host"
+                )
+            if device.index is not None and device.index >= torch.cuda.device_count():
+                raise ValueError("Requested CUDA device is unavailable")
         if self.device == "mps" and not torch.backends.mps.is_available():
             raise ValueError("MPS is unavailable; set device=cpu and dtype=float32")
         dtype = {"float16": torch.float16, "bfloat16": torch.bfloat16, "float32": torch.float32}

@@ -110,3 +110,73 @@ def test_embed_truncates_and_renormalizes_without_cache(monkeypatch):
     assert np.allclose(np.linalg.norm(result, axis=1), 1)
     assert [call["input_ids"] for call in calls] == ["one", "two"]
     assert all(call["use_cache"] is False for call in calls)
+
+
+@pytest.mark.parametrize("device", ["cuda", "cuda:1"])
+def test_cuda_load_preserves_eager_attention_and_explicit_device(monkeypatch, tmp_path, device):
+    import sys
+    from types import SimpleNamespace
+
+    torch = pytest.importorskip("torch")
+    instance = adapter()
+    instance.config = {**instance.config, "device": device, "dtype": "float16"}
+    calls = {}
+
+    class Model:
+        config = SimpleNamespace(matryoshka_dimensions=[instance.info.dim])
+
+        def to(self, target):
+            calls["device"] = target
+            return self
+
+        def eval(self):
+            return self
+
+    def from_pretrained(directory, **kwargs):
+        calls.update(kwargs)
+        return Model()
+
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: True)
+    monkeypatch.setattr(torch.cuda, "device_count", lambda: 2)
+    monkeypatch.setattr(instance, "prepare", lambda config: tmp_path)
+    monkeypatch.setitem(
+        sys.modules,
+        "transformers",
+        SimpleNamespace(
+            AutoProcessor=SimpleNamespace(from_pretrained=lambda *args, **kwargs: object()),
+            AutoModel=SimpleNamespace(from_pretrained=from_pretrained),
+        ),
+    )
+    instance.load()
+    assert calls["device"] == device
+    assert calls["dtype"] == torch.float16
+    assert calls["attn_implementation"] == "eager"
+    assert calls["local_files_only"] is True
+
+
+@pytest.mark.parametrize("device", ["cuda", "cuda:2", "cuda:-1", "cpu:0", "invalid"])
+def test_unavailable_or_invalid_cuda_fails_before_weights(monkeypatch, device):
+    import sys
+    from types import SimpleNamespace
+
+    torch = pytest.importorskip("torch")
+    instance = adapter()
+    instance.config = {**instance.config, "device": device}
+    monkeypatch.setattr(torch.cuda, "is_available", lambda: device != "cuda")
+    monkeypatch.setattr(torch.cuda, "device_count", lambda: 2)
+    monkeypatch.setattr(instance, "prepare", lambda config: pytest.fail("weights were accessed"))
+    monkeypatch.setitem(
+        sys.modules, "transformers", SimpleNamespace(AutoModel=object(), AutoProcessor=object())
+    )
+    with pytest.raises(ValueError, match="CUDA|device"):
+        instance.load()
+
+
+def test_cuda_requires_a_distinct_encoding_revision():
+    instance = adapter()
+    config = {**instance.config, "device": "cuda"}
+    with pytest.raises(ValueError, match="distinct fingerprint"):
+        WeMMEmbedder(instance.info, config)
+    config["preprocess"] = {**config["preprocess"], "adapter_version": 2}
+    cuda = WeMMEmbedder(instance.info, config)
+    assert fingerprint(cuda.config, fake=False) != fingerprint(instance.config, fake=False)
