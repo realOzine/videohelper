@@ -16,7 +16,13 @@ class RunnerBoundaries(unittest.TestCase):
                                       "--speech-weight", "1.5", "--audio-weight", "0"]), \
                 patch.object(run, "retrieve_run", return_value=True) as retrieve:
             self.assertEqual(run.main(), 0)
-        self.assertEqual(retrieve.call_args.args[4], {"visual": 1, "speech": 1.5, "audio": 0})
+        self.assertEqual(retrieve.call_args.args[4], {"speech": 1.5, "audio": 0})
+
+    def test_retrieve_cli_leaves_omitted_weights_to_config(self):
+        with patch.object(sys, "argv", ["run.py", "retrieve", "--snapshot", "s", "--run-id", "r"]), \
+                patch.object(run, "retrieve_run", return_value=True) as retrieve:
+            self.assertEqual(run.main(), 0)
+        self.assertEqual(retrieve.call_args.args[4], {})
 
     def test_binary_provenance_requires_matching_build_hash(self):
         with tempfile.TemporaryDirectory() as folder, patch.object(run, "ROOT", Path(folder)):
@@ -116,7 +122,7 @@ class RunnerBoundaries(unittest.TestCase):
 
 class RetrievalOrchestration(unittest.TestCase):
     @contextmanager
-    def fixture(self, script, exit_code=0, after=None):
+    def fixture(self, script, exit_code=0, after=None, default_weights=None):
         # Only a local Python pipe replaces the bridge; no DB, ML, Redis or S3 is contacted.
         with tempfile.TemporaryDirectory() as folder, ExitStack() as stack:
             root = Path(folder)
@@ -133,6 +139,8 @@ class RetrievalOrchestration(unittest.TestCase):
             snapshot.update(state=state, principal={"workspace_id": 1, "user_id": 2},
                             mapping={"media": 3}, model_fingerprints={})
             config = {"channels_file": str(channels), "search": {"k": 50, "rrf_k": 60, "merge_gap_cells": 1}}
+            if default_weights is not None:
+                config["search"]["channel_weights"] = default_weights
             inspection = {"passed": True, "index_sha256": "frozen"}
             for name, value in (("ROOT", root), ("corpus", lambda: (manifest, [query])),
                                 ("load_snapshot", lambda name: (root, snapshot)),
@@ -155,6 +163,8 @@ class RetrievalOrchestration(unittest.TestCase):
 for line in sys.stdin:
     request = json.loads(line)
     assert request['video_ids'] == [3] and request['text'] == '查询 unchanged'
+    if request['mode'] == 'fused':
+        assert request['channel_weights'] == dict(visual=1, speech=1, audio=1)
     print(json.dumps(dict(query_id=request['query_id'], mode=request['mode'], latency_ms=1,
                           moments=[dict(video_id=3,start_ms=0,end_ms=10,jump_ms=0,score=1)])), flush=True)
 """
@@ -193,6 +203,31 @@ for line in sys.stdin:
             self.assertEqual(metadata["channels"]["visual"], ["visual"])
             self.assertEqual(metadata["channels"]["speech"], ["speech"])
 
+    def test_configured_weights_are_inherited_and_overridden_per_channel(self):
+        for defaults, explicit in (({"visual": 1, "speech": 1, "audio": 0}, None),
+                                   ({"audio": 0}, {"speech": 1.5}),
+                                   ({"audio": 0}, {"audio": 1})):
+            expected = {"visual": 1, "speech": 1, "audio": 1, **defaults, **(explicit or {})}
+            script = f"""import json, sys
+for line in sys.stdin:
+    request = json.loads(line)
+    if request['mode'] == 'fused':
+        assert request['channel_weights'] == {expected!r}
+    else:
+        assert 'channel_weights' not in request
+    print(json.dumps(dict(query_id=request['query_id'], mode=request['mode'], latency_ms=1,
+                          moments=[dict(video_id=3,start_ms=0,end_ms=10,jump_ms=0,score=1)])), flush=True)
+"""
+            with self.subTest(explicit=explicit), self.fixture(script, default_weights=defaults) as (root, _):
+                self.assertTrue(run.retrieve_run("snapshot", "defaults", fused_weights=explicit))
+                metadata = run.read_json(root / "runs/defaults/metadata.json")
+                self.assertEqual(metadata["search_config"]["channel_weights"], defaults)
+                self.assertEqual(metadata["fused_channel_weights"], {
+                    "multipliers": expected,
+                    "effective": {**expected, "speech": expected["speech"] * 2}})
+                self.assertEqual(metadata["channels"]["fused"], sorted(
+                    channel for channel, weight in expected.items() if weight > 0))
+
     def test_invalid_fused_weights_rejected_before_resource_access(self):
         for weights in ([1], {"unknown": 1}, {"audio": True}, {"speech": "1"},
                         {"visual": -1}, {"audio": float("nan")}, {"speech": float("inf")},
@@ -215,6 +250,19 @@ for line in sys.stdin:
             run.environment.verify_models.assert_not_called()
             run.inspect.assert_not_called()
             launched.assert_not_called()
+
+    def test_invalid_defaults_and_resolved_zero_weights_precede_resource_access(self):
+        for defaults, explicit in (({"audio": -1}, None), ({"unknown": 1}, None),
+                                   ({"audio": float("nan")}, None),
+                                   ({"audio": 0}, {"visual": 0, "speech": 0})):
+            with self.subTest(defaults=defaults), self.fixture("", default_weights=defaults) as (_, launched), \
+                    patch.object(run, "corpus") as corpus:
+                with self.assertRaises(ValueError):
+                    run.retrieve_run("snapshot", "invalid-defaults", fused_weights=explicit)
+                corpus.assert_not_called()
+                run.environment.verify_models.assert_not_called()
+                run.inspect.assert_not_called()
+                launched.assert_not_called()
 
     def test_restored_runtime_provenance_matches_selected_state(self):
         script = """import json, sys
