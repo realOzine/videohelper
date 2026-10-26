@@ -103,6 +103,20 @@ def test_prepare_validates_cached_weights_without_loading_models(monkeypatch, tm
     configs = yaml.safe_load(Settings.models_file.with_name("models.local.yaml").read_text())[
         "models"
     ]
+    for name in (
+        "config.json",
+        "processor_config.json",
+        "tokenizer.json",
+        "tokenizer_config.json",
+        "chat_template.jinja",
+        "model.safetensors",
+        "preprocessor_config.json",
+        "pytorch_model.bin",
+        "special_tokens_map.json",
+        "merges.txt",
+        "vocab.json",
+    ):
+        (tmp_path / name).touch()
     code = tmp_path / "modeling_wemm_embedding.py"
     code.write_text("reviewed test source")
     monkeypatch.setattr(wemm, "REMOTE_CODE_SHA256", hashlib.sha256(code.read_bytes()).hexdigest())
@@ -126,3 +140,23 @@ def test_prepare_validates_cached_weights_without_loading_models(monkeypatch, tm
     )
     assert clap.CLAPEmbedder.prepare(configs[2]) == tmp_path
     assert all(call["local_files_only"] is True for call in downloads)
+
+
+@pytest.mark.parametrize("adapter", ["wemm", "clap"])
+def test_prepare_rejects_incomplete_offline_snapshot(monkeypatch, tmp_path, adapter):
+    import sys
+
+    monkeypatch.setitem(
+        sys.modules,
+        "huggingface_hub",
+        SimpleNamespace(
+            constants=SimpleNamespace(HF_HUB_OFFLINE=True),
+            snapshot_download=lambda *args, **kwargs: str(tmp_path),
+        ),
+    )
+    configs = yaml.safe_load(Settings.models_file.with_name("models.local.yaml").read_text())[
+        "models"
+    ]
+    config = next(config for config in configs if config["adapter"] == adapter)
+    with pytest.raises(RuntimeError, match="snapshot is incomplete"):
+        load_adapter(adapter, "embedder").prepare(config)

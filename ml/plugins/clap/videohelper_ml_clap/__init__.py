@@ -59,6 +59,19 @@ class CLAPEmbedder:
                 allow_patterns=["*.json", "merges.txt", "pytorch_model.bin"],
             )
         )
+        required = (
+            "config.json",
+            "preprocessor_config.json",
+            "pytorch_model.bin",
+            "tokenizer.json",
+            "tokenizer_config.json",
+            "special_tokens_map.json",
+            "merges.txt",
+            "vocab.json",
+        )
+        missing = [name for name in required if not (directory / name).is_file()]
+        if missing:
+            raise RuntimeError(f"Pinned CLAP snapshot is incomplete: {', '.join(missing)}")
         return directory
 
     def load(self):
