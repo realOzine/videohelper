@@ -902,7 +902,9 @@ auth:                              # 认证服务待定
 
 ml:
   endpoints: ["http://ml:8000"]    # 可以多个，比如候选模型单独一个容器
-  token_env: VH_ML_TOKEN           # 服务间共享令牌（已定）；Python 端配置同一个值
+  transcriber: paraformer-zh@r1    # 新 ASR 任务使用的模型 ID
+  model_endpoints: {}              # 同 ID 多服务时填写，例如 {"wemm-2b@r1": "http://ml:8000"}
+  token_env: VH_ML_TOKEN           # 服务间共享令牌；Python 端配置同一个值
   query_timeout: 5s                # 查询编码
   embed_timeout: 60s               # 每批文档编码
   embed_batch: 32
@@ -2221,182 +2223,89 @@ flowchart LR
 
 ## 10. Python 模型服务
 
-### 10.1 目录结构
+### 10.1 安装包与目录
 
 ```text
 ml/
-├── pyproject.toml          # 项目元数据、依赖、工具配置（ruff、pytest）；用 uv 管理（已定）
-├── uv.lock                 # 锁定的依赖版本
-├── models.yaml             # 本实例加载哪些模型；部署时可以用 ML_MODELS_FILE 指向别的文件
-├── Dockerfile              # CUDA 基础镜像 + Python 依赖；不打包模型权重，启动时从 S3 的 models/ 下载（提议，10.3 节）
+├── pyproject.toml / uv.lock      # 通用服务 videohelper-ml；开发环境锁文件
+├── models*.yaml                 # fake 与兼容的本地组合清单
 ├── app/
-│   ├── __init__.py
-│   ├── main.py             # 创建 FastAPI 应用；启动阶段（lifespan）加载 registry；挂载路由
-│   ├── settings.py         # 读取环境变量：模型清单路径、缓存目录与上限、S3 配置、假模型开关、日志级别
-│   ├── api/
-│   │   ├── __init__.py
-│   │   ├── schemas.py      # Pydantic 模型：SpacesResponse、EmbedRequest/Response、TranscribeRequest/Response、ErrorBody；
-│   │   │                   # 必须与 contracts/ml-v1.yaml 一致
-│   │   ├── routes.py       # 五个接口：/v1/spaces、/v1/embed、/v1/transcribe、/healthz、/readyz；
-│   │   │                   # 只做校验、调度和格式转换，不含模型代码
-│   │   ├── errors.py       # 业务异常 → HTTP 状态码与统一错误体；503 时附带 Retry-After
-│   │   └── auth.py         # 共享令牌校验（FastAPI 依赖项）；/healthz、/readyz 不校验
-│   ├── core/
-│   │   ├── __init__.py
-│   │   ├── registry.py     # 读 models.yaml，实例化 adapter，维护 space id / 模型 id → adapter；计算 fingerprint
-│   │   ├── gate.py         # 每个模型一个并发闸门 + 有界等待队列；队列满时抛 Busy（对应 503）
-│   │   └── fingerprint.py  # fingerprint = sha256(adapter 名 + 权重版本 + dtype + 预处理参数)
-│   ├── adapters/
-│   │   ├── __init__.py
-│   │   ├── base.py         # 接口定义：Embedder、Transcriber；输入类型 TextInput、MediaInput；SpaceInfo
-│   │   ├── wemm.py         # WeMM：文本、视频、图片；抽帧、分辨率、批量推理
-│   │   ├── clap.py         # CLAP HTSAT unfused：原样文字查询、48 kHz 单声道音频编码
-│   │   ├── funasr.py       # ASR（阿里 FunASR，已定）：中文识别 + 语音活动检测 + 标点分句，输出句子和逐字时间戳
-│   │   └── fake.py         # 假模型：输入的 hash → 确定性向量；固定的转录结果；用于测试和没有 GPU 的本地开发
-│   └── media/
-│       ├── __init__.py
-│       ├── cache.py        # s3:// URI → 本地文件；同一个 URI 只下载一次；按磁盘上限做 LRU 淘汰
-│       ├── video.py        # PyAV：seek 到起点，解码到终点，均匀抽 N 帧，缩放；返回 numpy 数组
-│       └── audio.py        # PyAV：取时间段内的音频，重采样到目标采样率，转单声道；返回 numpy 数组
-└── tests/
-    ├── conftest.py         # 用假模型启动应用，提供测试客户端
-    ├── test_contract.py    # 用 contracts/ml-v1.yaml 校验每个接口的请求和响应
-    ├── test_routes.py      # 校验规则：输入类型、时间段、批量上限、未知 space、503
-    ├── test_registry.py    # models.yaml 解析；fingerprint 稳定（同样的配置得到同样的值）
-    ├── test_media.py       # 时间段切取的边界：开头、结尾、超出时长、极短片段
-    └── test_cache.py       # 并发请求同一个 URI 只下载一次；超过上限时淘汰最久没用的
+│   ├── cli.py / runtime.py      # prepare、serve、describe；运行信息
+│   ├── api/                    # HTTP、鉴权、输入输出校验
+│   ├── core/                   # 插件发现、模型注册、fingerprint、并发闸门
+│   ├── adapters/               # 共享输入/接口、fake；旧导入路径的兼容转出
+│   ├── resources/models.yaml   # wheel 内默认 fake 清单
+│   └── media/                  # 对象缓存、视频/音频解码
+├── plugins/{wemm,funasr,clap}/   # 三个独立 Python 包，各有 pyproject.toml
+├── profiles/
+│   ├── wemm-mps/               # Mac arm64：WeMM
+│   ├── speech-audio-cpu/       # Mac arm64 / Linux amd64：ASR + CLAP
+│   └── wemm-cuda/              # Linux amd64：WeMM CUDA 候选
+├── tools/check_lifecycle.py    # 安装后的服务启动/请求/停止检查，无权重下载
+├── Dockerfile                 # 按 profile 安装普通 wheel；模型缓存挂载在外
+└── tests/                     # 契约、媒体、插件发现、打包与运行信息检查
 ```
 
-### 10.2 分层与职责
+每个 profile 包含自己的 `pyproject.toml`、`uv.lock`、`models.yaml`。公共服务不强制安装 Torch、Transformers 或 FunASR；插件的 `inference` extra 才引入对应模型依赖。相容插件可共用环境；版本冲突则拆成独立环境与进程。
+
+### 10.2 插件边界
 
 ```mermaid
-flowchart TB
-  R["api/routes.py<br/>校验 · 调度 · 格式转换"] --> REG["core/registry.py<br/>space / 模型 → adapter"]
-  R --> GT["core/gate.py<br/>并发闸门 · 背压"]
-  R --> CA["media/cache.py<br/>S3 → 本地文件"]
-  GT --> AD["adapters/*<br/>模型相关的一切"]
-  AD --> MV["media/video.py · audio.py<br/>通用解码"]
+flowchart LR
+  G["Go API / Worker 进程"] -->|HTTP| R
+  subgraph P["一个 Python 环境 / 进程"]
+    R["api：鉴权、校验、调度"] --> REG["registry：已安装且启用的插件"]
+    R --> C["media：下载与缓存"]
+    REG --> GT["gate：并发与背压"]
+    GT -->|函数调用| A["模型插件：权重、预处理、推理"]
+    A --> D["media：通用解码"]
+  end
 ```
 
-| 层 | 负责 | 不负责 |
+安装包用标准 entry point 声明适配器，不扫描脚本目录，不动态执行用户上传代码：
+
+```toml
+[project.entry-points."videohelper.ml.adapters.v1"]
+wemm = "videohelper_ml_wemm:WeMMEmbedder"
+```
+
+清单里的 `adapter: wemm` 选择这个名字。Registry 先检查所有已启用插件的存在性、唯一性和接口，再加载模型。缺包、重复 entry point、类型不符或加载失败会使启动失败；只有显式 `ML_FAKE=1` 才使用 fake。插件是受信任的进程内 Python 代码，具有服务进程权限，安装前必须审查来源。
+
+当前接口支持 embedder 和 transcriber。新增同类模型只需实现插件、安装到对应环境并配置清单；新增 OCR、检测框或联合音视频等证据类型仍要扩展契约和 Go 业务流程。公共服务不承担模型调度平台、自动安装或热卸载。
+
+### 10.3 模型清单与运行配置
+
+`ml/models.yaml` 是测试用 fake 清单；`models.local.yaml` 保留现有 WeMM + FunASR + CLAP 组合。独立部署优先使用 `profiles/`：
+
+| Profile | 模型 / 设备 | 空间与用途 |
 |---|---|---|
-| `api/` | HTTP、校验、错误映射 | 模型细节、解码 |
-| `core/` | 模型清单、路由、并发控制、fingerprint | 推理本身 |
-| `adapters/` | 模型相关的一切：加载权重、查询指令、抽帧参数、推理、归一化 | HTTP、并发、下载 |
-| `media/` | 通用的下载、缓存、解码 | 决定抽几帧、什么采样率（这些由 adapter 传进来） |
+| `wemm-mps` | WeMM / MPS float16 | `wemm-2b@r1`，文字查询，文字/视频/图片编码 |
+| `speech-audio-cpu` | FunASR + CLAP / CPU float32 | `paraformer-zh@r1` 转录，`clap-htsat-unfused@r1` 声音编码 |
+| `wemm-cuda` | WeMM / CUDA float16 | `wemm-2b-cuda-experimental@r1`，未经真实 GPU 验收的候选 |
 
-新增一个模型：在 `adapters/` 里加一个文件，在 `models.yaml` 里加一项。其余文件都不用改。
+WeMM 固定 `tencent/WeMM-Embedding-2B` revision `bbd6cd4bf52cfc6716f752a2df80b2706720bd95` 与 Transformers 5.2.0，并检查远程模型代码 SHA256。2048 维按官方 MRL 截至 1024 维后归一化；每段抽 4 帧，图片像素范围 65536–262144，视频每帧 4096–262144，输入最多 4096 token。单批最多 32 项、逐项推理。
 
-### 10.3 `models.yaml`
+FunASR 使用 CPU float32，Paraformer、VAD、标点模型均固定 revision；缺少模型文件时拒绝启动，避免无权重推理。返回原始识别文本和绝对毫秒时间戳，不引入 LLM。CLAP 使用 `laion/clap-htsat-unfused` revision `8fa0f1c6d0433df6e97c127f64b2a1d6c0dcda8a`，512 维、cosine；48 kHz 单声道，最长 10 秒，短音频 repeatpad。查询文字原样传入，不翻译。
 
-当前 `ml/models.yaml` 是显式 fake 清单（仅 `ML_FAKE=1`）；真实本地组合使用 `ml/models.local.yaml`（WeMM + FunASR + CLAP），WeMM 单独验证使用 `ml/models.wemm.yaml`，以仓库实际清单为准。已固定官方 `tencent/WeMM-Embedding-2B` revision `bbd6cd4bf52cfc6716f752a2df80b2706720bd95`、transformers 5.2.0，检查远程模型代码 SHA256 后加载。全维输出为 2048，当前按官方 MRL 截到 1024 后再次归一化，维度参与 fingerprint。查询只接受文字；文档支持文字、视频和图片。
+`videohelper-ml prepare --models <清单>` 下载并检查固定版本权重；`serve` 加载同一组权重。部署先 prepare，再设置 `HF_HUB_OFFLINE=1` 启动；裸 `serve` 在未启用离线模式时仍可下载。权重缓存由 Hugging Face 管理，可用 `HF_HOME` 指定，与媒体缓存 `ML_CACHE_DIR` 分开。当前没有 S3 权重发布服务。
 
-本地使用 MPS float16、每片段均匀抽 4 帧，按官方 processor 保持宽高比缩放；图片像素范围 65536–262144，视频每帧 4096–262144，输入 token 上限 4096，单批最多 32 项、逐项推理控制内存。运行入口使用 `uv sync --extra wemm --extra asr --extra clap`，设置 `ML_FAKE=0 ML_MODELS_FILE=models.local.yaml`。ASR 使用 CPU float32、FunASR 1.3.14，Paraformer、VAD、标点模型均固定 revision（见清单）；返回原始转录和绝对毫秒时间戳，不引入 LLM 校对。下方为整体模型配置形态，真实参数以固定清单为准。
+Go 配置显式选择新任务使用的 `ml.transcriber`；旧任务按计划冻结的 ID 与 fingerprint 执行。`ml.model_endpoints` 可把模型 ID 绑定到 `ml.endpoints` 中的地址；同 ID 被多个服务宣告时必须绑定。绑定端点不可达时不切到另一端点；同 ID 身份不一致仍拒绝使用。
 
-```yaml
-# 本实例加载哪些模型。id 就是契约里的 space id（或转录模型 id）。
-models:
-  - id: wemm-2b@r1
-    kind: embedder                 # embedder | transcriber
-    adapter: wemm                  # 对应 adapters/wemm.py
-    weights: tencent/WeMM-Embedding-2B   # 上游仓库名（以实际为准）；同步脚本按它和 revision 把权重拷到 S3 的 models/
-    revision: "<commit sha>"       # 必须钉死版本；fingerprint 依赖它
-    device: cuda:0
-    dtype: float16
-    max_batch: 64                  # 单次请求最多多少个 input
-    max_concurrency: 1             # 同时跑几个推理
-    queue_limit: 64                # 最多排队几个请求，再多就返回 503
-    max_span_ms: 30000             # 单段最长时长（待验证）
-    preprocess:                    # 以下参数在实现时查阅 WeMM 的文档确定（已定）
-      frames_per_clip: 8
-      image_size: 448
-      query_instruction: ""        # 查询要加的指令前缀（如果模型要求）
+### 10.4 适配器接口
 
-  - id: paraformer-zh@r1
-    kind: transcriber
-    adapter: funasr                # 阿里 FunASR（已定）
-    weights: paraformer-zh         # 中文识别模型；模型名以 FunASR 文档为准
-    revision: "<版本>"
-    device: cuda:0
-    dtype: float32
-    max_concurrency: 1
-    queue_limit: 4
-    max_window_ms: 900000          # 单次请求最长 15 分钟音频（Go 每段 10 分钟 + 前后各 30 秒）
-    preprocess:
-      sample_rate: 16000
-      vad_model: fsmn-vad          # 语音活动检测：切出有人说话的片段
-      punc_model: ct-punc          # 标点恢复：用来分句
-      languages: [zh]
-```
+entry point 直接指向适配器类，构造参数为 `(info, config)`：`info` 是 `SpaceInfo` 或 `TranscriberInfo`，`config` 是已校验清单的字典。共享类型见 `app/adapters/base.py`；插件通过 `videohelper-ml==0.1.0` 固定当前 SDK 版本。
 
-同一个镜像靠不同的 `models.yaml` 决定加载哪些模型。「所有模型放在一张卡上」和「每个模型一个容器」只是部署方式不同，代码完全一样。
+| 成员 | 约定 |
+|---|---|
+| `kind` | `embedder` 或 `transcriber` |
+| `shared_query_gate` | bool；真实 WeMM 为 true，查询/文档共用闸门 |
+| `prepare(config)` | 静态方法，准备并检查固定版本权重，不启动 HTTP |
+| `load()` | 加载模型；失败直接抛错 |
+| `info` | 服务登记与返回的空间或转录元数据 |
+| `embed(inputs, role)` | 接收 `TextInput`、`ImageInput`、`MediaInput`，返回 `(数量, dim)` float32 数组 |
+| `transcribe(path, language, start_ms, end_ms)` | 返回 `Transcript`；时间为视频绝对整数毫秒 |
 
-**权重从哪里来**（提议，见问题 32）：线上只从 S3 的 `models/{model_id}/` 加载。权重先由一个同步脚本，按 `weights` 和 `revision` 从 HF 或 ModelScope 拷到 S3；ml 启动时下载到本地缓存目录再加载，不访问外网。本地开发可以直接从 HF、ModelScope 下载，或者用假模型。
-
-CLAP 使用 `clap-htsat-unfused@r1`，512 维、cosine。edit-mind [固定源码中的模型名](https://github.com/IliasHad/edit-mind/blob/39ac8460e21f5140b88abc7a6f116c71d9011f7f/packages/shared/src/constants/embedding.ts) 是 `Xenova/clap-htsat-unfused`；其 [模型卡](https://huggingface.co/Xenova/clap-htsat-unfused) 说明它是 LAION 原版的 ONNX 转换。Python 使用 `laion/clap-htsat-unfused`，固定 revision `8fa0f1c6d0433df6e97c127f64b2a1d6c0dcda8a`，不加载远程 Python 代码。音频按绝对毫秒窗口取 48 kHz 单声道，最长 10 秒，短输入采用固定 repeatpad；输出 L2 归一化。查询只收文字，原样送入模型，不翻译或增加 LLM。CLAP 空间与 WeMM 分开登记和建索引，不能混用向量。
-
-### 10.4 adapter 接口（`adapters/base.py`）
-
-只列签名，不写实现。
-
-```python
-Role = Literal["query", "document"]
-
-@dataclass(frozen=True)
-class TextInput:
-    text: str
-
-@dataclass(frozen=True)
-class MediaInput:
-    kind: Literal["video", "audio"]
-    path: Path        # 本地缓存文件，由 media/cache.py 提供
-    start_ms: int
-    end_ms: int       # 已截到媒体时长以内
-
-class SpaceInfo(BaseModel):
-    id: str
-    dim: int
-    metric: Literal["cosine", "ip", "l2"]
-    query_inputs: list[str]
-    doc_inputs: list[str]
-    max_span_ms: int | None
-    max_batch: int
-    fingerprint: str
-
-@dataclass(frozen=True)
-class ImageInput:
-    path: Path
-
-class Embedder(Protocol):
-    info: SpaceInfo
-    def load(self) -> None: ...                     # 启动时加载权重
-    def embed(self, inputs: list[TextInput | MediaInput | ImageInput], role: Role) -> np.ndarray: ...
-    # 返回形状 (len(inputs), dim) 的 float32；metric=cosine 时已做 L2 归一化
-
-class Word(BaseModel):
-    w: str
-    s: int
-    e: int
-
-class Sentence(BaseModel):
-    start_ms: int
-    end_ms: int
-    text: str
-    words: list[Word]
-
-class Transcript(BaseModel):
-    language: str
-    duration_ms: int
-    sentences: list[Sentence]
-
-class Transcriber(Protocol):
-    id: str
-    languages: list[str]
-    fingerprint: str
-    def load(self) -> None: ...
-    def transcribe(self, path: Path, language: str, start_ms: int, end_ms: int) -> Transcript: ...
-    # 只转录 [start_ms, end_ms) 这段音频；返回的时间已经加上 start_ms，是相对整个视频的绝对时间
-```
+`MediaInput` 含本地 `path`、`kind`（video/audio）、`start_ms`、`end_ms`；路径由公共缓存提供。插件决定采样与预处理，通用服务检查输出数量、维度、数值、归一化和时间约束。插件不读写业务数据库、任务队列或向量索引。
 
 ### 10.5 一次请求是怎么处理的
 
@@ -2405,8 +2314,8 @@ class Transcriber(Protocol):
 **`/v1/embed`**：
 
 1. `routes.embed`：按 `registry.get(space).info` 校验 input 类型、时间段、数量。不通过就返回 400 或 404。
-2. 对每个 video、image 输入：`cache.fetch(uri)` 拿到本地路径。多个 input 引用同一个 URI 时只下载一次。
-3. `gate.run(space, role, 推理函数)`：`role=query` 走这个模型的查询闸门，`role=document` 走批量闸门（提议，10.7 节）。等待队列满了就抛 Busy，返回 503；从队列出来时已经超过 `X-Timeout-Ms`，就直接返回 504，不推理。
+2. 对每个 video、audio、image 输入：`cache.fetch(uri)` 拿到本地路径。多个 input 引用同一个 URI 时只下载一次。
+3. `gate.run(space, role, 推理函数)`：`role=query` 走这个模型的查询闸门，`role=document` 走批量闸门；WeMM 两者共用串行闸门（10.7 节）。等待队列满了就抛 Busy，返回 503；从队列出来时已经超过 `X-Timeout-Ms`，就直接返回 504，不推理。
 4. 推理函数在线程池里执行 `adapter.embed(inputs, role)`。adapter 内部调用 `media.video.sample_frames` 或 `media.audio.load` 解码，然后批量推理。
 5. 检查结果形状，转成列表，带上 fingerprint 返回。
 
@@ -2432,12 +2341,11 @@ class Transcriber(Protocol):
 
 ### 10.7 并发与背压
 
-当前真实 WeMM 的模型实现会修改共享推理状态，查询与文档必须共用一个串行闸门；只有验证 adapter 可并发调用后才启用下述查询独立闸门。
+当前真实 WeMM 的实现会修改共享推理状态，`shared_query_gate=true`，查询与文档编码共用同一个串行闸门。ASR 同样限制 `max_concurrency=1`；支持安全并发的 embedder 可分别使用查询和文档闸门。
 
-- 每个模型一个闸门：同时最多 `max_concurrency` 个推理，最多 `queue_limit` 个请求排队，再多就立刻返回 503，并带 `Retry-After: 2`。
-- **查询单独一个小闸门**（后续可选）：embedder 另有一个只给 `role=query` 用的闸门（`models.yaml` 里的 `query_concurrency`、`query_queue_limit`，初始 1 和 8），和批量编码共用同一份权重，但不排在批量编码后面。否则索引一忙，搜索的查询编码就会超过 5 秒的超时。代价是查询和批量编码会同时用 GPU，批量编码会慢一点；文本查询估计只要几十毫秒，影响很小。前提是 adapter 的模型能被两个线程同时调用；不能的话，退回到同一个闸门里让查询优先。
-- 推理在线程池里跑，不阻塞事件循环。PyTorch 的 CUDA 计算会释放 GIL，所以用线程就够了。
-- 背压一路传回 Go：Go 收到 503 后按 `Retry-After` 退避；还不行就返回 `ErrThrottled`，交给 Asynq 稍后重试，不计入失败次数（5.6 节）。GPU 忙的时候，任务只是排队变慢，不会失败。
+- 每个闸门最多执行配置的并发数，等待队列有上限；队列满返回 503 与 `Retry-After: 2`。
+- 推理在线程池运行。HTTP 超时或取消不会杀掉已经开始的模型线程；直到推理真正结束才释放名额，避免超时请求累积占满设备。
+- Go 按 `Retry-After` 退避；仍繁忙则返回 `ErrThrottled`，由任务队列重试。多个进程共享一张 GPU 时各有自己的闸门，部署方仍须控制总显存和并发。
 
 ### 10.8 fingerprint
 
@@ -2446,6 +2354,7 @@ fingerprint = "sha256:" + sha256(JSON，按键排序（{
     "adapter":    "wemm",
     "weights":    "tencent/WeMM-Embedding-2B",
     "revision":   "<commit sha>",
+    "weights_digest": null,
     "dtype":      "float16",
     "dim":        1024,
     "metric":     "cosine",
@@ -2457,27 +2366,31 @@ fingerprint = "sha256:" + sha256(JSON，按键排序（{
 - 本地权重没有 revision 时，必须在 `models.yaml` 里手动填 `weights_digest`。
 - 任何一项变了，fingerprint 就变，Go 会拒绝把新向量写进旧空间。换了权重就必须换 space id，比如 `@r1` 改成 `@r2`。
 
+包装路径、包版本和设备名称不直接参与现有 fingerprint；改变输出语义时必须更新 `preprocess.adapter_version` 等语义字段并注册新空间。CUDA profile 使用独立 ID 与 `adapter_version: 2`，不能只改 device 后沿用 MPS 索引。跨后端向量兼容性尚未验证。Fake 始终使用独立 fingerprint。
+
+`GET /v1/runtime` 使用同一内部令牌鉴权，返回实际加载配置的快照：服务/插件/依赖版本、Python 版本、设备、dtype、权重修订与 fingerprint。`runtime_version: 1` 是诊断结构版本；不向原有 `/spaces`、`/embed`、`/transcribe` 响应增加字段。此接口用于排查运行差异，不能证明数值等价。
+
 ### 10.9 环境变量
 
 | 变量 | 作用 | 默认 |
 |---|---|---|
-| `ML_MODELS_FILE` | 模型清单 | `models.yaml` |
+| `ML_MODELS_FILE` | 直接启动应用时使用的清单；CLI 的 `--models` 优先 | 源码或 wheel 内的默认 fake 清单 |
 | `ML_FAKE` | `1` 时所有模型都用 `fake.py`，不需要 GPU | `0` |
 | `ML_INTERNAL_TOKEN` | 服务间共享令牌，与 Go 端的 `VH_ML_TOKEN` 相同 | 无，必须设置 |
 | `ML_CACHE_DIR` / `ML_CACHE_MAX_BYTES` | 媒体缓存 | 见 10.6 |
 | `ML_S3_ENDPOINT`、`AWS_REGION`、`AWS_ACCESS_KEY_ID`、`AWS_SECRET_ACCESS_KEY` | S3 访问（只读） | — |
-| `ML_LOG_LEVEL` | 日志级别 | `info` |
+| `HF_HOME` / `HF_HUB_OFFLINE` | 权重缓存目录 / `1` 禁止联网下载 | Hugging Face 默认目录 / `0` |
 
 ### 10.10 依赖
 
 | 用途 | 依赖 |
 |---|---|
 | Web | fastapi、uvicorn、pydantic v2 |
-| 模型 | 本地 torch（MPS/CPU）、固定 transformers，FunASR 按可选依赖安装；线上不在运行时从 HF、ModelScope 下载，权重从 S3 来（提议，10.3 节） |
+| 模型 | 各插件的 `inference` extra；由对应 profile 的 `uv.lock` 锁定 |
 | 媒体 | av（PyAV）、numpy |
 | S3 | boto3 |
 | 配置 | pyyaml |
-| 开发 | pytest、httpx、ruff；契约测试用 OpenAPI 校验库（待定） |
+| 开发 | pytest、httpx、ruff、jsonschema；安装包测试使用 uv |
 
 ---
 
@@ -2580,7 +2493,7 @@ ml/.venv/bin/python Eval/tools/score.py compare --before Eval/runs/baseline-v1-a
 
 ### 14.1 docker compose（`deploy/docker-compose.yml`）
 
-当前 compose 只启动本地基础服务，端口均绑定 `127.0.0.1`。Go 与 Python 进程在宿主机运行，便于使用本机 MPS/CPU。
+`deploy/docker-compose.yml` 启动本地基础服务；MPS 模型在 Mac 原生进程运行。另有 `deploy/ml-compose.yml` 提供 Linux CPU 与 CUDA 模型服务，端口均绑定 `127.0.0.1`，不启动数据库。实际安装、准备和启停命令见 README。
 
 | 服务 | 镜像 | 本机端口 |
 |---|---|---|
