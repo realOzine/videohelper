@@ -37,6 +37,9 @@ func TestPublicRoutesRequestIDAndCORS(t *testing.T) {
 	if w := request("GET", "/v1/me", nil); w.Code != 401 || w.Header().Get("WWW-Authenticate") != "Bearer" || w.Header().Get("X-Request-ID") == "" {
 		t.Fatalf("missing authentication: %d %s", w.Code, w.Body)
 	}
+	if w := request("POST", "/v1/search/models", nil); w.Code != 401 {
+		t.Fatalf("model catalog missing authentication: %d %s", w.Code, w.Body)
+	}
 	if w := request("GET", "/healthz", map[string]string{"X-Request-ID": strings.Repeat("x", 257)}); w.Code != 400 || len(w.Header().Get("X-Request-ID")) > 256 {
 		t.Fatalf("unsafe request ID: %d %v", w.Code, w.Header())
 	}
@@ -101,6 +104,28 @@ func TestStringIDsAndTextOnlySearchBody(t *testing.T) {
 		serve((api{}).search).ServeHTTP(w, httptest.NewRequest("POST", "/v1/search", strings.NewReader(body)))
 		if w.Code != 400 {
 			t.Fatalf("image/numeric ID reached nil search service: %d %s", w.Code, w.Body)
+		}
+	}
+	for _, body := range []string{`{"query":"中文"}`, `{"time_range":{"start_ms":0,"end_ms":1000}}`, `{"space_overrides":{"visual":"model@r1"}}`, `{"video_ids":[1]}`, `{"project_id":1}`, `{"project_id":"0"}`, `{"video_ids":["bad"]}`, `{} {}`} {
+		w := httptest.NewRecorder()
+		serve((api{}).searchModels).ServeHTTP(w, httptest.NewRequest("POST", "/v1/search/models", strings.NewReader(body)))
+		if w.Code != 400 {
+			t.Fatalf("invalid model catalog body reached nil search service: %d %s", w.Code, w.Body)
+		}
+	}
+}
+
+func TestSearchScopePreservesEmptySelection(t *testing.T) {
+	for _, ids := range [][]string{nil, {}, {"2", "1"}} {
+		scope, err := searchScope(nil, ids)
+		if err != nil || (scope.VideoIDs == nil) != (ids == nil) || len(scope.VideoIDs) != len(ids) {
+			t.Fatalf("scope lost empty/all distinction: %+v %v", scope, err)
+		}
+		for i, raw := range ids {
+			id, _ := parseID(raw)
+			if scope.VideoIDs[i] != id {
+				t.Fatalf("scope changed video ID: %+v", scope)
+			}
 		}
 	}
 }
