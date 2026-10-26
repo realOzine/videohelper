@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { byVideo, channelState, defaultView, eachLimit, marks, partRange, pipeline, safeNext, tc, ticks } from './lib.ts';
+import { byVideo, channelState, defaultView, eachLimit, marks, modelPrefs, partRange, pipeline, safeNext, searchFields, tc, ticks } from './lib.ts';
 
 test('gallery groups moments by video in rank order, and picks the opening view', () => {
   const ms = [{ video_id: '7' }, { video_id: '3' }, { video_id: '7' }, { video_id: '9' }];
@@ -64,4 +64,17 @@ test('ticks and sign-in redirects', () => {
   assert.equal(safeNext('video.html?id=3'), 'video.html?id=3');
   assert.equal(safeNext('https://evil.example/x.html'), 'search.html');
   assert.equal(safeNext('//evil.example'), 'search.html');
+});
+
+test('model choice keeps only what differs from the defaults', () => {
+  const chs = [
+    { channel: 'visual', default_space_ids: ['wemm-2b@r1'], default_weight: 1 },
+    { channel: 'speech', default_space_ids: ['wemm-2b@r1'], default_weight: 1 },
+    { channel: 'audio', default_space_ids: ['clap@r1'], default_weight: 0 },
+  ];
+  const same = modelPrefs(chs, { visual: 'wemm-2b@r1', speech: 'wemm-2b@r1', audio: 'clap@r1' }, { visual: true, speech: true, audio: false });
+  assert.deepEqual(same, { spaces: {}, weights: {} });
+  assert.deepEqual(searchFields(same), {});
+  const p = modelPrefs(chs, { visual: 'wemm-2b-cpu@r1', speech: 'wemm-2b@r1', audio: 'clap@r1' }, { visual: true, speech: false, audio: true });
+  assert.deepEqual(searchFields(p), { space_overrides: { visual: 'wemm-2b-cpu@r1' }, channel_weights: { speech: 0, audio: 1 } });
 });

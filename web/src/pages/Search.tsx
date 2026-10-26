@@ -3,11 +3,22 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { get, post, type Moment, type Video } from '../api.ts';
 import { t, useLang } from '../i18n.ts';
-import { byVideo, CHANNELS, defaultView, tc, ticks } from '../lib.ts';
+import { byVideo, CHANNELS, defaultView, modelPrefs, searchFields, tc, ticks, type ModelPrefs } from '../lib.ts';
 import { newProject, panel, PanelHead, Shell, TitleRow, useNotice, useWorkspace } from '../Shell.tsx';
-import { btn, btnPrimary, Ch, cx, Icon, Rich, select, TcBadge, Thumb } from '../ui.tsx';
+import { btn, btnPrimary, Ch, cx, errText, Icon, Rich, select, TcBadge, Thumb } from '../ui.tsx';
 
 interface Entry { id: string; v: Video; url: string; dur: number }
+interface ChannelModels {
+  channel: string; default_space_ids: string[]; default_weight: number;
+  models: { space_id: string; status: string; eligible_videos: number; indexed_videos: number }[];
+}
+// the viewer's model choice applies to every search in this browser until reset (a per-viewer convenience)
+const PREFS = 'vh-models';
+const prefs = ((): ModelPrefs => {
+  try { const p = JSON.parse(localStorage.getItem(PREFS) || 'null'); if (p?.spaces && p?.weights) return p; } catch { /* blocked storage: defaults */ }
+  return { spaces: {}, weights: {} };
+})();
+const custom = Object.keys(prefs.spaces).length + Object.keys(prefs.weights).length > 0;
 type View = 'dir' | 'detail';
 const params = new URLSearchParams(location.search);
 const q = (params.get('q') || '').trim(), project = params.get('project') || '';
@@ -33,8 +44,9 @@ export default function Search() {
 
   useEffect(() => {
     if (!q) return;
-    post<{ moments: Moment[]; skipped_channels: string[] }>('/v1/search', { query: q, project_id: project || undefined, limit: 50 })
-      .then((r) => setFound({ ms: r.moments, skipped: r.skipped_channels || [] })).catch(fail);
+    post<{ moments: Moment[]; skipped_channels: string[] }>('/v1/search', { query: q, project_id: project || undefined, limit: 50, ...searchFields(prefs) })
+      .then((r) => setFound({ ms: r.moments, skipped: r.skipped_channels || [] }))
+      .catch((err) => fail(custom ? new Error(t('mdl.failed', { msg: errText(err) })) : err));
   }, [fail]);
 
   // the playhead and clock follow the real video by direct DOM writes, so playback does not re-render the list
@@ -151,6 +163,7 @@ export default function Search() {
       <TitleRow title={q ? `“${q}”` : t('s.title')} sub={!q ? t('s.empty') : !found ? ' ' : !ms.length ? t('s.none') + note : (
         <><Rich k="s.sub" vars={{ n: ms.length, v: new Set(ms.map((x) => x.video_id)).size, title: best.video_title, tc: tc(best.start_ms), chs: best.channels.map((h) => CH[h.channel]).join(t('and')) }} />{note}</>
       )}>
+        {q && <Models />}
         {ms.length > 0 && (
           <div role="group" aria-label={t('a.views')} className="flex gap-0.5 rounded-lg bg-ink-2 p-[3px]">
             {(['dir', 'detail'] as const).map((v) => (
@@ -307,5 +320,78 @@ export default function Search() {
         </div>
       )}
     </Shell>
+  );
+}
+
+// Picks one encoding model per channel from the catalog for this scope, and whether each channel takes part.
+// Only models that have finished encoding the scope can be picked (the server refuses the rest); applying reloads the search.
+function Models() {
+  const box = useRef<HTMLDialogElement>(null);
+  const [chs, setChs] = useState<ChannelModels[] | null>(null);
+  const [err, setErr] = useState('');
+  const [pick, setPick] = useState<Record<string, string>>({});
+  const [on, setOn] = useState<Record<string, boolean>>({});
+  const show = () => {
+    box.current!.showModal(); setErr('');
+    post<{ channels: ChannelModels[] }>('/v1/search/models', project ? { project_id: project } : {}).then(({ channels }) => {
+      setChs(channels.sort((a, b) => CHANNELS.indexOf(a.channel as never) - CHANNELS.indexOf(b.channel as never)));
+      // a kept choice this scope cannot serve falls back to the default, so applying repairs it
+      const usable = (c: ChannelModels, id?: string) => c.models.some((md) => md.space_id === id && (md.status === 'ready' || c.default_space_ids[0] === id));
+      setPick(Object.fromEntries(channels.map((c) => [c.channel, usable(c, prefs.spaces[c.channel]) ? prefs.spaces[c.channel] : c.default_space_ids[0] ?? ''])));
+      setOn(Object.fromEntries(channels.map((c) => [c.channel, c.channel in prefs.weights ? prefs.weights[c.channel] > 0 : c.default_weight > 0])));
+    }).catch((e) => setErr(errText(e)));
+  };
+  const save = (p: ModelPrefs | null) => {
+    try { if (p) localStorage.setItem(PREFS, JSON.stringify(p)); else localStorage.removeItem(PREFS); } catch { /* blocked storage: nothing to keep */ }
+    location.reload();
+  };
+  return (
+    <>
+      <button type="button" className={btn} aria-haspopup="dialog" onClick={show}>
+        {t('mdl.btn')}{custom && <span className="text-red-text">· {t('mdl.custom')}</span>}
+      </button>
+      <dialog ref={box} aria-labelledby="mdlh" className="m-auto w-[min(640px,calc(100%-32px))] rounded-[14px] bg-ink-2 text-fg shadow-edge backdrop:bg-black/60">
+        <form className="p-6 max-xs:p-4" onSubmit={(e) => { e.preventDefault(); if (chs) save(modelPrefs(chs, pick, on)); }}>
+          <h2 id="mdlh" tabIndex={-1} autoFocus className="text-lg font-semibold outline-none">{t('mdl.title')}</h2>
+          <p className="mt-1 text-[13px] text-fg-soft">{t('mdl.sub')}</p>
+          {err ? <p className="mt-5 text-neg-ink">{err}</p> : !chs ? <p className="mt-5 text-fg-soft">{t('mdl.loading')}</p> : (
+            <div className="mt-5 grid gap-3">
+              {chs.map((c) => (
+                <fieldset key={c.channel} className="min-w-0 rounded-[10px] bg-ink-3/50 p-4 max-xs:p-3">
+                  <legend className="sr-only">{t(`ch.${c.channel}`)}</legend>
+                  <div className="flex items-center justify-between gap-3">
+                    <Ch c={c.channel} className="font-semibold">{t(`ch.${c.channel}`)}</Ch>
+                    <label className="inline-flex cursor-pointer items-center gap-2 text-[13px] text-fg-soft">
+                      <input type="checkbox" className="size-4 accent-red" checked={!!on[c.channel]} onChange={(e) => setOn({ ...on, [c.channel]: e.target.checked })} />{t('mdl.use')}
+                    </label>
+                  </div>
+                  {!c.models.length ? <p className="mt-2 text-[13px] text-faint">{t('mdl.none')}</p> : (
+                    <div className={cx('mt-3 grid gap-1', !on[c.channel] && 'opacity-50')}>
+                      {c.models.map((md) => {
+                        const dflt = c.default_space_ids[0] === md.space_id, ok = dflt || md.status === 'ready';
+                        return (
+                          <label key={md.space_id} className={cx('flex flex-wrap items-center gap-x-3 gap-y-0.5 rounded-md px-3 py-2 transition-colors max-xs:px-2', ok ? 'cursor-pointer hover:bg-ink-3' : 'cursor-not-allowed text-faint', pick[c.channel] === md.space_id && 'bg-ink-3')}>
+                            <input type="radio" className="accent-red" name={`m-${c.channel}`} checked={pick[c.channel] === md.space_id} disabled={!ok} onChange={() => setPick({ ...pick, [c.channel]: md.space_id })} />
+                            <span className="min-w-0 flex-1 truncate font-mono text-[13px]">{md.space_id}</span>
+                            {dflt && <span className="rounded bg-ink-4 px-1.5 text-[11px] leading-[18px] text-fg-soft">{t('mdl.default')}</span>}
+                            <span className={cx('text-xs whitespace-nowrap max-xs:w-full max-xs:pl-6', md.status === 'ready' ? 'text-pos-ink' : 'text-fg-soft')}>{t(`mst.${md.status}`)} · {t('mdl.count', { a: md.indexed_videos, b: md.eligible_videos })}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                </fieldset>
+              ))}
+            </div>
+          )}
+          <div className="mt-6 flex flex-wrap items-center gap-2">
+            {custom && <button type="button" className={btn} onClick={() => save(null)}>{t('mdl.reset')}</button>}
+            <span className="flex-1" />
+            <button type="button" className={btn} onClick={() => box.current!.close()}>{t('mdl.cancel')}</button>
+            <button type="submit" className={btnPrimary} disabled={!chs}>{t('mdl.apply')}</button>
+          </div>
+        </form>
+      </dialog>
+    </>
   );
 }

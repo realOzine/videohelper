@@ -86,3 +86,19 @@ export function marks(s: string): { tag: '' | 'b' | 'code'; text: string }[] {
     return m ? { tag: m[1] as 'b' | 'code', text: m[2] } : { tag: '', text: part };
   });
 }
+
+// A viewer's model choice for search, kept only where it differs from the server's defaults: one space per channel
+// (space_overrides) and a query multiplier where a channel is switched on or off (channel_weights).
+export interface ModelPrefs { spaces: Record<string, string>; weights: Record<string, number> }
+export function modelPrefs(chs: { channel: string; default_space_ids: string[]; default_weight: number }[], pick: Record<string, string>, on: Record<string, boolean>): ModelPrefs {
+  const p: ModelPrefs = { spaces: {}, weights: {} };
+  for (const c of chs) {
+    if (pick[c.channel] && pick[c.channel] !== c.default_space_ids[0]) p.spaces[c.channel] = pick[c.channel];
+    if (on[c.channel] !== c.default_weight > 0) p.weights[c.channel] = on[c.channel] ? 1 : 0;
+  }
+  return p;
+}
+export const searchFields = (p: ModelPrefs) => ({
+  ...(Object.keys(p.spaces).length && { space_overrides: p.spaces }),
+  ...(Object.keys(p.weights).length && { channel_weights: p.weights }),
+});

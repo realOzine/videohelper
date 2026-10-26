@@ -1540,7 +1540,7 @@ data: {"video_id":"42","status":"ready"}
 }
 ```
 
-`space_overrides` 与 `channel_weights` 已对 HTTP 开放，Web 选择控件尚未接入。权重必须是已配置通道的有限非负数，乘通道基础权重不能溢出；0 表示跳过查询，不停止后台索引。省略字段保持原默认行为；只选 audio 模型不会开启声音查询，还需将 audio 乘数设为正值。`ChannelQueries`、`OnlyChannels` 保留内部使用。
+`space_overrides` 与 `channel_weights` 已对 HTTP 开放。Web 搜索页的「模型」对话框读取 `POST /v1/search/models`，只允许选 ready 或默认模型；选择存在浏览器 localStorage（`vh-models`），只发送与默认不同的项。权重必须是已配置通道的有限非负数，乘通道基础权重不能溢出；0 表示跳过查询，不停止后台索引。省略字段保持原默认行为；只选 audio 模型不会开启声音查询，还需将 audio 乘数设为正值。`ChannelQueries`、`OnlyChannels` 保留内部使用。
 
 每一个显式模型（包括权重为 0 的通道）都会检查：未知空间、未知通道、空 ID 或不兼容返回 400 `invalid_argument`；模型不可路由或 disabled 返回 503 `unavailable`；缺少 HNSW 索引或范围内编码不全返回 409 `not_ready`。即使空范围，也先验证显式选择。模型选择不改配置、不重建索引、不切换 ASR；不把请求自动换成另一个模型。相同模型维度不代表空间相同，查询编码及召回始终使用所选 ID / fingerprint。
 
