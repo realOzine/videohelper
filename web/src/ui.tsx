@@ -71,7 +71,7 @@ export function Rich({ k, vars }: { k: string; vars?: Record<string, string | nu
 // so each variant carries its own colours and the height is chosen by the caller.
 const btnBase = 'inline-flex items-center justify-center gap-2 whitespace-nowrap border px-3 font-medium transition-[background-color,transform] duration-150 ease-out active:translate-y-px disabled:pointer-events-none disabled:opacity-50';
 export const btn = cx(btnBase, 'h-8 border-line bg-transparent text-fg hover:bg-ink-3');
-export const btnPrimary = cx(btnBase, 'chamfer-sm h-8 border-transparent bg-red text-on-paper hover:bg-red-hi');
+export const btnPrimary = cx(btnBase, 'chamfer-sm h-8 border-transparent bg-red-fill text-white hover:bg-red');
 export const btnDanger = cx(btnBase, 'h-8 border-red-line bg-transparent text-red-text hover:bg-red-soft');
 export const field = 'rounded-md border border-line bg-ink-2 px-3 text-fg placeholder:text-faint';
 export const input = cx(field, 'h-[38px]');

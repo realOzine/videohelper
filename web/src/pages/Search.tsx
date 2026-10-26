@@ -220,7 +220,7 @@ export default function Search() {
             </div>
             <div className="flex min-h-14 flex-wrap items-center gap-3.5 border-b border-ink-3 px-4 py-2">
               <button type="button" onClick={toggle} aria-pressed={playing} aria-label={playing ? t('pause') : t('play')} aria-keyshortcuts="Space"
-                className="grid size-8 flex-none place-items-center rounded-full bg-red text-on-paper transition-[transform,background-color] duration-150 ease-out hover:bg-red-hi active:scale-[.92]">
+                className="grid size-8 flex-none place-items-center rounded-full bg-red-fill text-white transition-[transform,background-color] duration-150 ease-out hover:bg-red active:scale-[.92]">
                 {playing ? <Icon.pause className="size-3.5" /> : <Icon.play className="size-3.5" />}
               </button>
               <span ref={time} className="whitespace-nowrap text-fg-soft [&_b]:font-medium [&_b]:text-fg" />

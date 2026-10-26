@@ -18,7 +18,8 @@
   --color-on-paper: #14131b;
   --color-on-paper-soft: #565362;
   --color-red: #f43d3f;
-  --color-red-hi: #ff5557;
+  /* surfaces that carry white text: deeper than red so small type stays crisp and passes 4.5:1 */
+  --color-red-fill: #df2a2d;
   --color-red-text: #ff7173;
   --color-red-deep: #c81e21;
   --color-red-soft: #2e1519;

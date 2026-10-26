@@ -19,7 +19,7 @@ export default function Landing() {
     <div className="landing text-(length:--step-body) leading-[1.55]">
       <Hero l={l} />
       <div className="overflow-hidden py-3" aria-hidden>
-        <div className="-mx-5 -rotate-[1.2deg] overflow-hidden bg-red text-on-paper">
+        <div className="-mx-5 -rotate-[1.2deg] overflow-hidden bg-red-fill text-white">
           <ul className={cx('flex w-max animate-run gap-12 py-3.5', l ? 'font-disp text-[22px] tracking-[0.02em] uppercase' : 'font-cjk text-xl font-black')}>
             {[...SETS, ...SETS].map((s, i) => <li key={i} className="whitespace-nowrap after:ml-12 after:align-middle after:text-[0.6em] after:content-['◆']">{s.q[l]}</li>)}
           </ul>
@@ -48,7 +48,7 @@ export default function Landing() {
             </Rise>
           ))}
         </Layer>
-        <section aria-labelledby="ch1" style={{ zIndex: 4 }} className="relative grid min-h-[86svh] grid-rows-[auto_1fr_auto] bg-red pt-8 pr-(--mr) pb-6 pl-(--m) text-center text-on-paper">
+        <section aria-labelledby="ch1" style={{ zIndex: 4 }} className="relative grid min-h-[86svh] grid-rows-[auto_1fr_auto] bg-red-fill pt-8 pr-(--mr) pb-6 pl-(--m) text-center text-white">
           <h2 id="ch1" className={cx('disp', l ? 'text-(length:--step-display) max-sm:text-[16vw]' : 'text-[clamp(56px,7vw,120px)] max-sm:text-[12vw]')}>{t('cta.q1')}</h2>
           <div className="grid justify-items-center gap-4 self-center">
             <div className="flex items-center gap-10 max-sm:w-[72%] max-sm:flex-col max-sm:gap-3">
@@ -95,7 +95,7 @@ function Hero({ l }: { l: 0 | 1 }) {
         <div className={cx('transition-opacity delay-500 duration-700', shown ? 'opacity-100' : 'opacity-0')}>
           <p className="mt-8 max-w-[44ch]">{t('hero.lede')}</p>
           <div className="mt-11">
-            <a className={cx(btn, 'bg-red text-on-paper hover:bg-red-hi')} href="#demo-q" onClick={(e) => { e.preventDefault(); document.getElementById('demo-q')?.focus(); }}>{t('hero.btn')}<Icon.arrow /></a>
+            <a className={cx(btn, 'bg-red-fill text-white hover:bg-red')} href="#demo-q" onClick={(e) => { e.preventDefault(); document.getElementById('demo-q')?.focus(); }}>{t('hero.btn')}<Icon.arrow /></a>
             <span className="mt-4 block text-(length:--step-small) whitespace-nowrap text-fg-soft max-sm:whitespace-normal">{t('hero.note')}</span>
           </div>
         </div>
@@ -209,7 +209,7 @@ function Plate({ l }: { l: 0 | 1 }) {
             {part('find', blk, <><h4>{l ? 'Search this video' : '在这个视频里搜索'}</h4>
               <div className="grid grid-cols-[50px_1fr] gap-2 rounded-md bg-ink-3 px-2 py-1.5"><b className="font-medium text-fg-soft">{sec(1.5)}</b><span>{l ? 'the moment it leaves the pad' : '火箭离开发射台的那一刻'}</span></div></>)}
             {part('tools', 'mt-3.5 flex gap-2', <>
-              <button type="button" className="h-[38px] flex-1 rounded-md bg-red font-semibold text-on-paper">{l ? 'Play from 00:01.5' : '从 00:01.5 播放'}</button>
+              <button type="button" className="h-[38px] flex-1 rounded-md bg-red-fill font-semibold text-white">{l ? 'Play from 00:01.5' : '从 00:01.5 播放'}</button>
               <button type="button" className="h-[38px] flex-1 rounded-md bg-ink-3">{l ? 'Add to project' : '加入项目'}</button>
             </>)}
           </div>
