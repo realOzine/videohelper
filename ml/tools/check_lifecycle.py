@@ -121,7 +121,8 @@ def main():
             timeout=10,
         )
         assert refused.returncode != 0, "Service started without its required plugin"
-        assert "videohelper-ml-wemm" in refused.stderr, refused.stderr
+        assert "Real adapter 'wemm' is not installed" in refused.stderr, refused.stderr
+        assert "Install its plugin package" in refused.stderr, refused.stderr
         invalid = subprocess.run(
             command,
             cwd=root,
