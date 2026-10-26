@@ -17,6 +17,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"os"
+	"slices"
 	"strconv"
 	"strings"
 	"sync/atomic"
@@ -456,19 +457,16 @@ func TestCoreHTTPIntegration(t *testing.T) {
 				t.Fatalf("catalog leaked runtime configuration: %s", body)
 			}
 			for _, channel := range result.Channels {
-				if channel.DocInput == "" || len(channel.DefaultSpaceIDs) != 1 || len(channel.Models) != 2 || (channel.Channel == "audio" && channel.DefaultWeight != 0) {
+				modelCount := 1
+				if channel.Channel == "visual" {
+					modelCount = 2
+				}
+				if channel.DocInput == "" || len(channel.DefaultSpaceIDs) != 1 || len(channel.Models) != modelCount || (channel.Channel == "audio" && channel.DefaultWeight != 0) {
 					t.Fatalf("catalog defaults/capabilities: %+v", channel)
 				}
 				for _, model := range channel.Models {
-					compatible := !(channel.Channel == "audio" && model.SpaceID == "http-contract@r1" || channel.Channel == "speech" && model.SpaceID == "http-choice@r1")
-					if len(model.DocInputs) == 0 || len(model.QueryInputs) != 1 || model.QueryInputs[0] != "text" {
+					if !slices.Contains(model.DocInputs, channel.DocInput) || len(model.QueryInputs) != 1 || model.QueryInputs[0] != "text" {
 						t.Fatalf("missing model capabilities: %+v", model)
-					}
-					if !compatible {
-						if model.Status != "incompatible" {
-							t.Fatalf("incompatible model offered: %+v", model)
-						}
-						continue
 					}
 					indexed := 0
 					if ready {
