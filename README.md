@@ -14,10 +14,11 @@ make build
 uv --directory ml sync --frozen --extra wemm --extra asr --extra clap
 ```
 
-启动真实模型服务，保持此终端运行。首次启动下载清单固定版本的权重；已缓存时可额外设置 `HF_HUB_OFFLINE=1`。
+先准备固定版本的权重，再离线启动真实模型服务，保持此终端运行。下面保留单进程组合方式；独立插件环境的命令见后文。
 
 ```sh
-ML_FAKE=0 ML_MODELS_FILE=models.local.yaml uv --directory ml run --extra wemm --extra asr --extra clap uvicorn app.main:app --host 127.0.0.1 --port 18080
+uv --directory ml run --frozen --extra wemm --extra asr --extra clap videohelper-ml prepare --models models.local.yaml
+ML_FAKE=0 HF_HUB_OFFLINE=1 uv --directory ml run --frozen --extra wemm --extra asr --extra clap videohelper-ml serve --models models.local.yaml --port 18080
 ```
 
 在另一个已载入 `.env` 的终端初始化数据库、对象桶及向量索引，再启动 worker：
@@ -58,3 +59,48 @@ npm --prefix web run dev                          # 改动即时刷新；npm --p
 浏览器上传直传对象存储，存储的 CORS 需要暴露 `ETag` 响应头（本地 MinIO 默认满足）。
 
 用 Ctrl-C 停止 Go/ML 进程，`make deps-down` 停止基础服务并保留数据卷。`make test-go`、`make vet` 检查 Go；Python 常规检查为 `uv --directory ml run pytest` 和 `uv --directory ml run ruff check .`。真实模型与 MinIO 网络测试需要显式 `VH_TEST_REAL_MODELS=1`、`VH_TEST_S3_ENDPOINT`，运行方式见 [测试文件](ml/tests/test_real_models.py)。CLAP 独立真实测试使用 `VH_TEST_REAL_CLAP=1`，见 [CLAP 测试](ml/tests/test_clap_real.py)。
+
+## 模型插件与独立环境
+
+通用服务 `videohelper-ml` 与三个模型包 `videohelper-ml-wemm`、`videohelper-ml-funasr`、`videohelper-ml-clap` 分开安装。插件以 wheel 交付，通过 `videohelper.ml.adapters.v1` entry point 注册；接口与新增插件约定见 [spec 第 10 章](docs/spec.md#10-python-模型服务)。缺包或配置错误会拒绝启动，只有 `ML_FAKE=1` 才使用假模型。
+
+每个运行配置有独立依赖锁文件和环境：
+
+| Profile | 平台 | 模型 |
+|---|---|---|
+| `wemm-mps` | Mac arm64 原生 | WeMM，MPS float16 |
+| `speech-audio-cpu` | Mac arm64 / Linux amd64 | FunASR、CLAP，CPU float32 |
+| `wemm-cuda` | Linux amd64 + NVIDIA GPU | WeMM CUDA 候选，独立向量空间 |
+
+在 Mac 上分别安装、准备；不会复用 `ml/.venv`：
+
+```sh
+make ml-install ML_PROFILE=wemm-mps
+make ml-install ML_PROFILE=speech-audio-cpu
+make ml-prepare ML_PROFILE=wemm-mps
+make ml-prepare ML_PROFILE=speech-audio-cpu
+```
+
+停止前面的组合模型服务，将 `config/local.yaml` 的 `ml.endpoints` 改为 `["http://127.0.0.1:18080", "http://127.0.0.1:18081"]`，保留 `ml.transcriber: paraformer-zh@r1`。在两个已载入 `.env` 的终端分别运行，随后重启 Go API/worker：
+
+```sh
+ML_FAKE=0 HF_HUB_OFFLINE=1 make ml-serve ML_PROFILE=wemm-mps ML_PORT=18080
+ML_FAKE=0 HF_HUB_OFFLINE=1 make ml-serve ML_PROFILE=speech-audio-cpu ML_PORT=18081
+```
+
+`make ml-status ML_PORT=18080` 检查就绪；`videohelper-ml describe --models <清单>` 只展示校验后的配置。实际加载信息通过带 `X-Internal-Token`、`X-Request-ID` 的 `GET /v1/runtime` 查询，包含服务/插件/依赖版本、设备和 fingerprint。用 Ctrl-C 停止前台服务；停止不会删除缓存与索引。
+
+Linux 容器使用仓库根目录作为构建上下文，不把权重打进镜像。先设置 `ML_INTERNAL_TOKEN`、S3 地址与凭据；容器内 S3 地址须能访问对象存储，不能直接沿用宿主机的 `127.0.0.1`。CPU 示例：
+
+```sh
+docker compose -f deploy/ml-compose.yml build speech-audio
+HF_HUB_OFFLINE=0 docker compose -f deploy/ml-compose.yml run --rm speech-audio videohelper-ml prepare --models models.yaml
+docker compose -f deploy/ml-compose.yml up -d speech-audio
+docker compose -f deploy/ml-compose.yml stop speech-audio
+```
+
+CPU 默认监听宿主机 8001；CUDA 用 `--profile cuda` 和服务名 `wemm-cuda`，监听 8002，需 NVIDIA Container Toolkit。当前 CUDA 锁文件使用 13.0，驱动至少满足 [NVIDIA 的 580 系列下限](https://docs.nvidia.com/deploy/cuda-compatibility/minor-version-compatibility.html)，具体 GPU 与内核仍需实机验证。将实际服务地址加入 Go `ml.endpoints`。CUDA 配置是待验收候选，使用 `wemm-2b-cuda-experimental@r1`，不能直接与 MPS 旧向量混用。
+
+换模型时，先安装新插件与运行配置、prepare、启动、登记 shadow 空间并回填，验证后再切换 active；已有 ASR 任务仍依赖冻结的旧模型和指纹，保留旧服务直到任务与回滚窗口结束。同 ID 同时由多个服务提供时，在 `ml.model_endpoints` 显式绑定地址；绑定服务离线时不会自动换到其他服务。升级插件后重新锁定 profile 并重装，避免安装环境与锁文件不一致。只改打包方式保持现有空间指纹；改变输出行为必须使用新指纹和空间。
+
+`make test-ml-lifecycle` 在临时环境安装 core wheel，验证启动、鉴权、假模型请求和停止，并清理进程；不下载模型，也不证明真实检索质量。

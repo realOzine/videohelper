@@ -1,6 +1,6 @@
 # VideoHelper 设计文档（首版）
 
-> 状态：草案，待评审　｜　更新：2026-10-25
+> 状态：草案，待评审　｜　更新：2026-10-27
 > 配套文档：[实现文档 spec.md](spec.md) · [设计画布](https://claude.ai/artifact/38jtvjPEShFP1fSfD1CKXb)
 
 这份文档回答三个问题：**产品要做什么、要达到什么效果、整体怎么设计**。目录结构、文件职责、表字段、接口字段等细节写在 [spec.md](spec.md)，这里不重复。
@@ -9,15 +9,16 @@
 
 - **已定**：用户在讨论中明确拍板。
 - **提议**：讨论中提出、用户没有反对，但还没有正式确认。
+- **当前 / 已实现**：与本地代码一致；「已定」表示设计决策，不等于已完成。未来流程与部署均单独标注。
 - 拿不准的地方统一列在文末「[待确认问题](#12-待确认问题)」，正文不自行敲定。
 
 ---
 
-## 当前实施范围（2026-10-25）
+## 当前实施范围（2026-10-27）
 
-本地处理链路为「视频 → 标准化视频 → WeMM 画面编码 / CLAP 声音编码 / ASR → WeMM 转录文本编码 → 文字检索 → 时间片段与证据」。WeMM-Embedding-2B 统一支持视频、文字、图片编码；图片是编码输入，本轮搜索入口只接受文字。保留 `visual`、`speech` 与 `audio` 索引及供 ASR、CLAP 使用的音轨；当前默认查询权重为 `1:1:0`，每路召回 K=5，RRF=60、gap=1，实验依据与回退见 [Evaluation.md](Evaluation.md)。声音通道采用 edit-mind 同款 CLAP HTSAT unfused；查询文字原样传入，英文转换后续再做。LLM/Agent、AWS 部署与验收暂缓；前端（`web/`）已实现；下文相关章节保留为后续设计，不构成本轮实现要求。真实模型验证与显式 fake 的协议/流程测试分开。
+本地处理链路为「视频 → 标准化视频 → WeMM 画面编码 / CLAP 声音编码 / ASR → WeMM 转录文本编码 → 文字检索 → 时间片段与证据」。WeMM-Embedding-2B 统一支持视频、文字、图片编码；图片是编码输入，本轮搜索入口只接受文字。保留 `visual`、`speech` 与 `audio` 索引及供 ASR、CLAP 使用的音轨；当前默认查询权重为 `1:1:0`，每路召回 K=5，RRF=60、gap=1，实验依据与回退见 [Evaluation.md](Evaluation.md)。声音通道采用 edit-mind 同款 CLAP HTSAT unfused；查询文字原样传入，英文转换后续再做。LLM/Agent、AWS 部署与验收暂缓；前端（`web/`）已实现；导入、Agent 和云端相关章节明确标为后续设计。真实模型验证与显式 fake 的协议/流程测试分开。
 
-本轮提供本地上传、阶段状态/重试、项目范围和文字搜索。已就绪视频可自动补建新通道/空间缺失的编码阶段；URL 导入、上传分片续签、SSE 事件、到期 purge、配额计费仍是后续设计；软删除保留原片和处理文件。当前只记录索引时长。操作入口见 [README](../README.md)。
+本轮提供本地上传、阶段状态/重试、软删除/上传视频恢复、项目范围和文字搜索。进度由 Web 轮询视频详情读取。已就绪视频可自动补建新通道/空间缺失的编码阶段；URL 导入、上传分片续签、SSE 事件、到期 purge、配额计费仍是后续设计；软删除保留原片和处理文件。当前只记录索引时长。操作入口见 [README](../README.md)。
 
 离线评估工具集中在 [Eval](../Eval/README.md)：完整上传/索引验收与固定索引检索回归分开运行，保存数据库和对象快照、逐题结果及对比报告。当前小型合成集的标签尚未独立人工复核；语料校验、真实模型召回质量和系统稳定性验收是不同结论，详见 [基线流程](../Eval/RUNBOOK.md)。
 
@@ -56,13 +57,14 @@
 
 ```mermaid
 flowchart LR
-  A["注册 / 登录<br/>自动获得个人工作区"] --> B["上传视频<br/>或导入链接"]
-  B --> C["自动索引<br/>实时看到进度"]
-  C --> D["在搜索框输入描述"]
-  C --> E["和 Agent 对话<br/>逐步缩小范围"]
-  D --> F["片段列表<br/>缩略图 + 时间段 + 命中原因"]
-  E --> F
+  A["登录并解析工作区<br/>本地令牌 / JWT 校验"] --> B["上传视频"]
+  B --> C["自动索引<br/>轮询阶段进度"]
+  C --> D["ready 后输入描述搜索"]
+  D --> F["片段列表<br/>缩略图 + 时间段 + 通道证据"]
   F --> G["点击跳转播放"]
+  I["未来：URL 导入"] -.-> C
+  C -.-> E["未来：Agent 对话"]
+  E -.-> F
 ```
 
 几个典型的查询：
@@ -77,6 +79,8 @@ flowchart LR
 ## 2. 需求
 
 ### 2.1 首版功能需求
+
+下表保留产品目标；「已定」表示需求已确认，具体已实现范围见文首。URL 导入与 Agent 仍暂缓，进度当前使用轮询。
 
 | 编号 | 需求 | 说明 | 状态 |
 |---|---|---|---|
@@ -127,7 +131,7 @@ flowchart LR
 3. **只认契约，不认模型。** Go 只知道向量空间（space）的 id、维度和距离算法，代码里不出现任何模型名。
 4. **检索内核不依赖 LLM。** 搜索框和 Agent 共用同一个确定性的检索内核，内核可以单独测试、单独调参。
 5. **一切以时间为锚。** 所有检索结果、引用、跳转都用（视频, 起点, 终点）表示，和模型、切片方式无关。
-6. **先少后多。** 首版只有一个 Go 二进制（两种进程）、一个 Python 服务、一个 Postgres、一个 Redis、一个 S3。规模到了再拆，拆的时候代码结构不用变。
+6. **先少后多。** 一个 Go 二进制分别启动 api、worker；Python 公共服务按 profile 独立安装依赖并启动进程，共用 ML 契约。当前有 WeMM MPS、ASR/CLAP CPU 与候选 WeMM CUDA 配置；业务数据仍集中在一个 Postgres、一个 Redis、一个对象存储。
 
 ### 3.2 用「变化场景」检验高内聚、低耦合
 
@@ -135,13 +139,13 @@ flowchart LR
 
 | 变化 | 需要改的地方 | 不需要改的地方 |
 |---|---|---|
-| 换或新增 embedding 模型 | Python 加一个 adapter 和一行 `models.yaml`；执行 `videohelper space add` 建索引（提议）；`channels.yaml` 加候选 | Go 代码、表结构、API |
+| 换或新增 embedding 模型 | 安装实现现有契约的插件包，选择独立运行配置；执行 `videohelper space add` 建索引；`channels.yaml` 加候选 | Go 业务代码、表结构、对外 API |
 | 换 LLM，或接入 LLM gateway | 配置里的 `base_url` / 模型名 | 工具、检索、业务代码 |
 | 换向量库（pgvector → Qdrant） | Go 的 `index` 包 | 检索算法、流水线编排、API |
-| 加新通道（比如 OCR） | 新增一个产出阶段；`channels.yaml` 加一路；需要新模型时 Python 加 adapter | 检索融合、API、其他阶段 |
+| 加新通道（比如 OCR） | 新增产出阶段与证据契约；`channels.yaml` 加一路；模型通过插件提供 | 已有通道的处理阶段 |
 | 改切片规则 | Go 的 `timeline` 包 + 切片版本号 + 回填（存量视频重跑的入口首版不做，见问题 25） | 引用、跳转（按时间锚定） |
-| 换 ASR 模型 | `models.yaml` + 重跑 asr 阶段（重跑的入口首版不做，见问题 25） | 契约、Go 代码 |
-| 扩容 | 部署配置：同一镜像多开副本 | 代码 |
+| 换 ASR 模型 | 安装插件并显式选择转录模型；旧任务仍按冻结的模型 ID 与指纹执行；存量重跑入口另行实现（问题 25） | 已有转录契约、业务代码 |
+| 扩容 | 部署配置：按 Go 角色、Python profile 增加副本；控制共享 GPU 资源 | 业务代码 |
 
 ---
 
@@ -166,139 +170,163 @@ flowchart LR
 
 ## 5. 总体架构
 
-### 5.1 系统上下文
+### 5.1 系统上下文（当前）
 
 ```mermaid
 flowchart LR
-  U(["用户 · 浏览器"])
-  VH["VideoHelper"]
-  LLM["DeepSeek API<br/>（OpenAI 兼容）"]
-  AUTH["托管认证服务<br/>（待定）"]
-  SRC["YouTube · 哔哩哔哩"]
-  U -->|"HTTPS：REST + SSE"| VH
-  U -->|"登录"| AUTH
-  VH -->|"校验令牌"| AUTH
-  VH -->|"对话、看图复核"| LLM
-  VH -->|"yt-dlp 下载导入的视频"| SRC
+  U(["用户"])
+  WEB["Web：React / TypeScript / Tailwind"]
+  VH["VideoHelper<br/>Go API / Worker + Python 模型进程"]
+  AUTH["JWT / JWKS 签发方<br/>本地开发：devauth"]
+  OBJ[("对象存储<br/>本地 MinIO / S3 接口")]
+  AUTH -->|"本地终端打印令牌"| U
+  U -->|"粘贴令牌与 API 地址"| WEB
+  WEB -->|"HTTP REST：上传、项目、状态、搜索"| VH
+  VH -->|"HTTP：获取 JWKS，进程内校验 JWT"| AUTH
+  WEB -->|"预签名 HTTP：上传、播放"| OBJ
+  VH -->|"S3 API：媒体与推理输出"| OBJ
 ```
 
-### 5.2 模块与连接
+当前 Web 没有获取令牌接口；用户粘贴签发方提供的令牌，本地 `devauth` 只打印令牌并提供 `/jwks`。托管认证供应商仍待定；LLM/Agent、URL 导入和 SSE 不在当前运行链路中，未来流程见第 6 章。
+
+### 5.2 模块与连接（当前）
+
+图中的框明确进程边界：Go 的模型注册表和 `mlclient` 在 api、worker 各自进程内；每个 Python 环境运行一份公共服务，插件在该进程内执行。
 
 ```mermaid
 flowchart TB
-  subgraph Client["客户端"]
-    WEB["Web 前端"]
+  WEB["Web 前端<br/>静态页面 / 浏览器"]
+  subgraph Go["同一 Go 二进制，分别启动"]
+    API["api 进程<br/>httpapi · search · library · space · mlclient"]
+    WK["worker 进程<br/>pipeline · stages · reconciler · space · mlclient"]
+    FF["ffprobe / ffmpeg 子进程"]
+    WK -->|"子进程调用"| FF
   end
-  subgraph Go["Go 编排层（一个二进制，两种进程）"]
-    API["api 进程<br/>httpapi · agent · search"]
-    WK["worker 进程<br/>pipeline · reconciler"]
+  subgraph MPS["Python 环境 / 进程：wemm-mps"]
+    MCORE["videohelper-ml<br/>HTTP · 鉴权 · 缓存 · 校验 · gate"]
+    WEMM["videohelper-ml-wemm<br/>WeMM / MPS"]
+    MCORE -->|"进程内函数调用"| WEMM
   end
-  subgraph Py["Python 模型层（无状态）"]
-    ML["ml 服务<br/>FastAPI · 每个模型一个 adapter"]
+  subgraph CPU["Python 环境 / 进程：speech-audio-cpu"]
+    CCORE["videohelper-ml<br/>HTTP · 鉴权 · 缓存 · 校验 · gate"]
+    ASR["videohelper-ml-funasr<br/>ASR / CPU"]
+    CLAP["videohelper-ml-clap<br/>声音编码 / CPU"]
+    CCORE -->|"进程内函数调用"| ASR
+    CCORE -->|"进程内函数调用"| CLAP
   end
-  subgraph Data["数据层"]
-    PG[("Postgres（RDS）<br/>pgvector")]
-    RD[("Redis<br/>Asynq 队列 · 进度事件")]
-    S3[("S3<br/>原片 · 标准化视频 · 缩略图")]
-  end
-  LLM["DeepSeek API"]
-
-  WEB -->|"REST + SSE"| API
-  WEB -->|"预签名 URL：直传、播放"| S3
+  PG[("Postgres + pgvector")]
+  RD[("Redis · Asynq")]
+  S3[("对象存储<br/>原片 · 标准化视频（保留音轨）· 缩略图 · ASR 原始输出")]
+  WEB -->|"HTTP REST；轮询视频详情"| API
+  WEB -->|"预签名 HTTP：分片上传、播放"| S3
   API -->|"SQL"| PG
-  API -->|"投递任务 / 订阅进度"| RD
-  API -->|"ML 契约：查询编码"| ML
-  API -->|"对话、看图"| LLM
-  WK -->|"消费任务 / 发布进度"| RD
-  WK -->|"SQL"| PG
-  WK -->|"ML 契约：编码、转录"| ML
-  WK -->|"读原片，写标准化视频、缩略图"| S3
-  WK -->|"yt-dlp 下载导入的视频"| PLAT["YouTube · 哔哩哔哩"]
-  ML -->|"只读标准化视频"| S3
+  API -->|"投递任务"| RD
+  API -->|"S3 API：分片管理、签名"| S3
+  WK -->|"消费任务 / 工作区名额"| RD
+  WK -->|"SQL：阶段、转录、向量"| PG
+  WK -->|"S3 API：读写媒体与原始输出"| S3
+  API -->|"HTTP：发现、WeMM 查询编码"| MCORE
+  API -->|"HTTP：发现、可选 CLAP 查询编码"| CCORE
+  WK -->|"HTTP：WeMM 视频 / 转录文本编码"| MCORE
+  WK -->|"HTTP：FunASR 转录 / CLAP 声音编码"| CCORE
+  MCORE -->|"S3 API：只读媒体，缓存到本地"| S3
+  CCORE -->|"S3 API：只读媒体，缓存到本地"| S3
 ```
 
-### 5.3 模块职责：负责什么，不负责什么
+这是按现有 profile 拆分的组合，启动时须把对应地址加入 `ml.endpoints`；兼容依赖也可使用现有组合清单共用环境。候选 `wemm-cuda` 使用独立进程与空间，部署边界见第 10 章。插件加载不增加一跳 HTTP。
 
-「不负责」一栏和「负责」一样重要，它划清了边界。
+### 5.3 模块职责
 
-| 模块 | 负责 | 不负责 |
+| 模块 | 当前负责 | 边界 / 后续设计 |
 |---|---|---|
-| Web 前端 | 上传、搜索、对话、播放的界面 | 任何业务规则 |
-| api 进程 | 对外 REST + SSE；鉴权与工作区识别；搜索；Agent 对话 | 转码这类媒体处理、长时间任务（例外：可选工具 inspect_clip 会现抽几帧，见问题 9） |
-| worker 进程 | 消费队列；执行处理阶段（包括用 yt-dlp 下载导入的视频）；推进阶段依赖；补投漏掉的任务 | 对外提供接口 |
-| search（api 内） | 查询编码 → 多路召回 → 融合 → 合并成片段 | 调用 LLM；理解复杂意图 |
-| agent（api 内） | 和 DeepSeek 对话；决定调用哪些工具；组织带引用的回答 | 直接写 SQL（数据都通过 search、index、library 的函数读取，且都带工作区）；越过会话范围 |
-| ml 服务 | 读标准化视频、抽帧或取音频、跑模型、返回向量或句子 | 存储任何业务数据；连数据库；碰队列 |
-| Postgres | 所有业务数据、阶段状态、转录、向量、Agent 会话 | 文件存储 |
-| Redis | 任务队列；进度事件；工作区并发计数 | 任何不能丢的数据（丢了可以从 Postgres 重建） |
-| S3 | 原片、标准化视频、缩略图、推理原始输出 | 元数据 |
+| Web 前端 | 登录、上传、项目、阶段轮询、重试、搜索、播放界面 | Agent 对话暂缓；业务校验由 Go 执行 |
+| api 进程 | REST、鉴权与工作区识别、项目和媒体管理、搜索、投递初始任务 | 不执行长时媒体处理；SSE、Agent、URL 导入暂缓 |
+| worker 进程 | Asynq 消费、阶段依赖、断点重试、补投与 embedding 回填；调用 ffmpeg 和 ML | 不提供对外业务接口；yt-dlp 导入暂缓 |
+| search（api 内） | 查询编码 → 多路召回 → 融合 → 合并片段和证据 | 不调用 LLM |
+| space / mlclient（各 Go 进程内） | 多端点发现、身份校验、模型 ID 路由、HTTP 契约 | 不加载模型；不提供负载均衡或任意故障转移 |
+| 公共 ML 服务 `videohelper-ml` | HTTP、内部鉴权、媒体缓存、输入输出校验、模型注册与并发限制、runtime 诊断 | 不连业务数据库、队列或向量索引 |
+| 模型插件安装包 | 权重准备、模型加载、采样与预处理、embed / transcribe | 同 Python 进程内执行，不另设插件 HTTP 服务 |
+| Postgres | 业务数据、阶段计划与状态、转录、向量、索引时长计量 | Agent 会话表暂缓 |
+| Redis | 队列通知、工作区 ML 任务名额 | 持久阶段状态以 Postgres 为准；进度事件暂缓 |
+| 对象存储 | 原片、标准化视频、缩略图、ASR 原始输出与断点文件 | 模型权重当前放 Hugging Face 缓存，未实现 S3 权重发布 |
 
-### 5.4 Go 内部分层
+### 5.4 Go 内部调用边界（当前）
 
-Go 是一个 module，按「能力」分包，只允许上层依赖下层，同层之间不能形成环。每个包的文件清单和接口签名见 [spec.md 第 2 章](spec.md#2-go-后端)。
+下图是主要调用关系，不是严格的层次依赖图；模块都是进程内 Go 包。api 与 worker 由 `cmd/videohelper` 装配相应服务，文件与接口见 [spec.md 第 2 章](spec.md#2-go-后端)。
 
 ```mermaid
 flowchart TB
-  subgraph E["入口层：只做协议转换"]
-    httpapi["httpapi<br/>REST + SSE"]
-    pipeline["pipeline<br/>任务处理"]
-    eval["eval<br/>离线评估"]
-  end
-  subgraph C["能力层"]
-    agent["agent<br/>ADK + 工具"]
-    search["search<br/>检索内核"]
-  end
-  subgraph D["领域层"]
-    workspace["workspace"]
-    library["library<br/>项目、视频"]
-    space["space<br/>向量空间、通道"]
-    usage["usage<br/>计量、配额"]
-  end
-  subgraph A["适配层"]
-    index["index<br/>向量与文本存储"]
-    mlclient["mlclient<br/>ML 契约客户端"]
-    media["media<br/>ffmpeg"]
-    timeline["timeline<br/>切片规则（纯函数）"]
-  end
-  subgraph P["基础设施"]
-    platform["platform<br/>db · blob · queue · events · authn · safehttp"]
-    config["config · apperr"]
-  end
-  E --> C
-  E --> D
-  C --> D
-  C --> A
-  D --> A
-  A --> P
-  D --> P
+  HTTP["httpapi"] -->|"函数调用"| WS["workspace / library"]
+  HTTP -->|"函数调用"| SEARCH["search"]
+  HTTP -->|"状态 / 重试"| PIPE["pipeline"]
+  PIPE -->|"RunFunc 阶段处理"| ST["pipeline/stages"]
+  PIPE -->|"任务 / 状态"| INF["platform：db · blob · queue · authn"]
+  PIPE -->|"冻结模型与空间信息"| SPACE["space：通道 / 模型注册表"]
+  SEARCH -->|"范围与元数据"| WS
+  SEARCH -->|"编码空间 / 端点"| SPACE
+  SEARCH -->|"查询编码"| ML["mlclient：HTTP 契约"]
+  SEARCH -->|"向量召回 / 原文"| IDX["index：pgvector / text_span"]
+  ST -->|"编码 / 转录"| ML
+  ST -->|"结果写入"| IDX
+  ST -->|"探测 / 转码 / 缩略图"| MEDIA["media：ffprobe / ffmpeg"]
+  ST -->|"切片 / 合句"| TL["timeline：纯函数"]
+  SEARCH -->|"时间格子"| TL
+  SPACE -->|"HTTP 发现"| ML
 ```
 
-几条关键的依赖规则：
+pgvector 查询集中在 `index`，Python HTTP 契约集中在 `mlclient`，切片与合句集中在 `timeline`。`agent`、ADK、`events`、`safehttp` 等属于后续设计，不作为已实现模块绘入。
 
-- **所有和 pgvector 相关的 SQL 只放在 `index` 包。** 换向量库时只改这一个包。
-- **所有和 ADK 相关的类型只出现在 `agent` 包。** httpapi 只拿到产品自己的事件类型，不引用 ADK。
-- **所有调用 Python 的代码只放在 `mlclient` 包。** 契约变了只改这一个包。
-- **`timeline` 是纯函数**，不依赖任何东西，可以完整单元测试。
+### 5.5 接口与调用形式
 
-### 5.5 三层接口
-
-| 接口 | 两端 | 形式 | 设计要点 |
+| 接口 | 两端 | 当前形式 | 设计要点 |
 |---|---|---|---|
-| 对外 API | 浏览器 ↔ httpapi | REST + SSE，JSON | 登录凭证 → workspace_id；大文件走预签名 URL |
-| ML 契约 v1 | Go ↔ Python | HTTP/JSON，3 个接口 | 只认 space id；只传 S3 引用和时间段，不传字节 |
-| Agent 工具 | ADK ↔ Go 函数 | 进程内调用 | 范围取自会话；不信任模型传入的 id |
+| 对外 API | 浏览器 ↔ httpapi | HTTP REST / JSON；状态轮询 | JWT → workspace_id；大文件走预签名 URL；SSE 暂缓 |
+| ML 契约 v1 | Go ↔ 各 Python 服务进程 | HTTP/JSON，推理与发现 | 模型 ID / fingerprint；媒体传 S3 引用和时间段，文字直接传文本 |
+| 插件接口 | 公共 ML 服务 ↔ 已安装适配器 | 同进程 Python 函数调用 | entry point + 清单启用；共享输入与结果类型 |
+| Agent 工具（未来） | ADK ↔ Go 函数 | 设计为进程内调用 | 范围取自会话；不信任模型传入的 id |
 
-ML 契约只有三个接口：
+ML 的推理与发现使用三个接口：
 
 | 接口 | 作用 |
 |---|---|
-| `GET /v1/spaces` | Python 报告自己加载了哪些向量空间（id、维度、距离算法、接受的输入、fingerprint） |
+| `GET /v1/spaces` | Python 报告加载的向量空间及转录模型（ID、能力、fingerprint；空间另含维度和距离算法） |
 | `POST /v1/embed` | 统一的编码接口：`role=query` 编码查询文字，`role=document` 编码视频片段、音频片段或句子 |
 | `POST /v1/transcribe` | ASR：返回按句子切好的文本和词级时间戳 |
+
+独立的 `GET /v1/runtime` 报告服务、插件和依赖版本、设备与加载配置，使用同一内部鉴权；不改变上述接口响应。它用于部署检查与人工诊断，Go 的模型发现仍使用 `/v1/spaces`。
 
 ASR 的词和句子保留识别顺序，按起点非递减排列，允许时间范围部分重叠或包含；结束时间不必递增。每个区间仍须有正时长，位于请求音频内，词须落在所属句子内。句子及合并片段取所含内容的最早起点、最晚终点。例如「今天」`[1000,1500)` 与「下雨」`[1450,1900)` 可组成「今天下雨」`[1000,1900)`；不为消除重叠裁词、移时间或丢文字。内部音频切段与最终句子边界分开处理。
 
 字段级定义见 [spec.md 第 4、5、9 章](spec.md#4-对外-api)。
+
+### 5.6 模型插件与运行版本
+
+模型以独立 Python 安装包交付，通用 ML 服务通过 `videohelper.ml.adapters.v1` entry points 加载清单明确启用的适配器。公共服务保留 HTTP、鉴权、媒体缓存、结果校验和并发限制；插件负责权重准备、模型加载、预处理和推理。两者在同一 Python 进程内以函数调用连接，Go 仍直接通过 HTTP 调用该进程。插件不访问业务数据库或任务队列。
+
+```mermaid
+flowchart LR
+  G["Go API / Worker 各自进程<br/>内部 mlclient 与模型注册表"] -->|"HTTP：现有 ML 契约"| H
+  subgraph P["独立 Python 环境 / 服务进程"]
+    H["通用服务：校验、缓存、并发"] -->|"函数调用"| A["已安装并启用的模型插件"]
+  end
+  A --> R["选定运行后端：MPS / CUDA / CPU"]
+```
+
+公共服务与三个插件分别由 `ml/pyproject.toml` 和 `ml/plugins/{wemm,funasr,clap}/pyproject.toml` 定义；插件的 `inference` extra 引入模型依赖。每个 profile 自带 `pyproject.toml`、`uv.lock`、`models.yaml`：
+
+| Profile | 模型 / 设备 | 身份与用途 |
+|---|---|---|
+| `wemm-mps` | WeMM / MPS | `wemm-2b@r1`；video、text、image 文档与 text 查询 |
+| `speech-audio-cpu` | FunASR + CLAP / CPU | `paraformer-zh@r1` 转录；`clap-htsat-unfused@r1` 声音编码 |
+| `wemm-cuda` | WeMM / CUDA | `wemm-2b-cuda-experimental@r1`；独立候选，目标 GPU 验收暂缺 |
+
+同一模型的核心代码共用；硬件版本通过独立依赖锁文件、设备与执行配置交付。Mac MPS 原生运行，Linux CUDA 可用容器部署；CUDA 必须经过目标硬件验证。依赖兼容的插件可以共用进程，拆分进程不能替代共享 GPU 的资源限制。WeMM 查询与文档编码继续共用串行闸门；请求超时后，尚未退出的推理仍占用名额。
+
+编码空间身份与运行版本分开：包装代码、安装路径或运行信息的变化不自动改变既有 fingerprint；权重、预处理、精度或输出定义改变时按新空间管理。跨 MPS/CUDA 的索引兼容性须独立验证，未经验证的 CUDA 配置使用独立空间。运行信息通过独立诊断接口提供，不向现有严格校验的编码响应随意增加字段。
+
+Go 的 `ml.transcriber` 显式选择新任务的 ASR 模型；执行旧任务时按计划中冻结的 ID 与 fingerprint 查找，不能改用新默认模型。多个服务提供相同 ID 时须通过 `ml.model_endpoints` 显式绑定到 `ml.endpoints` 中的服务地址，身份冲突仍拒绝使用；这不提供负载均衡或任意故障转移。
+
+安装依赖、准备权重、启动服务、切换 active、停止服务分别执行。只有验证覆盖率和检索效果后才切换；确认旧任务和回滚窗口结束后才能移除旧服务。停止或卸载插件不删除业务数据与权重缓存。新增 OCR、物体检测或联合音视频输入仍需相应契约、存储和处理阶段，插件化不改变当前三路证据及检索规则。
 
 ---
 
@@ -311,66 +339,76 @@ sequenceDiagram
   autonumber
   participant B as 浏览器
   participant A as Go api
-  participant R as Redis · Asynq
+  participant R as Redis / Asynq
   participant W as Go worker
-  participant P as Python ml
-  participant S as S3
+  participant M as ML 进程 wemm-mps
+  participant C as ML 进程 speech-audio-cpu
+  participant S as 对象存储
   participant G as Postgres
 
   B->>A: POST /v1/uploads
-  A->>G: 建 video（uploading）
-  A-->>B: video_id + 分片上传 URL
-  B->>S: 分片直传原片
+  A->>G: 建 video 与可信上传会话 video_upload
+  A-->>B: video_id / upload_id / 分片 URL
+  B->>S: 预签名 HTTP 分片直传原片
   B->>A: POST /v1/videos/:id/complete
-  A->>S: 合并分片
-  A->>G: 建 probe 的 stage_run，video 改为 indexing
+  A->>S: 合并分片并核验对象
+  A->>G: video 改为 indexing，建 probe 阶段
   A->>R: 投递 probe
-  A-->>B: 202（之后全部异步）
-
+  A-->>B: 202（之后异步）
+  Note over B,G: 索引期间 Web 每 3 秒轮询 GET /v1/videos/:id，API 读取 Postgres 返回阶段状态
   R->>W: probe
   W->>S: ffprobe 读原片
-  W->>G: 写时长，生成后续阶段的 stage_run
+  W->>G: 写探测信息，冻结模型 ID / fingerprint 与阶段依赖
   W->>R: 投递 prepare_media
   R->>W: prepare_media
-  W->>S: 写 normalized_video.mp4 和缩略图雪碧图
-  W->>R: 投递画面编码与 ASR 任务
+  W->>S: ffmpeg 转码保留音轨，上传标准化视频与缩略图
+  W->>G: 写媒体位置与阶段完成状态
+  W->>R: 投递依赖已满足的编码与 ASR 阶段
 
-  par 画面
-    R->>W: embed:visual
-    loop 每批 32 段
-      W->>P: /v1/embed（S3 引用 + 时间段）
-      P->>S: 读标准化视频（有缓存则跳过）
-      P-->>W: 向量
-      W->>G: 写 embedding（visual）
+  par 有画面：visual
+    loop 按配置与模型上限分批
+      W->>M: HTTP /v1/embed（video 引用 + 时间段）
+      M->>S: 缓存未命中时读取标准化视频
+      M->>M: gate 内函数调用 WeMM 插件
+      M-->>W: 向量 + fingerprint
+      W->>G: 写 visual 向量与断点
     end
-  and 转录
-    R->>W: asr
-    loop 每 10 分钟一段（前后各多取 30 秒）
-      W->>P: /v1/transcribe（这一段的时间窗口）
-      P-->>W: 句子 + 逐字时间戳
-      W->>S: 存这一段的原始输出（兼作断点）
+  and 有音轨：audio
+    W->>C: HTTP /v1/embed（audio 引用 + 时间段）
+    C->>S: 缓存未命中时读取含音轨的标准化视频
+    C->>C: gate 内函数调用 CLAP 插件
+    C-->>W: 向量 + fingerprint
+    W->>G: 分批写 audio 向量与断点（默认不参与查询）
+  and 有音轨：ASR 与 speech
+    loop 每 10 分钟一段，前后各扩 30 秒并截到媒体内
+      W->>C: HTTP /v1/transcribe（冻结模型 ID + 时间窗）
+      C->>C: 缓存取媒体，gate 内函数调用 FunASR 插件
+      C-->>W: 原始识别文字 + 有序、允许重叠的时间戳
+      W->>S: 保存当前执行版本的分段原始输出
+      W->>G: 保存分段断点
     end
-    W->>G: 合并各段，写 text_span
+    W->>G: 按顺序合并，写 text_span
     W->>R: 投递 embed:speech
     R->>W: embed:speech
-    W->>P: /v1/embed（句子文本）
-    P-->>W: 向量
-    W->>G: 写 embedding（speech）
+    W->>M: HTTP /v1/embed（转录句子文本）
+    M->>M: gate 内函数调用 WeMM 插件
+    M-->>W: 向量 + fingerprint
+    W->>G: 分批写 speech 向量与断点
   end
-
-  W->>G: finalize：video 改为 ready
-  W->>R: 发布进度事件（每个阶段变化都会发）
-  R-->>A: 订阅到事件
-  A-->>B: SSE 推送进度
+  W->>G: 必需阶段完成后 finalize，video 改为 ready
+  B->>A: GET /v1/videos/:id
+  A->>G: 读取视频与 stage_run
+  A-->>B: ready 状态与已完成阶段
 ```
 
 要点：
 
-- 上传接口在第 9 步就返回，之后全部异步，用户通过 SSE 看进度。
-- **画面编码一完成就能搜到画面**，不用等转录和音频。
-- 导入链接时，第 1~8 步换成下面的导入流程，原片进入 S3 之后就和上传的视频完全一样。
+- 异步边界是上传完成接口返回 202；Web 轮询阶段状态，当前没有 SSE。
+- 三路是任务依赖上的独立分支，实际运行受 Go 队列、工作区名额与各模型 gate 限制。图中两种 profile 须分别启动并配置端点。
+- 搜索只返回 `ready` 视频；画面编码完成但其他必需阶段未完成时仍不能搜索。`audio=0` 只跳过查询，音轨、ASR 及 audio 索引仍保留。
+- URL 导入尚未接入当前流水线，下面是未来设计。
 
-#### 导入 YouTube、哔哩哔哩的视频
+#### 导入 YouTube、哔哩哔哩的视频（未来设计）
 
 ```mermaid
 sequenceDiagram
@@ -411,69 +449,69 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-  F["fetch<br/>仅导入：yt-dlp 下载"]:::opt --> PR["probe<br/>读时长、音视频流"]
-  PR --> PM["prepare_media<br/>媒体预处理：转码 + 缩略图"]
-  PM --> V["embed:visual:{space}"]
-  PM --> AU["embed:audio:{space}<br/>CLAP"]
-  PM --> ASR["asr<br/>转录成句子"]
-  ASR --> SP["embed:speech:{space}"]
-  V --> FIN["finalize"]
+  PR["probe<br/>读时长、音视频流；冻结计划"] --> PM["prepare_media<br/>转码保留音轨 + 缩略图"]
+  PM --> V["有画面：embed:visual:{space}<br/>HTTP 到 WeMM 进程"]
+  PM --> AU["有音轨：embed:audio:{space}<br/>HTTP 到 CLAP 所在进程"]
+  PM --> ASR["有音轨：asr<br/>HTTP 到冻结的转录模型端点"]
+  ASR --> SP["embed:speech:{space}<br/>转录文本 HTTP 到 WeMM 进程"]
+  PM --> FIN["finalize<br/>等待 prepare_media、ASR、所有 active 编码"]
+  ASR --> FIN
+  V --> FIN
   AU --> FIN
   SP --> FIN
-  FIN --> RDY(["ready：可以搜索"])
-  classDef opt stroke-dasharray: 5 5
+  FIN --> RDY(["ready：参与搜索"])
 ```
 
-- 只有 probe 之前的阶段在一开始就创建。**probe 完成时**，根据探测结果和 channels 配置生成后续阶段：没有音轨就不建 asr、speech 和 audio 阶段，没有画面就不建画面阶段。
-- 每个通道的每个空间（active 和 shadow）各有一个 embed 阶段；**finalize 只等 active 的阶段**，shadow 的回填不影响视频变成 ready。哪些阶段是必需的，在生成计划时就记进 `stage_run`，之后改 channels 配置不影响已经在索引中的视频。
-- cpu 阶段（fetch、probe、prepare_media、finalize）由 Go 自己调用外部命令完成（yt-dlp、ffmpeg）；gpu 阶段（asr、embed）由 Go 调用 Python。
+- 上传初始只建 probe。probe 完成时按音视频流与 channels 配置生成后续阶段：无音轨不建 ASR、speech、audio，无画面不建 visual。
+- 每个 active / shadow 空间各有 embed 阶段；图中嵌入分支只有 active 是必需依赖，shadow 不阻塞 finalize。计划冻结空间元数据、ASR 模型 ID / fingerprint 与 required 标记，之后改默认配置不改写旧计划。
+- `cpu` 队列跑 probe、prepare_media、finalize；`gpu` / `gpu_low` 队列跑模型阶段。队列名表示调度分类，ASR、CLAP 在当前 profile 中实际用 CPU。
 
 ### 6.3 一个任务是怎么被消费的
 
 ```mermaid
 flowchart TD
-  Q["从 Redis 队列取出任务"] --> L{"stage_run 还在吗？<br/>是否已完成？"}
-  L -->|"视频已删除，或已完成"| OK["直接结束（幂等）"]
-  L -->|"待执行"| G{"要申请名额吗？<br/>gpu 任务：工作区 GPU 名额<br/>fetch：平台下载名额"}
+  Q["从 Redis 队列取出任务"] --> L{"stage_run 还在吗？<br/>是否仍为 queued？"}
+  L -->|"阶段不存在或不是 queued"| OK["直接结束（幂等）"]
+  L -->|"待执行"| G{"要申请名额吗？<br/>仅 gpu：工作区名额"}
   G -->|"要"| T{"名额够吗？"}
   T -->|"不够"| D["稍后重试，不算失败"]
   T -->|"够"| RUN
   G -->|"不用"| RUN["标记 running，执行阶段"]
   RUN -->|"成功"| TX["一个事务里：写结果、stage_run 改为 done、找出依赖已满足的下游"]
   TX --> EN["事务提交后投递下游任务（任务 id 去重）"]
-  EN --> PUB["发布进度事件"]
-  RUN -->|"出错"| RT{"还有重试次数吗？"}
-  RT -->|"有"| BK["按指数退避放回队列"]
-  RT -->|"没有"| AR["归档：stage_run 标为 failed<br/>必需阶段失败时 video 也标为 failed"]
+  EN --> PUB["Web 轮询已提交的状态与进度"]
+  RUN -->|"出错"| RT{"可重试且未用尽次数？"}
+  RT -->|"是"| BK["恢复 queued，退避重试<br/>繁忙限流不计失败"]
+  RT -->|"否"| AR["stage_run 标为 failed<br/>必需阶段失败时 video 也标为 failed"]
 ```
 
-另外有一个每 5 分钟跑一次的 **reconciler**，负责三件事：
+`gpu_low` 回填不申请工作区名额；它与 `gpu` 共用 worker 的模型任务并发，并受对应 Python 模型 gate 限制。
+
+另外有一个每 5 分钟跑一次的 **reconciler**，负责四件事：
 
 1. 补投「状态是待执行、但队列里没有对应任务」的阶段，比如投递失败或 Redis 丢了数据。
 2. 收回「执行中，但 worker 已经崩溃」的阶段。
-3. 发现 channels 配置新增了通道或 active/shadow 空间时，为已就绪且前置阶段完成的视频补建缺失的 embed 阶段。回填走 gpu_low、required=false，保留既有索引和 ready 状态。
+3. 修复原片已存在但还未启动 probe 的上传或恢复任务。
+4. 发现 channels 配置新增了通道或 active/shadow 空间时，为已就绪且前置阶段完成的视频补建缺失的 embed 阶段。回填走 gpu_low、required=false，保留既有索引和 ready 状态。
 
-Redis 里只放丢了也能重建的东西：任务通知、并发名额、进度事件。阶段能不能执行、执行完没有，一律以 `stage_run` 为准，Redis 只负责通知，不做判断；以后加缓存、限流也照这个规则。所以 Redis 的数据就算全丢，reconciler 也能把任务补回来。
+Redis 里只放丢了也能重建的东西：任务通知、并发名额。阶段能不能执行、执行完没有，一律以 `stage_run` 为准，Redis 只负责通知，不做判断；以后加缓存、限流也照这个规则。所以 Redis 的数据就算全丢，reconciler 也能把任务补回来。
 
 ### 6.4 状态机
 
-视频状态：
+视频状态（当前；`deleted` 表示 `deleted_at`，恢复后重走上传或索引路径；到期 purge 暂缓）：
 
 ```mermaid
 stateDiagram-v2
   [*] --> uploading: POST /uploads
-  [*] --> importing: POST /imports
   uploading --> indexing: 上传完成
-  importing --> indexing: fetch 完成
   indexing --> ready: finalize
-  indexing --> failed: 必需阶段重试用尽
+  indexing --> failed: 必需阶段永久失败或重试用尽
   failed --> indexing: 用户重试
-  ready --> indexing: 重新索引（首版不支持，见问题 25）
   ready --> deleted: 删除（软删除）
   failed --> deleted: 删除（软删除）
   indexing --> deleted: 删除（软删除）
-  deleted --> indexing: 恢复（提议）
-  deleted --> [*]: 保留期满，彻底清除
+  uploading --> deleted: 删除（软删除）
+  deleted --> uploading: 恢复上传视频；已完成原片会重新启动 probe
 ```
 
 阶段状态（`stage_run.status`）：
@@ -481,11 +519,11 @@ stateDiagram-v2
 ```mermaid
 stateDiagram-v2
   [*] --> pending: 生成计划
-  pending --> queued: 依赖全部完成，已投递
+  pending --> queued: 依赖满足，提交后投递
   queued --> running: worker 取出
   running --> done: 成功提交
   running --> queued: 出错，等待重试
-  running --> failed: 重试用尽
+  running --> failed: 永久错误或重试用尽
   failed --> queued: 用户重试
   done --> [*]
 ```
@@ -496,33 +534,39 @@ stateDiagram-v2
 sequenceDiagram
   participant B as 浏览器
   participant A as httpapi
-  participant S as search
-  participant P as Python ml
-  participant G as Postgres
+  participant S as search / space / mlclient（api 进程内）
+  participant M as ML 进程 wemm-mps
+  participant C as ML 进程 speech-audio-cpu
+  participant G as Postgres / pgvector
 
   B->>A: POST /v1/search
-  A->>S: Search（工作区 + 范围 + 描述）
-  par 按 space 去重后并行编码
-    S->>P: /v1/embed role=query（wemm-2b@r1）
-    P-->>S: 查询向量
-  and
-    opt audio 有效权重大于 0（默认关闭）
-      S->>P: /v1/embed role=query（clap-htsat-unfused@r1，原样文字）
-      P-->>S: 声音查询向量
+  A->>S: 函数调用 Search（工作区 + 范围 + 原样查询）
+  S->>S: 校验范围与权重；选择 active 空间并解析端点
+  par 按 space + 查询文本去重后编码
+    S->>M: HTTP /v1/embed role=query
+    M->>M: gate 内函数调用 WeMM 插件
+    M-->>S: visual / speech 共用查询向量（相同文本时）
+  and audio 有效权重大于 0 时（默认跳过）
+    opt 显式启用 audio
+      S->>C: HTTP /v1/embed role=query（原样文字）
+      C->>C: gate 内函数调用 CLAP 插件
+      C-->>S: 声音查询向量
     end
   end
-  par 已启用的路线召回，每路前 5
-    S->>G: 画面向量 Top-K
+  S->>S: 校验返回的空间、维度与 fingerprint
+  par 每条启用的通道 / 空间路线 Top-5
+    S->>G: 工作区 / 范围 / ready / 未删除过滤后查 visual
   and
-    S->>G: 转录向量 Top-K
+    S->>G: 同上过滤后查 speech
   and
     opt audio 有效权重大于 0
-      S->>G: 声音向量 Top-K
+      S->>G: 同上过滤后查 audio
     end
   end
-  S->>S: 映射到时间格子 → RRF → 合并成片段 → 定跳转点
-  S-->>A: moments
-  A-->>B: 片段列表（缩略图为预签名 URL）
+  S->>S: 时间格子 → RRF → 合并片段 → 定跳转点
+  S->>G: 取跳转点对应转录原文
+  S-->>A: moments + skipped_channels
+  A-->>B: 片段列表（附预签名缩略图 URL）
 ```
 
 检索算法：
@@ -530,7 +574,7 @@ sequenceDiagram
 ```mermaid
 flowchart LR
   Q["描述"] --> W["默认查询权重 1:1:0<br/>显式请求逐项覆盖默认；跳过零权重"]
-  W --> E["按已启用的 active space 编码<br/>同一 space 只编码一次"]
+  W --> E["按已启用的 active space 编码<br/>同一 space + 同一查询文本只编码一次"]
   E --> R1["visual Top-K"]
   E --> R2["speech Top-K"]
   E --> R3["audio Top-K<br/>仅在显式启用时"]
@@ -539,17 +583,17 @@ flowchart LR
   R3 --> M
   M --> F["RRF：每格得分 = Σ 权重 /（60 + 名次）"]
   F --> G["同一视频的相邻格子合并成片段"]
-  G --> J["跳转点：命中句子的开头"]
+  G --> J["跳转点：优先命中句子开头<br/>无 speech 命中时取片段起点"]
   J --> O["按分数排序，附证据返回"]
 ```
 
 - 画面的命中本身就是格子；转录的命中是句子，**一句话覆盖到的每个格子都记上这句话的名次**。
 - RRF 只看名次、不看分值，不同空间的分数不需要互相校准。
-- 某一路编码或召回失败时，跳过这一路继续，结果里标明缺了哪一路；所有通道都失败才报错（提议）。
-- 搜索不能被索引拖慢：Python 给查询编码单独一个小闸门，不排在批量编码后面；请求带上超时，排队已经超时的请求 Python 不再推理（提议）。
+- 某一路编码或召回失败时，跳过这一路继续，结果里标明缺了哪一路；全部可用路线失败才报错；这是当前实现。
+- 当前真实 WeMM 查询和文档编码共用串行闸门，查询可能等待索引；CLAP 可单独配置查询闸门。排队超时不开始推理；已开始的模型线程在 HTTP 超时后仍占名额直至结束，不能宣称查询与索引已完全隔离。
 - 每路取多少名、RRF 常数、权重、合并间隔都是参数，版本与实验记录保存在 [Evaluation.md](Evaluation.md)。`search.channel_weights` 是默认查询乘数，`Query.ChannelWeights` 同名值替换它，再乘 `channels.yaml` 基础权重；省略值按 1 处理。改变查询默认值不重建索引或修改模型。
 
-### 6.6 Agent 对话（暂缓）
+### 6.6 Agent 对话（未来设计，暂缓）
 
 ```mermaid
 sequenceDiagram
@@ -588,24 +632,28 @@ Agent 的价值是**把用户的描述变成更好的检索**：
 
 ```mermaid
 flowchart LR
-  A["Python：加一个 adapter<br/>+ models.yaml 一行"] --> B["部署<br/>（可以单独一个容器）"]
-  B --> C["执行 videohelper space add<br/>登记 + 建部分索引（提议）"]
-  C --> D["channels.yaml<br/>把它加进 shadow"]
-  D --> E["reconciler 回填存量视频<br/>新视频同时编码"]
-  E --> F{"eval：召回更好？<br/>回填覆盖率 100%？"}
-  F -->|"是"| G["提为 active"]
-  F -->|"否"| H["移出 shadow，删除它的向量"]
-  G --> I["确认后删旧向量、撤旧容器"]
+  A["安装兼容契约的插件包<br/>选择独立锁定 profile"] --> P["videohelper-ml prepare<br/>固定修订权重进入 HF 缓存"]
+  P --> B["serve 启动候选服务<br/>验证 readyz、spaces、runtime"]
+  B --> EP["配置 ml.endpoints / model_endpoints<br/>重启 Go 进程并校验身份"]
+  EP --> C["videohelper space add<br/>登记 + 建部分索引"]
+  C --> D["channels.yaml 加 shadow<br/>重启 Go 进程加载配置"]
+  D --> E["reconciler 回填 ready 视频<br/>新计划同时编码候选空间"]
+  E --> F{"eval：效果达标？<br/>所需覆盖率达标？"}
+  F -->|"是"| G["配置提为 active<br/>重启 Go；保留旧空间用于回滚"]
+  F -->|"否"| H["移出 shadow 并重载配置<br/>确认无旧任务后显式清理"]
+  G --> I["旧任务完成且回滚窗口结束后<br/>显式清理旧向量、停止旧服务"]
 ```
 
-全程不改 Go 代码，也不影响线上查询；回滚就是把配置改回去。
+替换现有 embedder 契约不需要改 Go 业务代码；配置由进程启动加载，当前没有热安装、热卸载或配置文件热重载。评估可使用候选空间覆盖；覆盖率和检索效果是不同检查。保留旧索引与服务时，回滚是恢复旧配置并重启。
+
+ASR 不走 embedding 的 active/shadow 切换：`ml.transcriber` 只选择新计划；旧任务按冻结 ID / fingerprint 执行，旧模型不可用时失败而不静默替换。存量转录的批量重跑仍暂缓（问题 25）。新证据类型仍要扩展契约与业务处理。
 
 ### 6.8 删除视频（软删除）
 
 1. 用户调用删除接口。一个事务里给视频打上删除时间 `deleted_at`，同时删掉它的向量、转录句子和阶段记录。这些都是派生数据，恢复时可以重建。视频立刻从列表、搜索和 Agent 的范围里消失。
-2. 原片、标准化视频和项目关联先保留，所以视频还能恢复。恢复接口是提议，恢复后从 probe 重新索引一遍。
+2. 原片、标准化视频和项目关联先保留，所以视频还能恢复。上传视频恢复接口已实现：有完整原片时从 probe 重建索引，未完成上传则回到 uploading。
 3. 队列里还没执行完的该视频的任务，执行时找不到阶段记录，直接结束。
-4. 保留期满后（期限待定），后台任务先删 S3 上 `workspaces/{工作区}/videos/{视频}/` 下的文件，再删视频记录。
+4. 未来到期 purge（尚未实现，期限待定）：后台任务先删 S3 上 `workspaces/{工作区}/videos/{视频}/` 下的文件，再删视频记录。
 
 状态图里的 deleted 只是示意。实际上它用 `deleted_at` 字段表示，不是 `status` 的一个取值。
 
@@ -623,8 +671,8 @@ flowchart LR
 | 向量 | Postgres `embedding`（pgvector） | 能（重新编码） |
 | 原片 | S3 | 不能 |
 | 标准化视频、缩略图 | S3 | 能（重新转码） |
-| Agent 会话 | Postgres（ADK 自建的表） | 不能 |
-| 任务队列、进度事件、工作区并发计数 | Redis | 能（从 `stage_run` 补投） |
+| Agent 会话（未来） | 设计为 Postgres（ADK 会话表，未实现） | 不能 |
+| 任务队列、工作区并发计数 | Redis | 能（从 `stage_run` 补投） |
 
 ### 7.2 实体关系
 
@@ -636,6 +684,7 @@ erDiagram
   WORKSPACE ||--o{ VIDEO : owns
   PROJECT ||--o{ PROJECT_VIDEO : contains
   VIDEO ||--o{ PROJECT_VIDEO : "belongs to"
+  VIDEO ||--o| VIDEO_UPLOAD : "trusted upload session"
   VIDEO ||--o{ STAGE_RUN : "processed by"
   VIDEO ||--o{ TEXT_SPAN : has
   VIDEO ||--o{ EMBEDDING : has
@@ -651,7 +700,7 @@ erDiagram
 |---|---|
 | `segment` | 格子边界由视频时长和切片规则算出，存了也是冗余 |
 | 切点表 | 固定时长切片用不到；以后改成按镜头切时再加 |
-| `chat` | ADK 的会话表已经够用 |
+| `chat` | 未来使用 ADK 会话表；当前未实现对话 |
 | `chapter`、`note`、`detection` | 对应功能首版不做 |
 
 ### 7.3 向量行上只放不变的字段
@@ -710,13 +759,13 @@ erDiagram
 
 ### 9.3 公平与成本
 
-- GPU 任务按工作区限制并发数，超出的任务稍后执行，不算失败。每个工作区的名额要小于 GPU 总并发，否则一个工作区就能占满。
-- 换模型时的成批回填走低优先级队列，不和新视频抢 GPU（提议）。
-- 每个工作区的 GPU 时间、LLM token、索引时长都记入 `usage_event`，用于配额检查和以后计费。具体额度待定。
+- `gpu` 队列任务按工作区限制并发数，超出的任务稍后执行，不算失败。每个工作区的名额须小于 worker 的模型任务总并发；`gpu_low` 不申请该名额。
+- 换模型时的成批回填已走 `gpu_low` 队列，调度优先级低于新视频的 `gpu` 任务；两者仍共享模型资源。
+- 当前只把索引时长记入 `usage_event`；GPU 时间、LLM token、配额检查与计费属于后续设计。具体额度待定。
 
 ### 9.4 安全
 
-- 导入链接防 SSRF（防止借导入功能访问内网）：
+- 未来导入链接须防 SSRF（当前未实现导入）：
   - 平台链接只接受白名单里的域名；yt-dlp 只启用 YouTube 和哔哩哔哩的提取器，不启用会访问任意地址的通用提取器。
   - yt-dlp 自己发起网络请求，Go 的防护管不到它，所以 worker 所在网络还要在出口禁止访问内网和云服务器元数据地址（169.254.169.254），作为兜底。
   - 如果支持直链：只允许 http/https；拒绝内网、回环、链路本地地址；跟随重定向时每一跳都重新检查；限制大小和时长。
@@ -726,76 +775,134 @@ erDiagram
 
 ### 9.5 可观测性
 
-- 用户看得到：每个视频的每个阶段状态、失败原因，实时推送。
+- 用户看得到：视频的阶段状态、进度与失败原因，Web 每 3 秒轮询处理中的视频；SSE 推送暂缓。
 - 开发看得到：结构化日志统一带 request_id、workspace_id、video_id、stage、task_id；请求 id 透传到 Python。
 
 ---
 
 ## 10. 部署视图（云端暂缓）
 
-**本地开发**：docker compose 启动 postgres、redis、minio；Go api/worker 和 Python ML 在宿主机运行。本地组合使用 MPS 上的 WeMM 与 CPU 上的 ASR、CLAP；显式 fake 仅用于协议和流程测试。
+### 10.1 本地部署（当前支持的组合）
 
-**AWS**：代码放在私有 GitHub 仓库，用 GitHub Actions 自动部署（已定）。下图的资源形态是提议：
+Docker Compose 启动 Postgres、Redis、MinIO；Go api/worker、Web 开发服务器与 MPS 模型在宿主机运行。各 profile 先安装锁定依赖，再 `prepare` 准备固定修订权重，最后 `serve`；权重缓存与服务媒体缓存分开。下图是按 profile 拆开的配置方式，须显式启动两个服务并填写 `ml.endpoints`，不是自动启动或自动安装。
 
 ```mermaid
 flowchart TB
-  U(["用户"])
-  subgraph AWS["AWS"]
-    ALB["ALB · HTTPS"]
-    subgraph ECS["ECS"]
-      API2["api × N"]
-      WK2["worker × N<br/>含 ffmpeg"]
+  subgraph MAC["Mac 宿主机"]
+    WEB["Web：Vite 开发服务器<br/>浏览器运行 React"]
+    API["Go api 进程"]
+    WK["Go worker 进程 + ffmpeg 子进程"]
+    subgraph MP["wemm-mps 独立环境 / 进程"]
+      MS["videohelper-ml"] -->|"函数调用"| MW["WeMM 插件 / MPS"]
     end
-    subgraph GPU["GPU 实例"]
-      ML2["ml × N"]
+    subgraph CP["speech-audio-cpu 独立环境 / 进程"]
+      CS["videohelper-ml"] -->|"函数调用"| CA["FunASR + CLAP 插件 / CPU"]
     end
-    PGS[("RDS Postgres<br/>pgvector")]
-    EC[("ElastiCache Redis")]
-    S32[("S3")]
+    HF[("HF_HOME：固定修订权重缓存")]
+    MC[("ML_CACHE_DIR：媒体缓存<br/>各服务分别配置")]
+    subgraph DOCKER["Docker Compose"]
+      PG[("Postgres + pgvector")]
+      RD[("Redis")]
+      MI[("MinIO")]
+    end
   end
-  U --> ALB
-  ALB --> API2
-  API2 --> PGS
-  API2 --> EC
-  API2 --> ML2
-  WK2 --> PGS
-  WK2 --> EC
-  WK2 --> ML2
-  WK2 --> S32
-  ML2 --> S32
-  U -.->|"预签名 URL"| S32
+  WEB -->|"REST / 轮询"| API
+  WEB -->|"预签名 HTTP"| MI
+  API -->|"SQL"| PG
+  WK -->|"SQL"| PG
+  API -->|"任务投递"| RD
+  WK -->|"任务消费 / 名额"| RD
+  API -->|"HTTP：发现 / query"| MS
+  API -->|"HTTP：发现 / 可选 audio query"| CS
+  WK -->|"HTTP：document embed"| MS
+  WK -->|"HTTP：transcribe / audio embed"| CS
+  API -->|"S3 API"| MI
+  WK -->|"S3 API"| MI
+  MS -->|"S3 只读"| MI
+  CS -->|"S3 只读"| MI
+  MS -->|"文件 I/O"| HF
+  CS -->|"文件 I/O"| HF
+  MS -->|"文件 I/O"| MC
+  CS -->|"文件 I/O"| MC
 ```
 
-- api、worker 是同一个镜像，用不同子命令启动。
-- 前端与 API 不同域部署（已定）。
-- ml 可以按模型拆成多组容器，比如候选模型单独一组，评估完就撤。Go 只需要在配置里多写一个地址。
-- Postgres 用 AWS RDS 托管（已定），只装 pgvector 扩展；要不要开 Multi-AZ 见问题 20。
+`models.local.yaml` 仍支持兼容插件共用环境的组合；显式 `ML_FAKE=1` 只用于协议和流程测试。`wemm-cuda` 提供 Linux amd64 的锁定配置与 Docker 构建入口，但未经过真实 CUDA 硬件验收，不能据此宣称与 MPS 索引兼容。
 
-**发布流程**（私有 GitHub 仓库 + GitHub Actions，已定）：
+### 10.2 AWS 部署（未来方案，暂缓）
+
+私有 GitHub 仓库与 GitHub Actions 自动部署是已定方向；下图资源形态仍是提议，当前没有已验收的 AWS 部署。
+
+```mermaid
+flowchart TB
+  U(["用户浏览器"])
+  WEB["Web 静态站点<br/>与 API 不同域"]
+  subgraph AWS["未来 AWS"]
+    ALB["ALB / HTTPS"]
+    subgraph ECS["Go 进程 / 容器"]
+      API2["api × N"]
+      WK2["worker × N + ffmpeg"]
+    end
+    subgraph GPU["Linux GPU 环境 / ML 进程"]
+      GM["videohelper-ml"] -->|"函数调用"| GW["WeMM 插件 / CUDA<br/>独立候选空间，先硬件验收"]
+    end
+    subgraph CPU["CPU 环境 / ML 进程"]
+      CM["videohelper-ml"] -->|"函数调用"| SW["FunASR + CLAP 插件"]
+    end
+    PGS[("RDS Postgres / pgvector")]
+    EC[("ElastiCache Redis")]
+    S32[("S3 媒体")]
+    CACHE[("挂载的权重 / 媒体缓存")]
+  end
+  U --> WEB
+  WEB -->|"HTTPS REST"| ALB
+  ALB --> API2
+  API2 -->|"SQL"| PGS
+  WK2 -->|"SQL"| PGS
+  API2 -->|"投递任务"| EC
+  WK2 -->|"消费任务"| EC
+  API2 -->|"HTTP：发现 / query"| GM
+  API2 -->|"HTTP：发现 / 可选 audio query"| CM
+  WK2 -->|"HTTP：embed"| GM
+  WK2 -->|"HTTP：transcribe / embed"| CM
+  API2 -->|"S3 API"| S32
+  WK2 -->|"S3 API"| S32
+  GM -->|"S3 只读"| S32
+  CM -->|"S3 只读"| S32
+  GM -->|"文件 I/O"| CACHE
+  CM -->|"文件 I/O"| CACHE
+  WEB -->|"预签名 HTTP"| S32
+```
+
+- api、worker 可使用同一 Go 镜像，以不同子命令启动；Python 镜像按 profile 安装公共服务与普通插件 wheel，权重挂载在外。
+- 候选模型可另开独立环境或容器；Go 使用 `ml.endpoints` 发现，需要时用 `ml.model_endpoints` 绑定。部署方控制同 GPU 上多个进程的总并发与显存。
+- Postgres 用 AWS RDS 是已定方向；Multi-AZ、预算与基础设施工具仍待确认。
+
+### 10.3 发布流程（未来 AWS 方案，未实现）
 
 ```mermaid
 flowchart LR
-  PR["提 PR"] --> CI["CI：lint、测试、<br/>sqlc 生成检查、契约测试"]
+  PR["提 PR"] --> CI["计划中的 CI<br/>lint / 测试 / 生成检查 / 契约检查"]
   CI --> MG["合并到 main"]
-  MG --> BD["构建镜像<br/>commit SHA 作标签，推送 ECR"]
-  BD --> MI["一次性任务：<br/>数据库迁移"]
-  MI --> RO["滚动更新<br/>api、worker"]
-  RO --> MLD["更新 ml（GPU）"]
-  MLD --> SM{"冒烟测试"}
-  SM -->|"通过"| OK["完成"]
-  SM -->|"失败"| RB["回滚到上一个镜像标签"]
+  MG --> BD["按 Go / ML profile 构建镜像<br/>commit SHA 标签推送 ECR；构建 Web"]
+  BD --> PREP["prepare 准备固定修订权重缓存<br/>不打入模型镜像"]
+  PREP --> MI["执行向后兼容的数据库迁移"]
+  MI --> MLD["serve 启动候选 ML 进程<br/>离线加载；校验 readyz / spaces / runtime"]
+  MLD --> RO["验证空间覆盖率与效果后<br/>按兼容配置发布 Go / Web"]
+  RO --> SM{"冒烟测试"}
+  SM -->|"通过"| OK["保留旧模型与索引至回滚窗口结束"]
+  SM -->|"失败"| RB["恢复旧代码与配置<br/>旧模型服务和索引须仍可用"]
 ```
 
-- GitHub 用 OIDC 换取临时凭证来连接 AWS，不保存长期有效的密钥。
-- 数据库只由基础设施代码创建一次，部署流程只执行迁移，不会重建它。
-- 迁移要向后兼容（表结构先加后删），这样回滚时只需要回滚代码。
-- 细节见 [spec.md 14.4 节](spec.md#144-发布流程github-actions)。
+- 未来 GitHub 使用 OIDC 临时凭证连接 AWS；数据库由基础设施创建，发布只执行迁移。
+- 裸 `serve` 未启用离线模式时仍可下载权重；先 `prepare`，再设置 `HF_HUB_OFFLINE=1` 才是明确的离线启动步骤。
+- 数据库迁移采用先加后删；模型替换另按第 6.7 节完成候选回填和验证，不能只回滚镜像而丢掉旧模型或旧索引。
+- 细节见 [spec.md 第 14 章](spec.md#14-本地开发与部署)。
 
 ---
 
 ## 11. 风险与验证计划
 
-正式开发前，先用小实验验证风险最大的四个点。
+后续质量与云端验收继续验证以下风险；现有离线评估结果及其局限见文首链接。
 
 | 风险 | 怎么验证 | 不行怎么办 |
 |---|---|---|

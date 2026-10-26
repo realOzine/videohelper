@@ -1,15 +1,17 @@
 # VideoHelper 实现文档（Spec，首版）
 
-> 状态：草案，待评审　｜　更新：2026-10-25
+> 状态：实现边界与后续设计并列记录　｜　更新：2026-10-27
 > 配套文档：[设计文档 design.md](design.md) · [设计画布](https://claude.ai/artifact/38jtvjPEShFP1fSfD1CKXb)
 
 ## 0. 说明
 
 **范围**：Go 后端、Python 模型服务、数据库、所有接口，以及模块之间怎么交互。前端（`web/`）只依赖对外 API，见[第 16 章](#16-前端)。
 
-## 当前实施范围（2026-10-25）
+## 当前实施范围（2026-10-27）
 
 本地处理链路为「视频 → 标准化视频 → WeMM 画面编码 / CLAP 声音编码 / ASR → WeMM 转录文本编码 → 文字检索 → 时间片段与证据」。WeMM-Embedding-2B 统一支持视频、文字、图片编码；图片是编码输入，本轮搜索入口只接受文字。启用 `visual`、`speech` 与 `audio`，保留音轨供 ASR 和 CLAP 使用。声音通道采用 edit-mind 同款 CLAP HTSAT unfused；查询文字原样传入，英文转换后续再做。LLM/Agent、AWS 部署与验收暂缓；前端已实现登录、资料库与上传、视频详情、搜索；下文相关章节保留为后续设计，不构成本轮实现要求。真实模型验证与显式 fake 的协议/流程测试分开。
+
+模型服务已拆成可安装的 `videohelper-ml` 公共包与 WeMM、FunASR、CLAP 三个插件包；插件通过 Python entry point 注册，在同一个 Python 进程内以函数调用执行。`ml/profiles/` 锁定各自依赖与模型清单，可分别运行 MPS、CPU 和 CUDA 服务；Go 通过 HTTP 发现能力、路由并调用推理（第 5、10、14 章）。CUDA profile 是候选配置，尚未完成真实 GPU 验收。
 
 本轮提供本地上传、阶段状态/重试、项目范围和文字搜索。已就绪视频可自动补建新通道/空间缺失的编码阶段；URL 导入、上传分片续签、SSE 事件、到期 purge、配额计费仍是后续设计；软删除保留原片和处理文件。当前只记录索引时长。操作入口见 [README](../README.md)。
 
@@ -19,7 +21,9 @@
 
 **标注约定**：
 
-- **已定**：用户明确拍板。
+- **已实现**：当前代码已有对应入口；不等于已完成真实模型或云端验收。
+- **已定**：用户明确拍板；单独出现时不代表已经实现。
+- **规划 / 暂缓**：保留后续边界，当前没有对应业务入口。
 - **提议**：讨论中提出、用户没有反对，但还没正式确认。
 - **建议**：本文给出的默认做法，需要确认。
 
@@ -67,36 +71,35 @@
 
 ### 1.1 顶层目录
 
-目标结构如下，云部署与导入相关文件仍属后续规划；评估的当前入口另见 Eval/，下列 internal/eval 为早期结构提议。当前 Go 和 Python 可以独立构建；每个 SQL 包使用自己的 `sqlc.yaml`，由 `make generate` 统一执行。
+当前结构如下。Go 与 Python 独立构建，SQL 包各有 `sqlc.yaml`，由 `make generate` 统一执行。AWS 的 `infra/`、发布工作流和链接导入相关组件仍属规划，不列为当前文件。
 
 ```text
 videohelper/
-├── go.mod                       # Go module：github.com/ozine/videohelper
-├── go.sum
-├── Dockerfile                   # Go 镜像：api / worker / migrate 共用，内含 ffmpeg、固定版本的 yt-dlp
-├── Makefile                     # 常用命令：build、test、lint、up（可选）
-├── .github/
-│   └── workflows/               # CI/CD：ci.yml（PR 检查）、deploy.yml（合并后部署）、infra.yml（基础设施变更）
-├── infra/                       # 基础设施代码：VPC、RDS、ECS、Redis、S3、ECR、IAM（工具待定：Terraform 或 CDK）
-├── cmd/
-│   └── videohelper/             # 唯一的 Go 可执行程序，用子命令区分角色
-├── internal/                    # Go 业务代码，按能力分包（第 2 章）
-├── migrations/                  # goose 迁移文件，按序号执行；也是 sqlc 读取的表结构（第 3 章）
-├── contracts/
-│   └── ml-v1.yaml               # ML 契约的 OpenAPI 描述，Go 和 Python 共同遵守（第 5 章）
+├── go.mod / go.sum
+├── Makefile                     # Go / Web 检查与本地基础服务
+├── cmd/videohelper/             # Go 单一二进制；api / worker / migrate / 本地命令
+├── internal/                    # Go 业务模块与基础设施适配（第 2 章）
+├── migrations/                  # goose 迁移，也是 sqlc 的表结构输入
+├── contracts/ml-v1.yaml         # Go / Python 共用的 HTTP 契约
 ├── config/
-│   ├── config.example.yaml      # Go 服务配置样例，不含密钥
-│   └── channels.yaml            # 召回通道配置：每个通道用哪些 space
-├── Eval/
-│   ├── tools/run.py            # 索引验收、快照、检索回归
-│   └── annotations/queries.jsonl # 固定评估集（第 11 章）
-├── ml/                          # Python 模型服务，独立项目（第 10 章）
-├── web/                         # 前端：React + TypeScript + Tailwind，Vite 构建为静态文件
+│   ├── config.example.yaml      # 通用配置，不含密钥
+│   ├── local.yaml               # 本地配置
+│   └── channels.yaml            # 通道、active / shadow 空间
+├── Eval/                        # 独立离线评估入口（第 11 章）
+├── ml/
+│   ├── app/                     # 通用 HTTP 服务、插件发现、缓存、闸门、共享类型
+│   ├── plugins/{wemm,funasr,clap}/ # 独立安装的模型插件包
+│   ├── profiles/                # wemm-mps / speech-audio-cpu / wemm-cuda
+│   ├── pyproject.toml / uv.lock # 公共包与开发环境
+│   └── Dockerfile               # 按 profile 构建 Linux 模型镜像
+├── web/                         # React + TypeScript + Tailwind，多页 Vite
 ├── deploy/
-│   └── docker-compose.yml       # Postgres、Redis、MinIO；Go/ML 在宿主机运行
+│   ├── docker-compose.yml       # Postgres、Redis、MinIO
+│   ├── minio.Dockerfile
+│   └── ml-compose.yml           # Linux CPU / 可选 CUDA 模型服务
 └── docs/
-    ├── design.md                # 设计文档
-    └── spec.md                  # 本文档
+    ├── design.md
+    └── spec.md
 ```
 
 ### 1.2 文件类型
@@ -107,25 +110,35 @@ videohelper/
 | `_test.go` | Go 测试，和被测文件放在同一目录 | 同上 |
 | `.sql` | 数据库迁移（goose）；各包的查询（sqlc 的输入） | `migrations/`、`internal/*/queries.sql` |
 | 生成的 `.go` | sqlc 根据 `queries.sql` 生成，不手改 | `internal/*/*db/` |
-| `.yaml` | 配置、ML 契约、模型清单 | `config/`、`contracts/`、`ml/models.yaml` |
-| `.md`（`go:embed`） | Agent 的系统指令，编译进二进制 | `internal/agent/instruction.md` |
-| `.py` | Python 源码与测试 | `ml/app/`、`ml/tests/` |
-| `pyproject.toml`、`uv.lock` | Python 依赖与工具配置 | `ml/` |
+| `.yaml` | Go 配置、ML 契约、模型清单 | `config/`、`contracts/`、`ml/profiles/*/models.yaml`；fake 清单在 `ml/models.yaml` / `ml/app/resources/models.yaml` |
+| `.md` | 设计、契约和运行说明 | `docs/`；Agent 的 `instruction.md` 为后续规划 |
+| `.py` | Python 公共服务、插件与测试 | `ml/app/`、`ml/plugins/`、`ml/tests/` |
+| `pyproject.toml`、`uv.lock` | 公共包 / 插件元数据、profile 锁定依赖 | `ml/`、`ml/plugins/*/`（包）、`ml/profiles/*/`（独立锁文件） |
 | `.jsonl` | 评估集 | `Eval/annotations/` |
-| `Dockerfile`、`docker-compose.yml` | 构建与本地运行 | 根目录、`ml/`、`deploy/` |
+| `Dockerfile`、Compose YAML | 模型镜像与本地基础服务 | `ml/Dockerfile`、`deploy/`；Go 云镜像仍属规划 |
 
-### 1.3 三部分之间只通过协议交互
+### 1.3 进程边界与模块边界
 
 ```mermaid
 flowchart LR
-  WEB["web/<br/>前端"] -->|"对外 API（第 4 章）"| GO["cmd + internal<br/>Go 程序"]
-  GO -->|"ML 契约 v1（第 5 章）"| ML["ml/<br/>Python 服务"]
-  GO --- C["contracts/ml-v1.yaml"]
-  ML --- C
+  WEB["浏览器：web 静态页面"] -->|"HTTP / 对外 API"| API
+  subgraph GO["Go：同一二进制，不同进程"]
+    API["api：httpapi → search / library"]
+    W["worker：pipeline → stages"]
+    API -->|"进程内调用"| AC["各自的 space.Registry / mlclient"]
+    W -->|"进程内调用"| WC["各自的 space.Registry / mlclient"]
+  end
+  AC -->|"HTTP / ML 契约 v1"| M
+  WC -->|"HTTP / ML 契约 v1"| M
+  subgraph PY["Python：每个 profile 独立环境 / 进程"]
+    M["公共服务：api / registry / gate / media"] -->|"进程内函数调用"| P["已安装并启用的模型插件"]
+  end
 ```
 
-- Go 和 Python 互相不导入对方的代码，只共同遵守 `contracts/ml-v1.yaml`。
-- 前端只依赖对外 API。
+- Go 模块在进程内调用；api 与 worker 通过 Redis 队列及数据库协作，不互相发 HTTP。
+- Go 与 Python 只共同遵守 `contracts/ml-v1.yaml`，不导入对方代码。多个 profile 各提供一个 HTTP 端点，Go 按模型 ID 路由。
+- Python 公共包提供服务与共享类型，插件负责模型相关准备、加载、预处理和推理；安装插件不会自动增加 Go 的新证据类型。
+- 前端调用 Go 对外 API；媒体分片上传与播放使用 Go 签发的对象存储 URL，不直接调用模型服务。
 
 ---
 
@@ -138,144 +151,57 @@ flowchart LR
 | 子命令 | 作用 | 启动的内容 | 副本数 |
 |---|---|---|---|
 | `videohelper api` | 对外服务 | 已认证 REST、search；SSE/agent 暂缓 | 可多副本，无状态 |
-| `videohelper worker` | 后台处理 | cpu server（cpu、maint 队列）、gpu server（gpu 队列）、scheduler（定时投递 reconcile） | 可多副本 |
+| `videohelper worker` | 后台处理 | cpu server（cpu、maint）、gpu server（gpu、gpu_low）；定时投递 reconcile、刷新模型发现 | 可多副本 |
 | `videohelper migrate` | 执行数据库迁移 | 迁移完成后退出 | 每次部署跑一次 |
 | `Eval/tools/run.py` | 离线索引验收与检索回归 | 独立快照、逐题评分、结果比较 | 手动执行 |
-| `videohelper space add <channel> <id>` | 为一个通道接入新的向量空间（提议） | 从 ML 端点登记这个空间，为 (channel, space) 建部分 HNSW 索引；用迁移账号执行 | 换模型时手动执行，在写进 channels.yaml 之前 |
-| `videohelper space drop <id>` | 下线一个向量空间 | 分批删除该空间的向量，删除部分索引，标记停用 | 手动执行 |
+| `videohelper space add <channel> <id>` | 为一个通道接入新的向量空间（已实现） | 从 ML 端点登记这个空间，为 (channel, space) 建部分 HNSW 索引；用迁移账号执行 | 换模型时手动执行，在写进 channels.yaml 之前 |
+| `videohelper local-init / local-upload / local-search / local-video` | 本地初始化、上传、搜索、查看状态 | 复用业务模块；参数见 `videohelper -help` | 手动执行 |
+| `videohelper space drop <id>`（规划） | 下线向量空间 | 当前没有此子命令；删除旧数据和卸载流程尚待实现 | — |
 
-多个 worker 副本都会运行 scheduler。reconcile 任务按时间窗口生成任务 id，并且完成后在 Asynq 里保留 1 小时（6.1 节）：其他副本再投递同一个窗口的任务，会因为 id 冲突被拒绝，所以同一个窗口只执行一次。
+多个 worker 副本都会定时投递 reconcile。reconcile 任务按时间窗口生成任务 id，并且完成后在 Asynq 里保留 1 小时（6.1 节）：其他副本再投递同一个窗口的任务，会因为 id 冲突被拒绝，所以同一个窗口只执行一次。
 
 ### 2.2 目录结构
 
 ```text
 cmd/videohelper/
-├── main.go              # 解析子命令，读取配置，调用对应角色的 run 函数
-└── app.go               # 依赖装配：按配置创建连接池、Redis、S3、mlclient，再创建各业务服务；
-                         # 各角色共用，接口的具体实现在这里注入
+├── main.go              # 命令解析、迁移、space add
+├── runtime.go           # 装配 Registry、ML 客户端、业务模块与基础设施
+├── api.go / worker.go   # HTTP 服务 / 队列消费者与周期补偿
+└── local.go             # 复用业务模块的本地命令
 
 internal/
-├── config/
-│   └── config.go        # 配置结构体与加载：读 YAML，用环境变量覆盖密钥；启动时校验必填项
-├── apperr/
-│   └── apperr.go        # 统一错误类型：Kind + code + 消息；httpapi 据此映射 HTTP 状态码
-│
-├── platform/            # 基础设施适配：只封装外部系统，不含任何业务规则
-│   ├── db/
-│   │   ├── db.go        # 创建 pgx 连接池；注册 pgvector 类型（halfvec）
-│   │   └── tx.go        # 事务辅助 WithTx；Querier 接口（连接池和事务都满足它）
-│   ├── blob/
-│   │   ├── s3.go        # S3 操作：分片上传的创建、签名、完成；流式分片上传；预签名下载；上传；删除前缀
-│   │   └── keys.go      # 对象路径规则的唯一来源：原片、标准化视频、缩略图、原始输出、视频前缀
-│   ├── queue/
-│   │   └── queue.go     # Asynq 封装：队列名、任务类型、载荷编解码、任务 id 规则、创建 client / server / scheduler
-│   ├── events/
-│   │   └── events.go    # 进度事件：结构定义、发布到 Redis 频道、订阅
-│   ├── authn/
-│   │   └── authn.go     # 校验 Bearer 令牌（JWKS），得到 sub、email、name；具体认证服务待定
-│   └── safehttp/
-│       └── safehttp.go  # 防 SSRF：URL 规则校验；拨号时再校验目标 IP；限制重定向、大小、时长
-│
-├── workspace/           # 身份与工作区
-│   ├── workspace.go     # 类型：Workspace、User、Membership、Principal；首次登录建用户和个人工作区
-│   ├── context.go       # 在 context 里存取 Principal
-│   ├── queries.sql      # workspace、app_user、membership 的查询（sqlc 输入）
-│   └── workspacedb/     # sqlc 生成的代码，不手改
-│
-├── library/             # 项目与视频
-│   ├── project.go       # 项目：创建、列表、删除、加入或移出视频
-│   ├── video.go         # 视频：查询、列表、软删除、恢复、播放地址；供 pipeline 在事务里更新时长、标准化视频路径、状态
-│   ├── scope.go         # 范围解析：项目或视频列表 → 校验归属后的 video id；取视频时长
-│   ├── upload.go        # 上传：登记（建 video + 签发分片 URL）、完成（合并分片 → 启动流水线）
-│   ├── importurl.go     # 导入链接：识别平台（YouTube、哔哩哔哩的域名白名单）或直链（safehttp 规则）→ 建 video → 启动流水线
-│   ├── ports.go         # library 需要、由 pipeline 实现的接口：Starter、DerivedDropper
-│   ├── queries.sql      # project、project_video、video 的查询（sqlc 输入）
-│   └── librarydb/       # sqlc 生成的代码，不手改
-│
-├── timeline/            # 切片规则；纯函数，不依赖任何包
-│   ├── span.go          # Span（StartMs、EndMs）与重叠判断、合并
-│   ├── grid.go          # 格子规则 grid@v1：≥90 秒每 2.5 秒一格，<90 秒每 1 秒一格
-│   ├── sentence.go      # 句子规则 sentence@v1：过短的与相邻句合并；首版不拆长句
-│   └── sprite.go        # 雪碧图布局：格子序号 → 第几张图、图内坐标
-│
-├── space/               # 向量空间与召回通道
-│   ├── registry.go      # 登记：调用各 ML 端点的 /v1/spaces，与 embedding_space 表比对；
-│   │                    # 新空间只登记、不建索引（索引由 space add 建）；fingerprint 不一致则停用并告警；提供 space → 端点路由
-│   ├── channels.go      # 解析、校验 channels.yaml：文档类型必须被 space 支持、维度 ≤ 4000、格子时长 ≤ max_span_ms、部分索引已建好
-│   ├── queries.sql      # embedding_space 的查询（sqlc 输入）
-│   └── spacedb/         # sqlc 生成的代码，不手改
-│
-├── mlclient/            # ML 契约 v1 的客户端；所有调用 Python 的代码只在这里
-│   ├── client.go        # 手写（已定）：Spaces、Embed、Transcribe；带共享令牌；超时；503 按 Retry-After 退避；透传 request id
-│   └── types.go         # 请求、响应结构，与 contracts/ml-v1.yaml 一一对应
-│
-├── media/               # 外部媒体命令的封装
-│   ├── ffmpeg.go        # 调用 ffprobe / ffmpeg：探测、转码生成标准化视频、生成缩略图雪碧图、按时间点抽帧
-│   └── ytdlp.go         # 调用 yt-dlp：读平台视频的元数据、下载到本地文件；只启用白名单里的提取器；错误分类
-│
-├── index/               # 检索数据的唯一存取入口；所有 pgvector 相关 SQL 只在这里
-│   ├── vector.go        # embedding：批量写入、按通道和空间召回、建部分 HNSW 索引、删除、统计覆盖率；
-│   │                    # 这些 SQL 依赖运行时才知道的字面量（维度、通道、空间），sqlc 表达不了，手写（全项目唯一的例外）
-│   ├── text.go          # text_span：替换某视频的转录句子、按时间段取原话、取某视频的全部句子
-│   ├── queries.sql      # text_span 的查询（sqlc 输入）
-│   └── indexdb/         # sqlc 生成的代码，不手改
-│
-├── pipeline/            # 索引流水线（worker 的主体）
-│   ├── stages.go        # 阶段定义（名称、版本、队列、依赖、超时、是否必需、执行函数）与计划生成
-│   ├── service.go       # Start、DropDerived（实现 library 的两个接口）、Retry；注册 Asynq handler
-│   ├── runner.go        # 通用任务处理：检查 → 限流 → 认领 → 执行 → 事务提交 → 投递下游 → 发布事件
-│   ├── queries.sql      # stage_run 的查询：建计划、认领、改状态、记进度、找卡住的阶段（sqlc 输入）
-│   ├── pipelinedb/      # sqlc 生成的代码，不手改
-│   ├── fetch.go         # fetch：平台链接用 yt-dlp 下载到本地再上传 S3；直链用 safehttp 边下边写入 S3
-│   ├── probe.go         # probe：ffprobe，写时长和音视频流信息；展开后续阶段
-│   ├── prepare_media.go # prepare_media：媒体预处理，转码生成标准化视频（最高 720p）、生成缩略图雪碧图、上传 S3
-│   ├── asr.go           # asr：按 10 分钟分段调用 /v1/transcribe；每段原始输出存 S3（兼作断点）；合并后替换 text_span
-│   ├── embed.go         # embed:{channel}:{space}：生成输入 → 分批调用 /v1/embed → 校验 → 写入 → 记断点
-│   ├── finalize.go      # finalize：确认必需阶段完成，视频改为 ready，记录索引时长
-│   ├── purge.go         # purge：软删除到期后，清理 S3 前缀，再删除视频行
-│   ├── throttle.go      # 名额（带租约的信号量）：工作区 GPU 并发、各平台的下载并发
-│   └── reconcile.go     # 定时补偿：补投漏掉的任务、收回卡死的阶段、按 channels 配置回填、投递到期的 purge
-│
-├── search/              # 检索内核；不调用 LLM
-│   ├── types.go         # Query、Scope、Moment、ChannelHit、Params
-│   ├── search.go        # 主流程：校验 → 解析范围 → 编码 → 召回 → 融合
-│   ├── encode.go        # 按 (space, 查询文字) 去重，并行编码
-│   └── fuse.go          # 命中映射到格子、RRF、相邻合并、跳转点、证据
-│
-├── agent/               # Agent；所有 ADK 类型只出现在这个包里
-│   ├── service.go       # 装配 ADK：llmagent + runner + 会话服务；对外提供 Send（产品事件流）
-│   ├── model.go         # 按配置创建 chat、vision 两个模型（openaimodel；base_url 可指向 gateway）
-│   ├── instruction.md   # 系统指令（go:embed）
-│   ├── tools.go         # 工具定义与实现：search_moments、get_transcript、list_videos、inspect_clip
-│   ├── inspect.go       # inspect_clip：从标准化视频抽帧，调用 vision 模型
-│   ├── sessions.go      # 会话：创建（scope 写进 state）、列表、历史
-│   └── events.go        # ADK 事件 → 产品事件（text、tool、moments、done、error）
-│
-├── usage/               # 计量与配额
-│   ├── usage.go         # 写计量；按套餐检查配额；汇总
-│   ├── queries.sql      # usage_event 的查询（sqlc 输入）
-│   └── usagedb/         # sqlc 生成的代码，不手改
-│
-├── httpapi/             # 对外 REST + SSE；只做协议转换
-│   ├── server.go        # 路由表（标准库 net/http ServeMux），挂中间件
-│   ├── middleware.go    # request id、访问日志、panic 恢复、CORS、鉴权（令牌 → 用户 → 工作区）
-│   ├── respond.go       # JSON 读写、apperr → HTTP 状态码、统一错误体
-│   ├── sse.go           # SSE 写出：事件格式、心跳、及时刷新
-│   ├── me.go            # GET /v1/me
-│   ├── projects.go      # 项目接口
-│   ├── uploads.go       # 上传登记、上传完成
-│   ├── imports.go       # 导入链接
-│   ├── videos.go        # 视频列表、详情、软删除、恢复、重试、播放地址、进度 SSE
-│   ├── search.go        # POST /v1/search
-│   └── chat.go          # 会话接口与消息 SSE
-│
-└── eval/
-    └── eval.go          # 读评估集，按指定通道和空间检索，计算 recall@k、MRR、覆盖率
+├── config/              # config.go / validate.go：加载与启动校验
+├── apperr/              # 业务错误与 HTTP 映射所需分类
+├── platform/
+│   ├── db/              # pgx、事务辅助
+│   ├── blob/            # S3 / MinIO、预签名、分片上传、对象路径
+│   ├── queue/           # Asynq 队列、任务载荷、消费者与投递
+│   └── authn/           # JWT / JWKS 校验
+├── workspace/           # 用户、工作区、Principal
+├── library/             # 项目、视频、上传、范围、软删除 / 恢复；定义流水线接口
+├── timeline/            # 半开时间段、grid@v1、sentence@v1、雪碧图布局
+├── space/               # /v1/spaces 发现、身份校验、端点绑定与通道配置
+├── mlclient/            # HTTP 发现 / embed / transcribe；错误、输出与超时校验
+├── media/               # ffprobe / ffmpeg 子进程；标准化视频与雪碧图
+├── index/               # 向量与转录存取、部分 HNSW 索引、派生数据清理
+├── pipeline/
+│   ├── plan.go / types.go # 阶段依赖、必需性、冻结的模型身份与参数
+│   ├── service.go / runner.go # 任务注册、认领、执行、断点、提交与下游推进
+│   ├── reconcile.go / backfill.go # 补偿、ready 视频的缺失通道 / 空间回填
+│   ├── status.go        # 阶段状态
+│   └── stages/          # media.go / asr.go / encode.go：实际处理函数
+├── search/              # search.go / fuse.go：编码、召回、融合与证据
+├── usage/               # 当前记录 indexed_ms；配额与其他计量暂缓
+└── httpapi/             # httpapi.go / library.go / search.go：路由、中间件与协议转换
 ```
+
+各持久化模块的 `queries.sql` / `sqlc.yaml` 与生成的 `*db/` 保持包内归属。`library` 定义流水线接口，`pipeline` 实现，`cmd/videohelper/runtime.go` 注入；实际媒体与模型执行函数位于 `pipeline/stages`，避免 `pipeline` 反向导入它。
+
+后文保留的 `agent`、`platform/events`、`platform/safehttp`、`media/ytdlp.go`、`fetch`、`purge` 以及导入 / SSE 处理器均属后续设计，当前不在这份目录树中。逐包签名用于说明边界，不表示每个规划接口均已实现。
 
 ### 2.3 包依赖规则
 
-只允许依赖下表列出的包，其余一律禁止。这张表就是高内聚、低耦合的具体约束。
+下表约束模块的依赖方向；`agent`、`eval`、`platform/safehttp` 行保留为规划，当前评估入口在 `Eval/`。这张表就是高内聚、低耦合的具体约束。
 
 | 包 | 允许依赖 |
 |---|---|
@@ -298,7 +224,7 @@ internal/
 
 两处依赖倒置，用来避免循环：
 
-- `library` 在上传完成、导入、恢复视频时需要启动流水线，软删除时要删掉流水线产生的派生数据。为此在 `library/ports.go` 定义 `Starter`、`DerivedDropper` 两个接口，由 `pipeline` 实现，在 `cmd/videohelper/runtime.go` 注入。所以 `library` 不依赖 `pipeline`，也不直接写别的包的表。
+- `library` 在上传完成、导入、恢复视频时需要启动流水线，软删除时要删掉流水线产生的派生数据。为此在 `library/library.go` 定义 `Starter`、`DerivedDropper` 两个接口，由 `pipeline` 实现，在 `cmd/videohelper/runtime.go` 注入。所以 `library` 不依赖 `pipeline`，也不直接写别的包的表。
 - `mlclient` 需要知道某个 space 在哪个端点，但不能依赖 `space`。它接收一个 `Resolver` 函数，由 `space.Registry` 提供。
 
 ### 2.4 逐包说明
@@ -429,7 +355,7 @@ func NewServers(cfg config.WorkerConfig, r asynq.RedisConnOpt) (cpu, gpu *asynq.
 func EnqueueReconcile(ctx context.Context, c *asynq.Client, now time.Time, every time.Duration) error // worker ticker 调用；按时间窗口生成唯一 id
 ```
 
-#### platform/events
+#### platform/events（规划）
 
 - **职责**：进度事件的发布与订阅。事件丢了不影响正确性，因为状态以 `stage_run` 为准，前端重连后重新拉取即可。
 
@@ -458,7 +384,7 @@ type Claims struct { Sub, Email, Name string }
 func (v *Verifier) Verify(ctx context.Context, bearer string) (Claims, error)
 ```
 
-#### platform/safehttp
+#### platform/safehttp（规划）
 
 - **职责**：Go 里所有「按用户给的地址发起请求」的地方都必须用它，目前是直链下载和 `b23.tv` 短链解析。平台视频由 yt-dlp 下载，不经过这里，防护方式见 12.2 节。
 
@@ -504,7 +430,7 @@ type Video struct {
 type UploadPlan struct { UploadID string; PartSize int64; Parts []blob.PartURL; ExpiresAt time.Time }
 type Scope struct { ProjectID *int64; VideoIDs []int64 }
 
-// ports.go：由 pipeline 实现
+// library.go：接口由 pipeline 实现
 type Starter interface { Start(ctx context.Context, videoID int64) error }
 type DerivedDropper interface {
     // 删掉一个视频的派生数据：embedding、text_span、stage_run；在调用方的事务里执行
@@ -513,9 +439,9 @@ type DerivedDropper interface {
 
 func (s *Service) StartUpload(ctx context.Context, p workspace.Principal, filename string, size int64, contentType string, projectID *int64) (Video, UploadPlan, error)
 func (s *Service) CompleteUpload(ctx context.Context, p workspace.Principal, videoID int64, uploadID string, parts []blob.Part) (Video, error) // 内部调用 Starter.Start
-func (s *Service) StartImport(ctx context.Context, p workspace.Principal, rawURL, title string, projectID *int64) (Video, error)  // 内部调用 Starter.Start
+func (s *Service) StartImport(ctx context.Context, p workspace.Principal, rawURL, title string, projectID *int64) (Video, error)  // 规划；内部调用 Starter.Start
 
-// importurl.go：哪些链接能导入，是业务规则，放在 library
+// importurl.go（规划）：哪些链接能导入，是业务规则，放在 library
 type ImportSource struct {
     Kind string // youtube | bilibili | direct
     URL  string // 规范化后的地址
@@ -525,7 +451,7 @@ func ClassifyURL(ctx context.Context, raw string, cfg config.ImportConfig) (Impo
 func (s *Service) Get(ctx context.Context, p workspace.Principal, id int64) (Video, error)
 func (s *Service) List(ctx context.Context, p workspace.Principal, f ListFilter) (videos []Video, nextCursor string, err error)
 func (s *Service) Delete(ctx context.Context, p workspace.Principal, id int64) error            // 软删除（已定）：一个事务里设 deleted_at，并调用 DerivedDropper 删掉派生数据（3.5 节）
-func (s *Service) Restore(ctx context.Context, p workspace.Principal, id int64) (Video, error)  // 恢复（提议）：清空 deleted_at，调用 Starter.Start 重新索引
+func (s *Service) Restore(ctx context.Context, p workspace.Principal, id int64) (Video, error)  // 恢复 upload；已有原片时从 probe 重建，否则回到 uploading
 func (s *Service) PlaybackURL(ctx context.Context, p workspace.Principal, id int64) (url string, expires time.Time, err error)
 
 // scope.go
@@ -592,6 +518,7 @@ func (r *Registry) Sync(ctx context.Context) error             // 启动时执�
 func (r *Registry) Get(id string) (Info, bool)
 func (r *Registry) Resolve(id string) (endpoint string, ok bool) // 传给 mlclient
 func (r *Registry) Transcriber() (info mlclient.TranscriberInfo, endpoint string, ok bool)
+func (r *Registry) GetTranscriber(id string) (info mlclient.TranscriberInfo, endpoint string, ok bool)
 
 type Channel struct {
     Name   string   // visual | speech | audio
@@ -610,10 +537,14 @@ func (c *Channels) Validate(ctx context.Context, r *Registry) error
 
 | 情况 | 处理 |
 |---|---|
-| 表里没有 | 插入 `embedding_space`，不建索引。索引由 `videohelper space add` 建（提议）：在线服务的数据库账号没有建索引的权限，建索引的耗时也不该卡住服务启动 |
+| 表里没有 | 插入 `embedding_space`，不建索引。索引由 `videohelper space add` 建：在线服务的数据库账号没有建索引的权限，建索引的耗时也不该卡住服务启动 |
 | 表里有，fingerprint 一致 | 无事 |
 | 表里有，fingerprint 不一致 | 标记 `disabled=true`，打错误日志并告警；这个空间不再写入，也不再查询 |
 | 维度和表里不一致 | 同上 |
+| 同 ID 多个提供者，未显式绑定 | 不提供路由；不因此永久禁用数据库中的空间 |
+| 已绑定端点不可用 | 不回退到其他提供者，待下次发现恢复 |
+
+`Transcriber()` 选择配置中的新任务模型；`GetTranscriber(id)` 用于旧任务冻结的模型 ID，调用方继续核对 fingerprint。
 
 `Channels.Validate` 在启动时检查 channels.yaml 里的每个 (channel, space)：已经登记、文档类型被这个空间支持，并且部分索引存在且有效（`index.VectorIndexReady`）。缺了就拒绝启动，并提示先执行 `space add`。
 
@@ -800,9 +731,9 @@ type Result struct {
 func (s *Service) Search(ctx context.Context, p workspace.Principal, q Query) (Result, error)
 ```
 
-#### agent
+#### agent（暂缓）
 
-- **职责**：用 ADK 组装 Agent；把一条用户消息变成产品事件流，细节见[第 9 章](#9-agent)。
+- **职责**：用 ADK 组装 Agent；把一条用户消息变成产品事件流，细节见[第 9 章](#9-agent暂缓)。
 - **不负责**：直接写 SQL；HTTP 细节。所有 ADK 类型都不出这个包。
 
 ```go
@@ -901,8 +832,10 @@ auth:                              # 认证服务待定
   jwks_url: ""
 
 ml:
-  endpoints: ["http://ml:8000"]    # 可以多个，比如候选模型单独一个容器
-  token_env: VH_ML_TOKEN           # 服务间共享令牌（已定）；Python 端配置同一个值
+  endpoints: ["http://ml:8000"]    # 每个 profile 一个服务地址；按 ID 发现与路由
+  transcriber: paraformer-zh@r1    # 新 ASR 任务使用的模型 ID
+  model_endpoints: {}              # 同 ID 多服务时填写，例如 {"wemm-2b@r1": "http://ml:8000"}
+  token_env: VH_ML_TOKEN           # 服务间共享令牌；Python 端配置同一个值
   query_timeout: 5s                # 查询编码
   embed_timeout: 60s               # 每批文档编码
   embed_batch: 32
@@ -961,7 +894,7 @@ channels_file: config/channels.yaml
 `config/channels.yaml`：
 
 ```yaml
-# 召回通道：每个通道用哪个 space。改这里就能换模型，Go 代码不用动。
+# 召回通道：同一能力换模型无需改 Go；先安装插件、启动端点、登记并建索引。
 # active：参与查询；shadow：只回填和评估，不参与查询。
 channels:
   visual:
@@ -1155,7 +1088,7 @@ CREATE TABLE embedding (
   FOREIGN KEY (video_id, workspace_id) REFERENCES video(id, workspace_id) ON DELETE CASCADE
 );
 CREATE INDEX embedding_scan_idx ON embedding (workspace_id, channel, space_id, seg);  -- 小范围精确扫描、统计
--- 每个 (channel, space) 组合一个部分 HNSW 索引，由 videohelper space add 调用 index.EnsureVectorIndex 创建（提议），
+-- 每个 (channel, space) 组合一个部分 HNSW 索引，由 videohelper space add 调用 index.EnsureVectorIndex 创建，
 -- 不放在迁移文件里，因为它取决于接入了哪些空间：
 --   CREATE INDEX CONCURRENTLY IF NOT EXISTS emb_hnsw_visual_wemm_2b_r1 ON embedding
 --     USING hnsw ((vec::halfvec(1024)) halfvec_cosine_ops)
@@ -1264,21 +1197,21 @@ LIMIT $2;                                      -- 每轮最多回填多少个视
 |---|---|
 | 工作区隔离 | 所有查询函数的参数里都有 workspace_id，没有「不带工作区」的查询函数；唯一例外是 worker 内部按 video_id 取视频（`GetForWorker`），它的 video_id 来自任务载荷，不来自用户 |
 | 删除视频（软删除，已定） | 一个事务里：设 `deleted_at` → 调用 `DerivedDropper`（由 pipeline 实现）删除这个视频的 `embedding`、`text_span`、`stage_run`。这些都是派生数据，恢复时重建。项目关联、原片、标准化视频保留。列表、范围解析、Agent 工具一律过滤 `deleted_at IS NULL`。还在队列里的任务找不到阶段记录，直接成功结束 |
-| 恢复（提议） | 清空 `deleted_at` → `Starter.Start`，从 probe 重新索引 |
-| 彻底清除 | 软删除超过 `limits.soft_delete_purge_after`（期限待定）后，purge 任务先删 S3 前缀，再删 video 行，其余数据级联删除 |
+| 恢复（已实现） | 仅支持 upload；已有完整原片时从 probe 重建，未完成上传回到 uploading |
+| 彻底清除（规划） | 软删除超过 `limits.soft_delete_purge_after`（期限待定）后，purge 任务先删 S3 前缀，再删 video 行，其余数据级联删除 |
 | ASR 重跑 | asr 阶段在一个事务里替换全部 speech 句子并删掉旧的 speech 向量（`ReplaceSpeech`），之后它的下游 `embed:speech:*` 一起重置并重新编码。触发重跑的入口首版不做，见设计文档问题 25 |
 | 重置阶段 | 重置一个阶段（重试、重跑）时，它的全部下游阶段一起重置为 pending，保证派生数据和来源一致 |
-| 换模型 | 接入时先执行 `videohelper space add`（提议），再写进 channels.yaml 的 shadow；新 space 的向量写在新的 space_id 下，与旧数据并存；提为 active 前不参与查询；下线时用 `videohelper space drop` 分批删除 |
+| 换模型 | 接入时先执行 `videohelper space add`，再写进 channels.yaml 的 shadow；新 space 的向量写在新的 space_id 下，与旧数据并存；提为 active 前不参与查询；下线清理与 `space drop` 子命令尚未实现 |
 | 切片规则升级 | seg 版本号变化（如 grid@v2）；新旧 seg 的向量并存，查询按 channels 配置里的 seg 过滤；切换后删除旧 seg。存量视频重跑的入口首版不做，见设计文档问题 25 |
 
 ### 3.6 迁移
 
 - 迁移文件按 `NNNN_说明.sql` 编号，只增不改：已经执行过的迁移绝不修改，要变更就写新的迁移。
-- 部分 HNSW 索引不放在迁移里，由 `videohelper space add` 创建（提议，见 2.1、3.2 节）。
+- 部分 HNSW 索引不放在迁移里，由 `videohelper space add` 创建（见 2.1、3.2 节）。
 - 用 goose（已定）：迁移文件带 `-- +goose Up` / `-- +goose Down` 标记，用 `go:embed` 打包进二进制，由 `videohelper migrate` 执行。
 - sqlc（已定）直接读取 `migrations/` 作为表结构，生成各包的查询代码。改表的顺序是：先写新的迁移，再重新生成代码。
 
-### 3.7 ADK 会话表
+### 3.7 ADK 会话表（规划）
 
 - 由 ADK 的 `session/database` 通过 GORM 自动创建，表结构归 ADK 管理，我们不手写迁移。
 - ADK 的表和业务表隔离（已定）：给 ADK 单独开一个连接池，连接串里设 `search_path=adk`，让它的表落在 `adk` schema。实现时确认 ADK 的 GORM 配置支持这种方式。
@@ -1369,33 +1302,28 @@ LIMIT $2;                                      -- 每轮最多回填多少个视
 
 ### 4.3 接口清单
 
-| 方法与路径 | 作用 | 状态 |
+| 方法与路径 | 作用 | 当前实现 |
 |---|---|---|
-| `GET /healthz` | 健康检查（不鉴权） | 提议 |
-| `GET /v1/me` | 当前用户、所属工作区、用量与额度 | 提议 |
-| `POST /v1/projects` | 新建项目 | 已定 |
-| `GET /v1/projects` | 项目列表 | 已定 |
-| `DELETE /v1/projects/{id}` | 删除项目（不删视频） | 已定 |
-| `PUT /v1/projects/{id}/videos/{video_id}` | 把视频加入项目 | 已定 |
-| `DELETE /v1/projects/{id}/videos/{video_id}` | 把视频移出项目 | 已定 |
-| `POST /v1/uploads` | 登记上传，拿到分片上传 URL | 已定 |
-| `POST /v1/videos/{id}/complete` | 上传完成，开始索引 | 已定 |
-| `POST /v1/imports` | 导入 YouTube、哔哩哔哩链接 | 已定 |
-| `GET /v1/videos` | 视频列表 | 已定 |
-| `GET /v1/videos/{id}` | 视频详情与阶段状态 | 已定 |
-| `DELETE /v1/videos/{id}` | 删除视频（软删除） | 已定 |
-| `POST /v1/videos/{id}/restore` | 恢复软删除的视频 | 提议 |
-| `POST /v1/videos/{id}/upload-parts` | 为还没传完的分片重新签发 URL（大文件上传超过 1 小时时用） | 提议 |
-| `POST /v1/videos/{id}/retry` | 重试失败的阶段 | 已定 |
-| `GET /v1/videos/{id}/playback` | 播放地址 | 已定 |
-| `GET /v1/videos/{id}/events` | 索引进度（SSE） | 已定 |
-| `POST /v1/search` | 搜索框检索 | 已定 |
-| `POST /v1/chat/sessions` | 新建会话 | 已定 |
-| `GET /v1/chat/sessions` | 会话列表 | 提议 |
-| `GET /v1/chat/sessions/{id}` | 会话历史 | 提议 |
-| `POST /v1/chat/sessions/{id}/messages` | 发送消息，SSE 流式返回 | 已定 |
+| `GET /healthz` | 进程健康检查，不鉴权 | 已实现 |
+| `GET /readyz` | 数据库、Redis、通道可用性检查，不鉴权 | 已实现 |
+| `GET /v1/me` | 当前用户、工作区与角色；用量额度暂缓 | 已实现 |
+| `POST /v1/projects` / `GET /v1/projects` | 新建 / 列出项目 | 已实现 |
+| `DELETE /v1/projects/{id}` | 删除项目，不删视频 | 已实现 |
+| `PUT /v1/projects/{id}/videos/{video_id}` / `DELETE /v1/projects/{id}/videos/{video_id}` | 加入 / 移出视频 | 已实现 |
+| `POST /v1/uploads` | 登记上传、签发分片 URL | 已实现 |
+| `POST /v1/videos/{id}/complete` | 完成上传、启动索引 | 已实现 |
+| `GET /v1/videos` / `GET /v1/videos/{id}` | 列表 / 详情与阶段状态 | 已实现 |
+| `DELETE /v1/videos/{id}` / `POST /v1/videos/{id}/restore` | 软删除 / 恢复上传视频 | 已实现 |
+| `POST /v1/videos/{id}/retry` | 重试失败阶段 | 已实现 |
+| `GET /v1/videos/{id}/playback` | 预签名播放地址 | 已实现 |
+| `POST /v1/search` | 搜索 ready 视频中的时间片段 | 已实现 |
+| `POST /v1/imports` | YouTube、哔哩哔哩链接导入 | 规划 |
+| `POST /v1/videos/{id}/upload-parts` | 重新签发过期的分片 URL | 规划 |
+| `GET /v1/videos/{id}/events` | SSE 索引进度 | 规划；当前轮询详情 |
+| `POST /v1/chat/sessions` / `GET /v1/chat/sessions` | 新建 / 列出 Agent 会话 | 暂缓 |
+| `GET /v1/chat/sessions/{id}` / `POST /v1/chat/sessions/{id}/messages` | 会话历史 / SSE 消息 | 暂缓 |
 
-「已定」表示接口对应的功能已经拍板；字段细节仍以评审为准。
+后文保留规划接口定义供后续实现使用；没有注册的路由当前返回 404。规划的配额、SSE 和导入限制不构成现有运行能力。
 
 ### 4.4 接口定义
 
@@ -1443,9 +1371,9 @@ LIMIT $2;                                      -- 每轮最多回填多少个视
 }
 ```
 
-- 校验：不限制文件大小（已定），只受 S3 单个对象 5 TB 的限制；`content_type` 以 `video/` 开头（400）；本月索引额度未用完（429）。
+- 校验：不限制文件大小（已定），只受 S3 单个对象 5 TB 的限制；`content_type` 以 `video/` 开头（400）；本月额度校验仍属规划。
 - 分片大小：取 `limits.upload_part_bytes`（16 MB）和 `size_bytes / 10000`（向上取整到 MB）中较大的那个，保证分片数不超过 S3 的 10000 片上限。
-- 行为：建 video（`source_kind=upload`、`status=uploading`）→ 在 `SourceKey` 上创建分片上传 → 一次签发全部分片的 URL，有效期 1 小时。传得慢、URL 过期时，用 `upload-parts` 接口重新签发。
+- 行为：建 video（`source_kind=upload`、`status=uploading`）→ 在 `SourceKey` 上创建分片上传 → 一次签发全部分片的 URL，有效期 1 小时。当前 URL 过期时需重新上传；`upload-parts` 续签仍属规划。
 
 #### `POST /v1/videos/{id}/complete`
 
@@ -1459,7 +1387,7 @@ LIMIT $2;                                      -- 每轮最多回填多少个视
 - 校验：视频属于当前工作区（403/404）；状态是 uploading（409）。
 - 行为：完成分片上传 → 写 `source_key` → `Starter.Start`（建初始阶段，状态改为 indexing，投递 probe）。
 
-#### `POST /v1/videos/{id}/upload-parts`（提议）
+#### `POST /v1/videos/{id}/upload-parts`（规划）
 
 ```jsonc
 // 请求：还没传完的分片序号
@@ -1470,7 +1398,7 @@ LIMIT $2;                                      -- 每轮最多回填多少个视
 
 上传和存储不设上限之后，超大文件可能要传好几个小时，一开始签发的 URL 会过期，所以需要这个接口。视频不是 uploading 状态时返回 409。
 
-#### `POST /v1/imports`
+#### `POST /v1/imports`（规划）
 
 ```jsonc
 // 请求
@@ -1510,11 +1438,11 @@ LIMIT $2;                                      -- 每轮最多回填多少个视
 
 - 视频立刻从列表、搜索和 Agent 的范围里消失。
 - 向量、转录句子随即删除，原片和标准化视频先保留。
-- 保留期满后彻底清除（期限待定）。
+- 自动到期清除尚未实现，当前不会因保留期配置自动删除媒体。
 
-#### `POST /v1/videos/{id}/restore`（提议）
+#### `POST /v1/videos/{id}/restore`
 
-返回 202 `{ "video": Video }`，状态为 indexing。行为是清空 `deleted_at`，然后从 probe 重新索引。已经彻底清除的视频返回 404。要不要做「回收站」界面，见设计文档问题 8。
+返回 202 `{ "video": Video }`。当前支持已软删除的 upload 视频：清空 `deleted_at`；已有完整原片时从 probe 重建索引，未完成上传时恢复为 uploading。非删除状态或非 upload 来源返回 409。自动 purge 与回收站界面尚未实现。
 
 #### `POST /v1/videos/{id}/retry`
 
@@ -1529,7 +1457,7 @@ LIMIT $2;                                      -- 每轮最多回填多少个视
 
 标准化视频还没生成时返回 409 `not_ready`。
 
-#### `GET /v1/videos/{id}/events`（SSE）
+#### `GET /v1/videos/{id}/events`（SSE，规划）
 
 ```text
 event: stage
@@ -1566,7 +1494,7 @@ data: {"video_id":"42","status":"ready"}
 
 某一路失败时跳过这一路，其余照常返回，前端可以提示「部分通道暂时不可用」；所有通道都失败才返回 503（`unavailable`）（提议）。
 
-#### `POST /v1/chat/sessions`
+#### `POST /v1/chat/sessions`（暂缓）
 
 ```jsonc
 // 请求：scope 建会话时确定，之后不能扩大
@@ -1575,7 +1503,7 @@ data: {"video_id":"42","status":"ready"}
 { "session": { "id": "s_9f2…", "title": "找白板画面", "scope": { "project_id": "7" }, "created_at": "…" } }
 ```
 
-#### `GET /v1/chat/sessions/{id}`
+#### `GET /v1/chat/sessions/{id}`（暂缓）
 
 ```jsonc
 // 200
@@ -1588,7 +1516,7 @@ data: {"video_id":"42","status":"ready"}
 }
 ```
 
-#### `POST /v1/chat/sessions/{id}/messages`（SSE）
+#### `POST /v1/chat/sessions/{id}/messages`（SSE，暂缓）
 
 ```jsonc
 // 请求
@@ -1614,7 +1542,7 @@ SSE 事件：
 - **形式**：HTTP/JSON，描述文件是 `contracts/ml-v1.yaml`（OpenAPI 3.1）。Go 的 `mlclient/types.go` 和 Python 的 `app/api/schemas.py` 都必须与它一致。
 - **网络**：ml 服务只在内网可达，不暴露公网。
 - **共享令牌**（已定）：每个 `/v1/*` 请求都必须带 `X-Internal-Token`，值和 Python 端的 `ML_INTERNAL_TOKEN` 一致，比较时用常数时间比较。不一致返回 401。`/healthz`、`/readyz` 不校验，方便编排系统做健康检查。
-- **请求头**：`X-Request-ID`（必带，用于串联日志）；`traceparent`（可选）；`X-Timeout-Ms`（提议）：调用方最多还愿意等多少毫秒，Go 按 context 的剩余时间填。Python 从收到请求开始计时，排队出来时已经超时就不再推理，直接返回 504（`deadline_exceeded`）。用相对时长而不用绝对时间，是为了不依赖两边的时钟一致。
+- **请求头**：`X-Request-ID`（必带，用于串联日志）；`traceparent`（可选）；`X-Timeout-Ms`：调用方最多还愿意等多少毫秒，Go 按 context 的剩余时间填。Python 从收到请求开始计时，排队出来时已经超时就不再推理，直接返回 504（`deadline_exceeded`）。用相对时长而不用绝对时间，是为了不依赖两边的时钟一致。
 - **核心原则**：
   - 请求里只出现 space id、模型 id、S3 地址和时间段。
   - Python 不知道工作区，也不知道数据库 id。
@@ -1622,7 +1550,7 @@ SSE 事件：
 
 ### 5.2 `GET /v1/spaces`
 
-Python 报告本实例加载的向量空间和转录模型。Go 启动时调用，之后每 5 分钟刷新一次。
+Python 仅报告本实例加载的向量空间和转录模型；同一 profile 中的插件可以宣告多个能力。Go 启动时发现 `ml.endpoints` 中各端点，之后每 5 分钟刷新。`ml.model_endpoints` 显式绑定同 ID 的提供者；冲突身份不可用，绑定端点失联时不静默切换。
 
 ```jsonc
 // 200
@@ -1634,8 +1562,8 @@ Python 报告本实例加载的向量空间和转录模型。Go 启动时调用�
       "metric": "cosine",
       "query_inputs": ["text"],
       "doc_inputs": ["video", "text", "image"],
-      "max_span_ms": 30000,          // 视频、音频输入的单段最长时长（待验证）
-      "max_batch": 64,               // 单次请求最多多少个 input
+      "max_span_ms": 30000,          // 当前 WeMM 清单声明的视频窗口上限
+      "max_batch": 32,               // 单次请求最多多少个 input
       "fingerprint": "sha256:ab12…"
     },
     {
@@ -1655,7 +1583,7 @@ Python 报告本实例加载的向量空间和转录模型。Go 启动时调用�
 }
 ```
 
-画布上画的响应是一个空间数组，这里改成了对象，多了 `transcribers` 一项。这样 Go 能知道哪个端点提供 ASR，转录请求也能像编码请求一样指明模型。
+Go 用 `ml.transcriber` 选择新 ASR 计划的模型，随后将 ID、fingerprint、窗口限制写入计划；已有任务使用冻结身份，不因配置切换而改用新模型。编码计划同样冻结空间、seg 与 fingerprint。
 
 ### 5.3 `POST /v1/embed`
 
@@ -1751,16 +1679,18 @@ Python 报告本实例加载的向量空间和转录模型。Go 启动时调用�
 
 这两个接口不校验共享令牌。
 
+`GET /v1/runtime` 为受内部令牌保护的诊断接口，返回 `runtime_version: 1`、包版本、已加载模型、设备、dtype、权重修订与 fingerprint。它不参与模型选择，也不替代 `/v1/spaces`；当前 Go 客户端没有自动抓取此接口（字段说明见 10.8 节）。
+
 ### 5.6 Go 怎么处理 Python 的错误
 
 | HTTP | code | Go 的处理 |
 |---|---|---|
 | 401 | `unauthorized` | 共享令牌不一致，属于配置错误：不重试，阶段失败并告警 |
 | 400 | `invalid_input` | 不重试，阶段失败。这说明 Go 发错了请求，是代码问题 |
-| 404 | `unknown_space` / `unknown_model` | 刷新 registry，重试一次；还不行就让阶段失败 |
+| 404 | `unknown_space` / `unknown_model` | 当前调用直接返回错误；registry 另按周期刷新，不在请求中自动换模型 |
 | 422 | `media_unreadable` | 不重试，阶段失败，原因展示给用户 |
 | 503 | `busy` / `not_ready` | 按 `Retry-After` 退避，最多 3 次；还不行就返回 `ErrThrottled`，交给 Asynq 稍后重试，不计入失败次数（6.1 节）。GPU 忙只会让任务变慢，不会让它失败 |
-| 504 | `deadline_exceeded` | 在 Python 排队太久（提议）。搜索：跳过这一路；流水线：按 503 处理 |
+| 504 | `deadline_exceeded` | 在 Python 排队时已超时。搜索：跳过这一路；流水线：按 503 处理 |
 | 500 | `internal` | 交给 Asynq 的重试 |
 
 错误体统一为 `{ "error": { "code": "busy", "message": "…" } }`。
@@ -1772,46 +1702,56 @@ Python 报告本实例加载的向量空间和转录模型。Go 启动时调用�
 | 调用方 | 接口 | 时机 | 超时 | 批量 |
 |---|---|---|---|---|
 | `space.Registry`（api、worker） | `/v1/spaces` | 启动时，之后每 5 分钟 | 5 秒 | — |
-| `search`（api） | `/v1/embed`，`role=query` | 每次搜索，每个 (space, 查询文字) 一次 | 5 秒 | 1 |
-| `pipeline` embed 阶段（worker） | `/v1/embed`，`role=document` | 每批 | 60 秒 | 32 与 `max_batch` 中较小的 |
-| `pipeline` asr 阶段（worker） | `/v1/transcribe` | 每 10 分钟一段，窗口前后各多取 30 秒 | 每段 10 分钟 | — |
+| `search`（api） | `/v1/embed`，`role=query` | 每次搜索，每个 (space, 查询文字) 一次 | `ml.query_timeout`（local：30 秒） | 1 |
+| `pipeline` embed 阶段（worker） | `/v1/embed`，`role=document` | 每批 | `ml.embed_timeout`（local：5 分钟） | `min(ml.embed_batch, max_batch)`（local：最多 8） |
+| `pipeline` asr 阶段（worker） | `/v1/transcribe` | 按 `ml.transcribe_chunk_ms` 分段，前后增加 `ml.transcribe_overlap_ms`（local：10 分钟 / 30 秒） | `ml.transcribe_timeout`（local：每段 10 分钟） | — |
 
-Go 收到响应后必须校验三件事，任何一项不通过都按「fingerprint 不一致」处理，即阶段失败、停用这个空间并告警：
+Go 收到响应后校验以下内容，不通过则拒绝本批结果、不写入向量或推进断点。注册表发现同 ID 身份漂移时另行停用空间；单次输出错误不等于自动修改空间登记：
 
 1. `len(vectors) == len(inputs)`。
-2. 每个向量的长度等于登记的 `dim`。
+2. 每个向量的长度等于登记的 `dim`，数值有限且满足归一化约定。
 3. 返回的 `fingerprint` 和登记值一致。
 
-索引时的一批编码：
+索引时的一批编码（以 visual 为例；插件调用不经过网络）：
 
 ```mermaid
 sequenceDiagram
-  participant W as worker（embed 阶段）
-  participant P as ml 服务
-  participant C as 本地缓存
-  participant S as S3
+  participant W as Go worker / embed 阶段
+  participant P as Python 公共服务
+  participant A as WeMM 插件 / 同一 Python 进程
+  participant S as S3 或 MinIO
   participant G as Postgres
-  W->>P: POST /v1/embed（32 段标准化视频引用 + 时间段）
-  P->>C: 这个标准化视频在缓存里吗？
-  alt 不在
-    C->>S: 下载标准化视频（同一个文件只下载一次）
+  W->>P: HTTP POST /v1/embed（视频引用与半开时间段）
+  P->>P: 鉴权、输入校验、等待 gate
+  opt 本进程媒体缓存未命中
+    P->>S: HTTP 下载标准化视频
+    P->>P: 文件 I/O：原子写入缓存
   end
-  P->>P: 按时间段解码、抽帧，模型推理
-  P-->>W: 32 个向量 + fingerprint
-  W->>W: 校验数量、维度、fingerprint
-  W->>G: 批量写 embedding
-  W->>G: 记断点（stage_run.output）
+  P->>A: 函数调用 embed(inputs, role)
+  A->>A: 调用 media 解码 / 抽帧并推理
+  A-->>P: 向量数组
+  P->>P: 校验形状、有限值与归一化
+  P-->>W: HTTP：向量与 fingerprint
+  W->>W: 校验计划身份、数量与维度
+  W->>G: 一个事务写向量与阶段断点
 ```
 
 搜索时的查询编码：
 
 ```mermaid
 sequenceDiagram
-  participant S as search（api）
-  participant P as ml 服务
-  S->>P: POST /v1/embed role=query，inputs 只有一条 text
-  P->>P: 加上模型要求的查询指令后编码（如果模型需要）
-  P-->>S: 1 个向量 + fingerprint
+  participant S as Go api / search
+  participant R as Go space.Registry
+  participant P as 对应 profile 的 Python 服务
+  participant A as 模型插件 / 同一 Python 进程
+  S->>R: 函数调用：按 active space 解析端点
+  R-->>S: 显式绑定或唯一提供者
+  S->>P: HTTP POST /v1/embed，role=query，原始文字
+  P->>P: 鉴权、校验、等待 gate
+  P->>A: 函数调用 embed(inputs, query)
+  A-->>P: 查询向量
+  P-->>S: HTTP：向量与 fingerprint
+  S->>S: 校验后继续向量召回与融合
 ```
 
 ---
@@ -1822,16 +1762,16 @@ sequenceDiagram
 
 | 队列 | 放什么任务 | 消费者 | 并发（初始值） |
 |---|---|---|---|
-| `cpu` | stage：fetch、probe、prepare_media、finalize | worker 里的 cpu server | `worker.cpu_concurrency` = 8 |
-| `maint` | reconcile、purge | 同一个 cpu server，权重较低 | 共用 |
+| `cpu` | stage：probe、prepare_media、finalize；fetch 为规划 | worker 里的 cpu server | `worker.cpu_concurrency` = 8 |
+| `maint` | reconcile；purge 执行器为规划 | 同一个 cpu server，权重较低 | 共用 |
 | `gpu` | stage：asr、active 空间的 embed:* | worker 里的 gpu server | `worker.gpu_concurrency` = 2 |
-| `gpu_low` | stage：shadow 空间的 embed:*，即候选模型的编码，包括存量回填（提议） | 同一个 gpu server，权重较低 | 共用 |
+| `gpu_low` | stage：shadow 空间的 embed:*，即候选模型的编码，包括存量回填 | 同一个 gpu server，权重较低 | 共用 |
 
-- cpu server 的队列权重为 `cpu: 9, maint: 1`；gpu server 为 `gpu: 9, gpu_low: 1`（提议）。这样新视频的必需阶段优先，换模型时成批的回填不会堵住新上传。
-- 多个 worker 副本时，gpu 的总并发 = 副本数 × `gpu_concurrency`。真正的 GPU 容量由 Python 端的并发闸门控制（10.7 节），Go 端的并发只是限制在途请求数。
+- cpu server 的队列权重为 `cpu: 9, maint: 1`；gpu server 为 `gpu: 9, gpu_low: 1`。这样新视频的必需阶段优先，换模型时成批的回填不会堵住新上传。
+- 多个 worker 副本时，gpu 的总并发 = 副本数 × `gpu_concurrency`。Python 闸门只控制本进程推理并发（10.7 节），Go 端限制在途任务；多个进程共用 GPU 的总显存与并发仍由部署方控制。
 - 重试策略：最多 `worker.max_retry` = 8 次；间隔指数增长，从 10 秒开始，最长 10 分钟；`ErrThrottled` 固定 15 秒加随机抖动，并且不计入重试次数（通过 Asynq 的 `IsFailure` 配置实现）。
-- stage、purge 任务不设置 Retention：任务完成后立即删除，任务 id 可以复用。重试接口在重新投递前，先删除这个任务 id 的归档任务。
-- reconcile 任务例外，设置 Retention 1 小时（初始值）：完成后任务 id 还留在 Asynq 里，其他副本的 scheduler 再投递同一个时间窗口的任务，会因为 id 冲突被拒绝。不设的话任务一完成就被删除，同一个窗口的任务还能再投进来，多个副本就会重复执行。
+- stage 任务（以及预留的 purge 投递）不设置 Retention：任务完成后立即删除，任务 id 可以复用。重试接口在重新投递前，先删除这个任务 id 的归档任务。
+- reconcile 任务例外，设置 Retention 1 小时（初始值）：完成后任务 id 还留在 Asynq 里，其他副本的 ticker 再投递同一个时间窗口的任务，会因为 id 冲突被拒绝。不设的话任务一完成就被删除，同一个窗口的任务还能再投进来，多个副本就会重复执行。
 
 ### 6.2 任务类型与载荷
 
@@ -1839,10 +1779,10 @@ sequenceDiagram
 // type = "stage"，任务 id = "stage:{video_id}:{stage}:{version}"
 { "workspace_id": 1, "video_id": 42, "stage": "embed:visual:wemm-2b@r1", "version": "v1.<generation>" }
 
-// type = "purge"，任务 id = "purge:{video_id}"，队列 maint：彻底清除一个软删除到期的视频
+// 规划：type = "purge"，任务 id = "purge:{video_id}"，队列 maint；当前只有投递封装，无执行器
 { "workspace_id": 1, "video_id": 42 }
 
-// type = "reconcile"，任务 id = "reconcile:{时间窗口起点}"，队列 maint，由 scheduler 每 5 分钟投递
+// type = "reconcile"，任务 id = "reconcile:{时间窗口起点}"，队列 maint，由 worker ticker 每 5 分钟投递
 {}
 ```
 
@@ -1850,7 +1790,7 @@ sequenceDiagram
 
 | 阶段 | 队列 | 依赖 | 什么时候存在 | 读 | 写 | 超时 | 必需 |
 |---|---|---|---|---|---|---|---|
-| `fetch` | cpu | — | 只有导入链接 | 平台视频（yt-dlp）或直链 | S3 原片；`video.source_key`、标题 | 2 小时 | 是 |
+| `fetch`（规划） | cpu | — | 只有导入链接 | 平台视频（yt-dlp）或直链 | S3 原片；`video.source_key`、标题 | 2 小时 | 是 |
 | `probe` | cpu | fetch（如果有） | 总是 | S3 原片（预签名 URL） | `video.duration_ms/has_video/has_audio`；生成后续阶段 | 5 分钟 | 是 |
 | `prepare_media` | cpu | probe | 总是 | S3 原片 | S3 `normalized_video.mp4`、`sprites/*.jpg`；`video.normalized_video_key`、`video.thumbs` | 3 小时 | 是 |
 | `asr` | gpu | prepare_media | `has_audio` | 标准化视频 | S3 `raw/asr-{model}/chunk-{i}.json`（每段一个）；`text_span` | 2 小时 | 是 |
@@ -1859,11 +1799,11 @@ sequenceDiagram
 | `embed:speech:{space}` | gpu；shadow 空间走 gpu_low | asr | `has_audio`；同上 | `text_span` | `embedding`（speech） | 1 小时 | 只有 active 的是 |
 | `finalize` | cpu | prepare_media 和所有必需的阶段 | 总是 | `stage_run` | `video.status = ready`；计量 | 1 分钟 | — |
 
-超时都是初始值，实现时设定（已定）。
+当前执行器为 `probe`、`prepare_media`、`asr`、`embed`、`finalize`；超时来自计划定义。队列名 `gpu` / `gpu_low` 是任务分类，不表示推理一定在 GPU 上：CPU profile 也通过 HTTP 接收这些任务。
 
 计划分两步生成：
 
-1. **Start 时**：上传的视频只建 probe；导入的视频建 fetch 和 probe。
+1. **Start 时**：当前上传只建 probe；导入时建 fetch 和 probe 是后续设计。
 2. **probe 完成时**：在同一个事务里，根据 `has_video`、`has_audio` 和 channels 配置生成其余阶段。
 
 之所以分两步，是因为在 probe 之前不知道视频有没有画面和音轨。
@@ -1872,7 +1812,7 @@ sequenceDiagram
 
 1. **解析载荷**。
 2. **检查**：只读地查一次这个阶段。查不到（视频已删除）或者已经是 done，直接返回成功（幂等）。
-3. **限流**：gpu 队列的任务申请工作区 GPU 名额，fetch 阶段申请平台下载名额（6.6 节）；gpu_low 的任务不申请。名额不够就返回 `ErrThrottled`，稍后重试，不计失败。这时阶段还是 queued，执行次数也不变。
+3. **限流**：gpu 队列的任务申请工作区 GPU 名额（6.6 节）；gpu_low 的任务不申请。fetch 与平台下载名额仍属规划。名额不够就返回 `ErrThrottled`，稍后重试，不计失败。这时阶段还是 queued，执行次数也不变。
 4. **认领**：执行 3.4 节的认领 SQL，状态改为 running，执行次数加 1。返回 0 行说明检查之后视频被删除了，或者阶段已经完成：释放名额，直接返回成功。
 5. **状态可见**：详情接口读取持久化状态；事件发布/SSE 暂缓。
 6. **执行** `Deps.Runs` 中对应的 `RunFunc`。耗时阶段调用 `SaveProgress(ctx, progress, commit)`，在同一事务写入一批产出和断点。
@@ -1932,7 +1872,9 @@ sequenceDiagram
 2. 生成缩略图雪碧图（已定）：对标准化视频按 `timeline.Cells(duration)` 每格取起点一帧，缩放到宽 `thumb_width`，按行拼成 `sprite_cols × sprite_rows`（10 × 10）格一张的 JPEG。1 小时视频有 1440 格，拼成 15 张图。
 3. 上传 `normalized_video.mp4` 和 `sprites/{n}.jpg`，在一个事务里调用 `library.UpdatePreparedMedia` 写 `video.normalized_video_key` 和 `video.thumbs`（雪碧图布局），然后删除临时文件。
 
-**asr**（分段调用，已定；模型是阿里 FunASR）
+**asr**（当前默认模型是阿里 FunASR；同类插件可替换）
+
+计划生成时选择 `ml.transcriber` 并冻结 ID、fingerprint 与窗口限制；执行与断点恢复均按冻结身份查找端点并核对响应。切换配置只影响新计划，旧模型不可用时不能用新模型继续旧断点。
 
 1. 把视频按 `ml.transcribe_chunk_ms`（10 分钟）切成若干段，第 i 段负责 `[s_i, e_i)`。
 2. 逐段处理。断点保存分段参数、next/total 和已提交 raw 文件的实际 key；重试读取这些响应，未提交文件不算完成：
@@ -1966,31 +1908,24 @@ sequenceDiagram
 2. 视频状态改为 ready，清空 `error`。
 3. 记录 `usage indexed_ms`，值为视频时长。
 
-**purge**（不属于阶段，是独立的任务类型）
+**purge**（规划；不属于阶段，当前尚无执行器）
 
 1. 确认视频仍是软删除状态，并且已经到期。用户中途恢复了，就直接结束。
 2. 先 `blob.DeletePrefix(VideoPrefix)` 删 S3 上的文件，再删除 video 行（其余数据级联删除）。顺序不能反：如果先删了行、删文件时失败，S3 上就会留下没人认领的孤儿文件。
 3. 可以重复执行。
 
-### 6.6 名额：工作区 GPU 并发、平台下载并发
+### 6.6 工作区 GPU 名额与规划的下载限流
 
-两种名额用同一套机制，只是键和上限不同：
+当前 `runner.acquireGPU` 仅对 `gpu` 队列申请工作区名额；`gpu_low` 不申请。平台下载限流随 fetch 规划，尚未接入 runner。
 
-| 名额 | Redis 键 | 上限 | 目的 |
+| 名额 | Redis 键 | 上限 | 当前状态 |
 |---|---|---|---|
-| 工作区 GPU 并发 | `vh:gpu:{workspace_id}` | `worker.workspace_gpu_limit`，默认 1，必须小于 `gpu_concurrency` | 一个工作区的大批量上传不堵住其他工作区 |
-| 平台下载并发 | `vh:fetch:{platform}`（全局共享） | `import.platforms.{平台}.max_concurrency`，默认 2 | 避免被平台限流或封禁出口 IP |
+| 工作区 GPU 并发 | `vh:gpu:{workspace_id}` | `worker.workspace_gpu_limit`（local：1，必须小于 `gpu_concurrency`） | 已实现；限制在途 gpu 任务 |
+| 平台下载并发 | `vh:fetch:{platform}` | `import.platforms.{平台}.max_concurrency` | 规划 |
 
-- **Redis 结构**：有序集合。成员是任务 id，分值是租约到期时间（毫秒时间戳）。
-- **申请**：用一段 Lua 脚本原子执行：
-  1. 删掉已过期的成员。
-  2. 如果这个任务 id 已在集合里，或者成员数小于上限，就写入（分值 = 现在 + 阶段超时），返回成功。
-  3. 否则返回名额不足。
-- **释放**：执行完删除这个成员。
-- **为什么用租约**：worker 崩溃时来不及释放名额，租约到期后名额会自动收回，不会永久卡住。
-- **以后**：工作区 GPU 名额可以按套餐区分。
-- **上限要小于总并发**：工作区名额等于 `gpu_concurrency` 时，一个工作区就能占满所有 GPU 并发，其他工作区只能等。代价是只有一个工作区在用时，GPU 并发用不满。
-- **gpu_low 不占工作区名额**（提议）：回填是系统发起的，不该占用户自己的名额；它能用多少 GPU，由队列权重限制。
+工作区名额使用有序集合和 Lua 脚本原子申请：先回收过期成员，未满时写入随机租约 token，分值为当前时间加阶段超时及 1 分钟余量；满时返回 `ErrThrottled`。任务退出时删除自己的 token，worker 崩溃则等待租约到期回收。
+
+队列权重决定 `gpu` / `gpu_low` 的消费优先级，不是设备容量配额。回填也会占用同一个 Python gate；多个模型进程共享 GPU 时，总显存和总并发仍须由部署控制。
 
 ### 6.7 reconciler
 
@@ -2002,7 +1937,7 @@ sequenceDiagram
 | R2 worker 崩溃 | `status = running` 且超过「阶段超时 + 10 分钟」没更新，并且 Asynq 里这个任务不在执行中 | 改回 queued，重新投递 |
 | R3 回填 | channels 的 active/shadow (channel, space) 在非删除 ready 视频上缺少阶段，已具备标准化视频且前置阶段完成 | 锁视频后复核，插入缺失阶段（`required = false`，走 gpu_low）并投递；每轮合计最多 100 个视频，不重跑原有阶段 |
 | R4 未启动 | `status = uploading`，`source_key` 已有值，但没有任何阶段，说明上传完成后启动失败 | 调用 Start |
-| R5 彻底清除 | `deleted_at` 早于「现在 − `limits.soft_delete_purge_after`」的视频 | 投递 purge 任务；每轮最多 100 个 |
+| R5 彻底清除（规划） | `deleted_at` 早于「现在 − `limits.soft_delete_purge_after`」的视频 | 投递 purge 任务；每轮最多 100 个 |
 
 ### 6.8 Redis 键与频道
 
@@ -2010,9 +1945,9 @@ sequenceDiagram
 |---|---|---|
 | `asynq:*` | Asynq 内部 | 队列、重试、调度 |
 | `vh:gpu:{workspace_id}` | 有序集合 | 工作区 GPU 名额（6.6 节） |
-| `vh:fetch:{platform}` | 有序集合 | 平台下载名额（6.6 节） |
-| `vh:ev:video:{video_id}` | pub/sub 频道 | 单个视频的进度事件 |
-| `vh:ev:workspace:{workspace_id}` | pub/sub 频道 | 工作区维度的事件，视频列表页用 |
+| `vh:fetch:{platform}`（规划） | 有序集合 | 后续平台下载名额 |
+| `vh:ev:video:{video_id}`（规划） | pub/sub 频道 | 单个视频的进度事件 |
+| `vh:ev:workspace:{workspace_id}`（规划） | pub/sub 频道 | 工作区维度的事件，视频列表页用 |
 
 Redis 里没有任何不能丢的数据。Redis 清空后，reconciler 会根据 `stage_run` 把任务补回来。
 
@@ -2022,7 +1957,7 @@ Redis 里没有任何不能丢的数据。Redis 清空后，reconciler 会根据
 
 ```text
 {bucket}/
-├── models/{model_id}/            # 模型权重（提议）：从 HF、ModelScope 同步过来的固定版本，ml 启动时从这里加载
+├── models/{model_id}/            # 预留；S3 权重分发尚未实现，当前使用 prepare + HF 缓存
 └── workspaces/{workspace_id}/videos/{video_id}/
     ├── source.{ext}              # 原片：上传或导入的文件
     └── runs/{generation}/{attempt}/
@@ -2034,18 +1969,20 @@ Redis 里没有任何不能丢的数据。Redis 清空后，reconciler 会根据
 | 规则 | 说明 |
 |---|---|
 | 路径只能通过 `platform/blob/keys.go` 生成 | 布局只有一个来源 |
-| 预签名有效期 | 上传分片 1 小时（过期后用 `upload-parts` 接口重新签发）；播放、缩略图 1 小时 |
+| 预签名有效期 | 上传分片 1 小时（当前无续签入口，过期需重新上传）；播放、缩略图 1 小时 |
 | 浏览器 | 只拿到预签名 URL，不直接拥有任何 S3 权限 |
 | bucket 的 CORS | 浏览器从前端域名直传 S3，所以 bucket 要允许前端来源的 PUT 和 GET，并暴露 `ETag` 响应头。不暴露的话，浏览器读不到每个分片的 ETag，就没法调用 complete |
-| Python 的权限 | 只读，并且只能读 `workspaces/*/videos/*/normalized_video.mp4` 和 `models/*`（后者是提议） |
+| Python 的权限 | 只读业务媒体；未来采用 S3 权重分发时再增加 `models/*` 的只读权限 |
 | worker 的权限 | 读写 `workspaces/*` |
-| 保留期 | 软删除到期后随视频一起清除；具体期限待定（设计文档问题 8） |
+| 保留期 | 当前软删除保留原片与处理文件；自动到期清除尚未实现 |
 
 ---
 
 ## 8. 检索内核
 
 ### 8.1 输入与输出
+
+当前检索仅包含工作区内未删除且状态为 ready 的视频；处理中写入的向量不提前对用户可见。`audio` 仍参与索引，默认查询倍率为 0，显式请求可覆盖此倍率。
 
 输入是 `search.Query` 加上当前的 `Principal`，输出是 `Result`：按分数降序的片段，以及这次没参与的通道。类型见 2.4 节。
 
@@ -2089,20 +2026,18 @@ v1 基线为 K=50、RRF=60、gap=1、查询权重 1:1:1；v2 的实验记录、�
 
 ## 9. Agent（暂缓）
 
+本章是后续设计；当前没有 Agent 包、聊天接口或 LLM 调用。图中的 ADK、工具与数据库边界均待实现。
+
 ### 9.1 组成
 
 ```mermaid
 flowchart LR
-  H["httpapi chat.go"] -->|"Send（会话、消息）"| S["agent.Service"]
-  S --> R["ADK runner"]
-  R --> AG["llmagent：videohelper<br/>instruction.md + 4 个工具"]
-  AG --> M["chat 模型<br/>openaimodel → DeepSeek"]
-  AG --> T["工具（Go 函数）"]
-  T --> SE["search"]
-  T --> IX["index（取原话）"]
-  T --> LB["library（视频列表）"]
-  T --> IC["inspect_clip → media 抽帧 → vision 模型"]
-  R --> SS[("session/database<br/>Postgres adk schema")]
+  subgraph G["规划：Go api 进程"]
+    H["httpapi chat"] -->|函数调用| S["agent.Service / ADK runner"]
+    S -->|函数调用| T["Go 工具：search / index / library / media"]
+  end
+  S -->|"HTTP / 模型 API"| M["规划：chat / vision 模型"]
+  S -->|"SQL / ADK 会话"| D[("规划：Postgres adk schema")]
 ```
 
 - **模型**：用 ADK v2 的 `model/openaimodel`，走 Chat Completions 接口，`BaseURL` 取 `llm.base_url`。chat 和 vision 两个角色分别配置，首版都是 `deepseek-flash`。
@@ -2221,182 +2156,93 @@ flowchart LR
 
 ## 10. Python 模型服务
 
-### 10.1 目录结构
+### 10.1 安装包与目录
 
 ```text
 ml/
-├── pyproject.toml          # 项目元数据、依赖、工具配置（ruff、pytest）；用 uv 管理（已定）
-├── uv.lock                 # 锁定的依赖版本
-├── models.yaml             # 本实例加载哪些模型；部署时可以用 ML_MODELS_FILE 指向别的文件
-├── Dockerfile              # CUDA 基础镜像 + Python 依赖；不打包模型权重，启动时从 S3 的 models/ 下载（提议，10.3 节）
+├── pyproject.toml / uv.lock      # 通用服务 videohelper-ml；开发环境锁文件
+├── models*.yaml                 # fake 与兼容的本地组合清单
 ├── app/
-│   ├── __init__.py
-│   ├── main.py             # 创建 FastAPI 应用；启动阶段（lifespan）加载 registry；挂载路由
-│   ├── settings.py         # 读取环境变量：模型清单路径、缓存目录与上限、S3 配置、假模型开关、日志级别
-│   ├── api/
-│   │   ├── __init__.py
-│   │   ├── schemas.py      # Pydantic 模型：SpacesResponse、EmbedRequest/Response、TranscribeRequest/Response、ErrorBody；
-│   │   │                   # 必须与 contracts/ml-v1.yaml 一致
-│   │   ├── routes.py       # 五个接口：/v1/spaces、/v1/embed、/v1/transcribe、/healthz、/readyz；
-│   │   │                   # 只做校验、调度和格式转换，不含模型代码
-│   │   ├── errors.py       # 业务异常 → HTTP 状态码与统一错误体；503 时附带 Retry-After
-│   │   └── auth.py         # 共享令牌校验（FastAPI 依赖项）；/healthz、/readyz 不校验
-│   ├── core/
-│   │   ├── __init__.py
-│   │   ├── registry.py     # 读 models.yaml，实例化 adapter，维护 space id / 模型 id → adapter；计算 fingerprint
-│   │   ├── gate.py         # 每个模型一个并发闸门 + 有界等待队列；队列满时抛 Busy（对应 503）
-│   │   └── fingerprint.py  # fingerprint = sha256(adapter 名 + 权重版本 + dtype + 预处理参数)
-│   ├── adapters/
-│   │   ├── __init__.py
-│   │   ├── base.py         # 接口定义：Embedder、Transcriber；输入类型 TextInput、MediaInput；SpaceInfo
-│   │   ├── wemm.py         # WeMM：文本、视频、图片；抽帧、分辨率、批量推理
-│   │   ├── clap.py         # CLAP HTSAT unfused：原样文字查询、48 kHz 单声道音频编码
-│   │   ├── funasr.py       # ASR（阿里 FunASR，已定）：中文识别 + 语音活动检测 + 标点分句，输出句子和逐字时间戳
-│   │   └── fake.py         # 假模型：输入的 hash → 确定性向量；固定的转录结果；用于测试和没有 GPU 的本地开发
-│   └── media/
-│       ├── __init__.py
-│       ├── cache.py        # s3:// URI → 本地文件；同一个 URI 只下载一次；按磁盘上限做 LRU 淘汰
-│       ├── video.py        # PyAV：seek 到起点，解码到终点，均匀抽 N 帧，缩放；返回 numpy 数组
-│       └── audio.py        # PyAV：取时间段内的音频，重采样到目标采样率，转单声道；返回 numpy 数组
-└── tests/
-    ├── conftest.py         # 用假模型启动应用，提供测试客户端
-    ├── test_contract.py    # 用 contracts/ml-v1.yaml 校验每个接口的请求和响应
-    ├── test_routes.py      # 校验规则：输入类型、时间段、批量上限、未知 space、503
-    ├── test_registry.py    # models.yaml 解析；fingerprint 稳定（同样的配置得到同样的值）
-    ├── test_media.py       # 时间段切取的边界：开头、结尾、超出时长、极短片段
-    └── test_cache.py       # 并发请求同一个 URI 只下载一次；超过上限时淘汰最久没用的
+│   ├── cli.py / runtime.py      # prepare、serve、describe；运行信息
+│   ├── api/                    # HTTP、鉴权、输入输出校验
+│   ├── core/                   # 插件发现、模型注册、fingerprint、并发闸门
+│   ├── adapters/               # 共享输入/接口、fake；旧导入路径的兼容转出
+│   ├── resources/models.yaml   # wheel 内默认 fake 清单
+│   └── media/                  # 对象缓存、视频/音频解码
+├── plugins/{wemm,funasr,clap}/   # 三个独立 Python 包，各有 pyproject.toml
+├── profiles/
+│   ├── wemm-mps/               # Mac arm64：WeMM
+│   ├── speech-audio-cpu/       # Mac arm64 / Linux amd64：ASR + CLAP
+│   └── wemm-cuda/              # Linux amd64：WeMM CUDA 候选
+├── tools/check_lifecycle.py    # 安装后的服务启动/请求/停止检查，无权重下载
+├── Dockerfile                 # 按 profile 安装普通 wheel；模型缓存挂载在外
+└── tests/                     # 契约、媒体、插件发现、打包与运行信息检查
 ```
 
-### 10.2 分层与职责
+每个 profile 包含自己的 `pyproject.toml`、`uv.lock`、`models.yaml`。公共服务不强制安装 Torch、Transformers 或 FunASR；插件的 `inference` extra 才引入对应模型依赖。相容插件可共用环境；版本冲突则拆成独立环境与进程。
+
+### 10.2 插件边界
 
 ```mermaid
-flowchart TB
-  R["api/routes.py<br/>校验 · 调度 · 格式转换"] --> REG["core/registry.py<br/>space / 模型 → adapter"]
-  R --> GT["core/gate.py<br/>并发闸门 · 背压"]
-  R --> CA["media/cache.py<br/>S3 → 本地文件"]
-  GT --> AD["adapters/*<br/>模型相关的一切"]
-  AD --> MV["media/video.py · audio.py<br/>通用解码"]
+flowchart LR
+  G["Go api / worker 进程"] -->|"HTTP / ML 契约"| R
+  subgraph P["一个 profile：独立环境 / Python 进程"]
+    R["api：鉴权、输入与输出校验"] -->|函数调用| REG["registry：能力、适配器、gate"]
+    R -->|"函数调用：进入闸门"| GT["gate：并发与背压 / 线程池执行推理函数"]
+    GT -->|函数调用| C["media cache：对象下载与缓存"]
+    GT -->|函数调用| A["模型插件：预处理与推理"]
+    C -->|"输入数据：本地路径"| A
+    A -->|函数调用| D["media：通用解码"]
+  end
+  C -->|"HTTP / 只读媒体"| S["S3 / MinIO"]
+  C -->|"文件 I/O"| F["媒体缓存"]
+  A -->|"文件 I/O"| W["独立的权重缓存"]
 ```
 
-| 层 | 负责 | 不负责 |
+安装包用标准 entry point 声明适配器，不扫描脚本目录，不动态执行用户上传代码：
+
+```toml
+[project.entry-points."videohelper.ml.adapters.v1"]
+wemm = "videohelper_ml_wemm:WeMMEmbedder"
+```
+
+清单里的 `adapter: wemm` 选择这个名字。Registry 先检查所有已启用插件的存在性、唯一性和接口，再加载模型。缺包、重复 entry point、类型不符或加载失败会使启动失败；只有显式 `ML_FAKE=1` 才使用 fake。插件是受信任的进程内 Python 代码，具有服务进程权限，安装前必须审查来源。
+
+当前接口支持 embedder 和 transcriber。新增同类模型只需实现插件、安装到对应环境并配置清单；新增 OCR、检测框或联合音视频等证据类型仍要扩展契约和 Go 业务流程。公共服务不承担模型调度平台、自动安装或热卸载。
+
+### 10.3 模型清单与运行配置
+
+`ml/models.yaml` 是测试用 fake 清单；`models.local.yaml` 保留现有 WeMM + FunASR + CLAP 组合。独立部署优先使用 `profiles/`：
+
+| Profile | 模型 / 设备 | 空间与用途 |
 |---|---|---|
-| `api/` | HTTP、校验、错误映射 | 模型细节、解码 |
-| `core/` | 模型清单、路由、并发控制、fingerprint | 推理本身 |
-| `adapters/` | 模型相关的一切：加载权重、查询指令、抽帧参数、推理、归一化 | HTTP、并发、下载 |
-| `media/` | 通用的下载、缓存、解码 | 决定抽几帧、什么采样率（这些由 adapter 传进来） |
+| `wemm-mps` | WeMM / MPS float16 | `wemm-2b@r1`，文字查询，文字/视频/图片编码 |
+| `speech-audio-cpu` | FunASR + CLAP / CPU float32 | `paraformer-zh@r1` 转录，`clap-htsat-unfused@r1` 声音编码 |
+| `wemm-cuda` | WeMM / CUDA float16 | `wemm-2b-cuda-experimental@r1`，未经真实 GPU 验收的候选 |
 
-新增一个模型：在 `adapters/` 里加一个文件，在 `models.yaml` 里加一项。其余文件都不用改。
+WeMM 固定 `tencent/WeMM-Embedding-2B` revision `bbd6cd4bf52cfc6716f752a2df80b2706720bd95` 与 Transformers 5.2.0，并检查远程模型代码 SHA256。2048 维按官方 MRL 截至 1024 维后归一化；每段抽 4 帧，图片像素范围 65536–262144，视频每帧 4096–262144，输入最多 4096 token。单批最多 32 项、逐项推理。
 
-### 10.3 `models.yaml`
+FunASR 使用 CPU float32，Paraformer、VAD、标点模型均固定 revision；缺少模型文件时拒绝启动，避免无权重推理。返回原始识别文本和绝对毫秒时间戳，不引入 LLM。CLAP 使用 `laion/clap-htsat-unfused` revision `8fa0f1c6d0433df6e97c127f64b2a1d6c0dcda8a`，512 维、cosine；48 kHz 单声道，最长 10 秒，短音频 repeatpad。查询文字原样传入，不翻译。
 
-当前 `ml/models.yaml` 是显式 fake 清单（仅 `ML_FAKE=1`）；真实本地组合使用 `ml/models.local.yaml`（WeMM + FunASR + CLAP），WeMM 单独验证使用 `ml/models.wemm.yaml`，以仓库实际清单为准。已固定官方 `tencent/WeMM-Embedding-2B` revision `bbd6cd4bf52cfc6716f752a2df80b2706720bd95`、transformers 5.2.0，检查远程模型代码 SHA256 后加载。全维输出为 2048，当前按官方 MRL 截到 1024 后再次归一化，维度参与 fingerprint。查询只接受文字；文档支持文字、视频和图片。
+`videohelper-ml prepare --models <清单>` 下载并检查固定版本权重；`serve` 加载同一组权重。部署先 prepare，再设置 `HF_HUB_OFFLINE=1` 启动；裸 `serve` 在未启用离线模式时仍可下载。权重缓存由 Hugging Face 管理，可用 `HF_HOME` 指定，与媒体缓存 `ML_CACHE_DIR` 分开。当前没有 S3 权重发布服务。
 
-本地使用 MPS float16、每片段均匀抽 4 帧，按官方 processor 保持宽高比缩放；图片像素范围 65536–262144，视频每帧 4096–262144，输入 token 上限 4096，单批最多 32 项、逐项推理控制内存。运行入口使用 `uv sync --extra wemm --extra asr --extra clap`，设置 `ML_FAKE=0 ML_MODELS_FILE=models.local.yaml`。ASR 使用 CPU float32、FunASR 1.3.14，Paraformer、VAD、标点模型均固定 revision（见清单）；返回原始转录和绝对毫秒时间戳，不引入 LLM 校对。下方为整体模型配置形态，真实参数以固定清单为准。
+Go 配置显式选择新任务使用的 `ml.transcriber`；旧任务按计划冻结的 ID 与 fingerprint 执行。`ml.model_endpoints` 可把模型 ID 绑定到 `ml.endpoints` 中的地址；同 ID 被多个服务宣告时必须绑定。绑定端点不可达时不切到另一端点；同 ID 身份不一致仍拒绝使用。
 
-```yaml
-# 本实例加载哪些模型。id 就是契约里的 space id（或转录模型 id）。
-models:
-  - id: wemm-2b@r1
-    kind: embedder                 # embedder | transcriber
-    adapter: wemm                  # 对应 adapters/wemm.py
-    weights: tencent/WeMM-Embedding-2B   # 上游仓库名（以实际为准）；同步脚本按它和 revision 把权重拷到 S3 的 models/
-    revision: "<commit sha>"       # 必须钉死版本；fingerprint 依赖它
-    device: cuda:0
-    dtype: float16
-    max_batch: 64                  # 单次请求最多多少个 input
-    max_concurrency: 1             # 同时跑几个推理
-    queue_limit: 64                # 最多排队几个请求，再多就返回 503
-    max_span_ms: 30000             # 单段最长时长（待验证）
-    preprocess:                    # 以下参数在实现时查阅 WeMM 的文档确定（已定）
-      frames_per_clip: 8
-      image_size: 448
-      query_instruction: ""        # 查询要加的指令前缀（如果模型要求）
+### 10.4 适配器接口
 
-  - id: paraformer-zh@r1
-    kind: transcriber
-    adapter: funasr                # 阿里 FunASR（已定）
-    weights: paraformer-zh         # 中文识别模型；模型名以 FunASR 文档为准
-    revision: "<版本>"
-    device: cuda:0
-    dtype: float32
-    max_concurrency: 1
-    queue_limit: 4
-    max_window_ms: 900000          # 单次请求最长 15 分钟音频（Go 每段 10 分钟 + 前后各 30 秒）
-    preprocess:
-      sample_rate: 16000
-      vad_model: fsmn-vad          # 语音活动检测：切出有人说话的片段
-      punc_model: ct-punc          # 标点恢复：用来分句
-      languages: [zh]
-```
+entry point 直接指向适配器类，构造参数为 `(info, config)`：`info` 是 `SpaceInfo` 或 `TranscriberInfo`，`config` 是已校验清单的字典。共享类型见 `app/adapters/base.py`；插件通过 `videohelper-ml==0.1.0` 固定当前 SDK 版本。
 
-同一个镜像靠不同的 `models.yaml` 决定加载哪些模型。「所有模型放在一张卡上」和「每个模型一个容器」只是部署方式不同，代码完全一样。
+| 成员 | 约定 |
+|---|---|
+| `kind` | `embedder` 或 `transcriber` |
+| `shared_query_gate` | bool；真实 WeMM 为 true，查询/文档共用闸门 |
+| `prepare(config)` | 静态方法，准备并检查固定版本权重，不启动 HTTP |
+| `load()` | 加载模型；失败直接抛错 |
+| `info` | 服务登记与返回的空间或转录元数据 |
+| `embed(inputs, role)` | 接收 `TextInput`、`ImageInput`、`MediaInput`，返回 `(数量, dim)` float32 数组 |
+| `transcribe(path, language, start_ms, end_ms)` | 返回 `Transcript`；时间为视频绝对整数毫秒 |
 
-**权重从哪里来**（提议，见问题 32）：线上只从 S3 的 `models/{model_id}/` 加载。权重先由一个同步脚本，按 `weights` 和 `revision` 从 HF 或 ModelScope 拷到 S3；ml 启动时下载到本地缓存目录再加载，不访问外网。本地开发可以直接从 HF、ModelScope 下载，或者用假模型。
-
-CLAP 使用 `clap-htsat-unfused@r1`，512 维、cosine。edit-mind [固定源码中的模型名](https://github.com/IliasHad/edit-mind/blob/39ac8460e21f5140b88abc7a6f116c71d9011f7f/packages/shared/src/constants/embedding.ts) 是 `Xenova/clap-htsat-unfused`；其 [模型卡](https://huggingface.co/Xenova/clap-htsat-unfused) 说明它是 LAION 原版的 ONNX 转换。Python 使用 `laion/clap-htsat-unfused`，固定 revision `8fa0f1c6d0433df6e97c127f64b2a1d6c0dcda8a`，不加载远程 Python 代码。音频按绝对毫秒窗口取 48 kHz 单声道，最长 10 秒，短输入采用固定 repeatpad；输出 L2 归一化。查询只收文字，原样送入模型，不翻译或增加 LLM。CLAP 空间与 WeMM 分开登记和建索引，不能混用向量。
-
-### 10.4 adapter 接口（`adapters/base.py`）
-
-只列签名，不写实现。
-
-```python
-Role = Literal["query", "document"]
-
-@dataclass(frozen=True)
-class TextInput:
-    text: str
-
-@dataclass(frozen=True)
-class MediaInput:
-    kind: Literal["video", "audio"]
-    path: Path        # 本地缓存文件，由 media/cache.py 提供
-    start_ms: int
-    end_ms: int       # 已截到媒体时长以内
-
-class SpaceInfo(BaseModel):
-    id: str
-    dim: int
-    metric: Literal["cosine", "ip", "l2"]
-    query_inputs: list[str]
-    doc_inputs: list[str]
-    max_span_ms: int | None
-    max_batch: int
-    fingerprint: str
-
-@dataclass(frozen=True)
-class ImageInput:
-    path: Path
-
-class Embedder(Protocol):
-    info: SpaceInfo
-    def load(self) -> None: ...                     # 启动时加载权重
-    def embed(self, inputs: list[TextInput | MediaInput | ImageInput], role: Role) -> np.ndarray: ...
-    # 返回形状 (len(inputs), dim) 的 float32；metric=cosine 时已做 L2 归一化
-
-class Word(BaseModel):
-    w: str
-    s: int
-    e: int
-
-class Sentence(BaseModel):
-    start_ms: int
-    end_ms: int
-    text: str
-    words: list[Word]
-
-class Transcript(BaseModel):
-    language: str
-    duration_ms: int
-    sentences: list[Sentence]
-
-class Transcriber(Protocol):
-    id: str
-    languages: list[str]
-    fingerprint: str
-    def load(self) -> None: ...
-    def transcribe(self, path: Path, language: str, start_ms: int, end_ms: int) -> Transcript: ...
-    # 只转录 [start_ms, end_ms) 这段音频；返回的时间已经加上 start_ms，是相对整个视频的绝对时间
-```
+`MediaInput` 含本地 `path`、`kind`（video/audio）、`start_ms`、`end_ms`；路径由公共缓存提供。插件决定采样与预处理，通用服务检查输出数量、维度、数值、归一化和时间约束。插件不读写业务数据库、任务队列或向量索引。
 
 ### 10.5 一次请求是怎么处理的
 
@@ -2404,18 +2250,18 @@ class Transcriber(Protocol):
 
 **`/v1/embed`**：
 
-1. `routes.embed`：按 `registry.get(space).info` 校验 input 类型、时间段、数量。不通过就返回 400 或 404。
-2. 对每个 video、image 输入：`cache.fetch(uri)` 拿到本地路径。多个 input 引用同一个 URI 时只下载一次。
-3. `gate.run(space, role, 推理函数)`：`role=query` 走这个模型的查询闸门，`role=document` 走批量闸门（提议，10.7 节）。等待队列满了就抛 Busy，返回 503；从队列出来时已经超过 `X-Timeout-Ms`，就直接返回 504，不推理。
-4. 推理函数在线程池里执行 `adapter.embed(inputs, role)`。adapter 内部调用 `media.video.sample_frames` 或 `media.audio.load` 解码，然后批量推理。
-5. 检查结果形状，转成列表，带上 fingerprint 返回。
+1. `routes.embed` 从 `registry.embedders` 查找已加载适配器，校验 role、input 类型、时间段与数量；失败返回 400 或 404。
+2. `registry.gates[space, role].run` 先等待名额；WeMM 查询和文档共用闸门（10.7 节）。队列满返回 503；超过 `X-Timeout-Ms` 返回 504，尚未执行的推理不再开始。
+3. 闸门在线程池执行推理函数。`cache.acquire(uri)` 取得 video、audio、image 的本地路径并持有缓存引用；同批相同 URI 只取得一次。探测时长并截取有效窗口后构造共享输入类型。
+4. 函数调用 `adapter.embed(inputs, role)`。插件调用公共 `media` 解码函数并执行各自的预处理与推理；WeMM 当前逐项推理。
+5. 公共服务检查结果形状、有限值以及 cosine 归一化，返回向量与 fingerprint。
 
 **`/v1/transcribe`**：
 
-1. 校验模型 id、语言、时间窗口长度（不超过 `max_window_ms`）。
-2. 从缓存取到标准化视频文件。
-3. 经过闸门后执行 `adapter.transcribe(path, language, start_ms, end_ms)`：用 `media.audio.load` 取出这段音频（16 kHz 单声道），交给 FunASR 识别，再把时间加上窗口起点。
-4. 校验句子及跨句词序的起点非递减、区间有正时长且在有效范围内后返回；允许词和句子的时间范围重叠。
+1. 在 `registry.transcribers` 查找模型，校验语言与 `max_window_ms`。
+2. 经过对应闸门后，在线程池取得缓存引用、探测媒体时长并限制有效窗口。
+3. 函数调用 `adapter.transcribe(path, language, start_ms, end_ms)`：当前 FunASR 插件使用 `media.audio.load` 提取 16 kHz 单声道音频并识别，返回视频绝对毫秒时间。
+4. 公共服务校验媒体时长、语言、句子及跨句词序的起点非递减、区间有正时长且在有效范围内后返回；允许词和句子的时间范围重叠。
 
 ### 10.6 媒体缓存与解码
 
@@ -2432,12 +2278,11 @@ class Transcriber(Protocol):
 
 ### 10.7 并发与背压
 
-当前真实 WeMM 的模型实现会修改共享推理状态，查询与文档必须共用一个串行闸门；只有验证 adapter 可并发调用后才启用下述查询独立闸门。
+当前真实 WeMM 的实现会修改共享推理状态，`shared_query_gate=true`，查询与文档编码共用同一个串行闸门。ASR 同样限制 `max_concurrency=1`；支持安全并发的 embedder 可分别使用查询和文档闸门。
 
-- 每个模型一个闸门：同时最多 `max_concurrency` 个推理，最多 `queue_limit` 个请求排队，再多就立刻返回 503，并带 `Retry-After: 2`。
-- **查询单独一个小闸门**（后续可选）：embedder 另有一个只给 `role=query` 用的闸门（`models.yaml` 里的 `query_concurrency`、`query_queue_limit`，初始 1 和 8），和批量编码共用同一份权重，但不排在批量编码后面。否则索引一忙，搜索的查询编码就会超过 5 秒的超时。代价是查询和批量编码会同时用 GPU，批量编码会慢一点；文本查询估计只要几十毫秒，影响很小。前提是 adapter 的模型能被两个线程同时调用；不能的话，退回到同一个闸门里让查询优先。
-- 推理在线程池里跑，不阻塞事件循环。PyTorch 的 CUDA 计算会释放 GIL，所以用线程就够了。
-- 背压一路传回 Go：Go 收到 503 后按 `Retry-After` 退避；还不行就返回 `ErrThrottled`，交给 Asynq 稍后重试，不计入失败次数（5.6 节）。GPU 忙的时候，任务只是排队变慢，不会失败。
+- 每个闸门最多执行配置的并发数，等待队列有上限；队列满返回 503 与 `Retry-After: 2`。
+- 推理在线程池运行。HTTP 超时或取消不会杀掉已经开始的模型线程；直到推理真正结束才释放名额，避免超时请求累积占满设备。
+- Go 按 `Retry-After` 退避；仍繁忙则返回 `ErrThrottled`，由任务队列重试。多个进程共享一张 GPU 时各有自己的闸门，部署方仍须控制总显存和并发。
 
 ### 10.8 fingerprint
 
@@ -2446,6 +2291,7 @@ fingerprint = "sha256:" + sha256(JSON，按键排序（{
     "adapter":    "wemm",
     "weights":    "tencent/WeMM-Embedding-2B",
     "revision":   "<commit sha>",
+    "weights_digest": null,
     "dtype":      "float16",
     "dim":        1024,
     "metric":     "cosine",
@@ -2457,27 +2303,31 @@ fingerprint = "sha256:" + sha256(JSON，按键排序（{
 - 本地权重没有 revision 时，必须在 `models.yaml` 里手动填 `weights_digest`。
 - 任何一项变了，fingerprint 就变，Go 会拒绝把新向量写进旧空间。换了权重就必须换 space id，比如 `@r1` 改成 `@r2`。
 
+包装路径、包版本和设备名称不直接参与现有 fingerprint；改变输出语义时必须更新 `preprocess.adapter_version` 等语义字段并注册新空间。CUDA profile 使用独立 ID 与 `adapter_version: 2`，不能只改 device 后沿用 MPS 索引。跨后端向量兼容性尚未验证。Fake 始终使用独立 fingerprint。
+
+`GET /v1/runtime` 使用同一内部令牌鉴权，返回实际加载配置的快照：服务/插件/依赖版本、Python 版本、设备、dtype、权重修订与 fingerprint。`runtime_version: 1` 是诊断结构版本；不向原有 `/spaces`、`/embed`、`/transcribe` 响应增加字段。此接口用于排查运行差异，不能证明数值等价。
+
 ### 10.9 环境变量
 
 | 变量 | 作用 | 默认 |
 |---|---|---|
-| `ML_MODELS_FILE` | 模型清单 | `models.yaml` |
+| `ML_MODELS_FILE` | 直接启动应用时使用的清单；CLI 的 `--models` 优先 | 源码或 wheel 内的默认 fake 清单 |
 | `ML_FAKE` | `1` 时所有模型都用 `fake.py`，不需要 GPU | `0` |
 | `ML_INTERNAL_TOKEN` | 服务间共享令牌，与 Go 端的 `VH_ML_TOKEN` 相同 | 无，必须设置 |
 | `ML_CACHE_DIR` / `ML_CACHE_MAX_BYTES` | 媒体缓存 | 见 10.6 |
 | `ML_S3_ENDPOINT`、`AWS_REGION`、`AWS_ACCESS_KEY_ID`、`AWS_SECRET_ACCESS_KEY` | S3 访问（只读） | — |
-| `ML_LOG_LEVEL` | 日志级别 | `info` |
+| `HF_HOME` / `HF_HUB_OFFLINE` | 权重缓存目录 / `1` 禁止联网下载 | Hugging Face 默认目录 / `0` |
 
 ### 10.10 依赖
 
 | 用途 | 依赖 |
 |---|---|
 | Web | fastapi、uvicorn、pydantic v2 |
-| 模型 | 本地 torch（MPS/CPU）、固定 transformers，FunASR 按可选依赖安装；线上不在运行时从 HF、ModelScope 下载，权重从 S3 来（提议，10.3 节） |
+| 模型 | 各插件的 `inference` extra；由对应 profile 的 `uv.lock` 锁定 |
 | 媒体 | av（PyAV）、numpy |
 | S3 | boto3 |
 | 配置 | pyyaml |
-| 开发 | pytest、httpx、ruff；契约测试用 OpenAPI 校验库（待定） |
+| 开发 | pytest、httpx、ruff、jsonschema；安装包测试使用 uv |
 
 ---
 
@@ -2507,10 +2357,12 @@ ml/.venv/bin/python Eval/tools/score.py compare --before Eval/runs/baseline-v1-a
 
 ### 11.3 把 shadow 提为 active 的检查清单
 
+下列是切换前的验收要求，当前评估工具未自动实现候选升级流程。先把受信任的插件安装到锁定环境并启动 profile，检查 `/readyz`、`/v1/spaces` 与 `/v1/runtime`；新空间先执行 `space add`，再加入 shadow 供回填。改变编码语义须用新 ID / fingerprint，不混用旧索引。
+
 1. 评估集上 recall@10 和 MRR 不低于当前的 active。
 2. coverage 达到 100%。
 3. 修改 channels.yaml，滚动重启 api 和 worker。
-4. 观察一段时间没问题后，执行 `videohelper space drop <旧空间>`，再撤掉旧模型的容器。
+4. 保留旧环境与旧索引以便改回 active。确认没有旧计划或索引引用后再下线；`space drop` 与自动卸载当前尚未实现，不能作为现有操作命令。
 
 ---
 
@@ -2527,7 +2379,7 @@ ml/.venv/bin/python Eval/tools/score.py compare --before Eval/runs/baseline-v1-a
 | 文件 | 路径按工作区分前缀；只签发短时效的预签名 URL |
 | 第二道防线 | 不开启 Postgres 行级安全（已定）；靠所有查询都带 workspace_id，评审时逐条检查 |
 
-### 12.2 导入链接（SSRF）
+### 12.2 导入链接（SSRF，规划）
 
 目标：不能让别人借导入功能访问我们的内网或云服务器元数据。
 
@@ -2555,7 +2407,7 @@ ml/.venv/bin/python Eval/tools/score.py compare --before Eval/runs/baseline-v1-a
 
 - **密钥**：数据库地址、Redis 地址、LLM key、S3 凭证都只放环境变量。配置文件里只写环境变量的名字。
 - **平台登录态**：首版不给 yt-dlp 配置任何平台账号（已定）。
-- **ml 服务**：只在内网可达，并且校验共享令牌（已定）；S3 权限只读，且只能读标准化视频和模型权重（`models/*`，提议）。
+- **ml 服务**：只在内网可达，并且校验共享令牌；S3 权限只读业务媒体。插件与服务共享进程权限，依赖和模型代码须来自受信任来源。
 - **数据库**：RDS 放在私有子网，安全组只放行 api 和 worker；连接走 TLS；主账号和应用用的账号分开，密码放 Secrets Manager。
 - **上传**：不设大小上限（已定）；`content_type` 白名单。真正能不能识别，由 probe 判断。
 - **跨域**：API 只允许 `server.cors_origins` 里的前端来源。令牌放在 `Authorization` 头里，不用 cookie 鉴权，所以不需要额外防 CSRF。
@@ -2564,6 +2416,8 @@ ml/.venv/bin/python Eval/tools/score.py compare --before Eval/runs/baseline-v1-a
 ---
 
 ## 13. 可观测性
+
+下表包含后续监控目标；当前的请求日志、request id 与 `/v1/runtime` 可用于排查，但不能据此声称指标、追踪和告警系统已部署。
 
 | 项目 | 做法 |
 |---|---|
@@ -2580,7 +2434,7 @@ ml/.venv/bin/python Eval/tools/score.py compare --before Eval/runs/baseline-v1-a
 
 ### 14.1 docker compose（`deploy/docker-compose.yml`）
 
-当前 compose 只启动本地基础服务，端口均绑定 `127.0.0.1`。Go 与 Python 进程在宿主机运行，便于使用本机 MPS/CPU。
+`deploy/docker-compose.yml` 启动本地基础服务；MPS 模型在 Mac 原生进程运行。另有 `deploy/ml-compose.yml` 提供 Linux CPU 与 CUDA 模型服务，端口均绑定 `127.0.0.1`，不启动数据库。实际安装、准备和启停命令见 README。
 
 | 服务 | 镜像 | 本机端口 |
 |---|---|---|
@@ -2590,7 +2444,44 @@ ml/.venv/bin/python Eval/tools/score.py compare --before Eval/runs/baseline-v1-a
 
 MinIO 源码固定为 `v0.0.0-20251015172955-9e49d5e7a648`。本地默认凭证仅用于本机测试；可通过 `VH_LOCAL_DB_PASSWORD`、`VH_LOCAL_S3_USER`、`VH_LOCAL_S3_PASSWORD` 覆盖。`deps-down` 保留数据库和对象存储卷。
 
-### 14.2 Makefile 目标
+### 14.2 模型进程与启动顺序
+
+以下是支持的拆分拓扑示例；默认 `config/local.yaml` 仍指向单个兼容组合服务，使用拆分部署时须显式改为两个端点。不是启动一个 profile 就会自动启动其余 profile。
+
+```mermaid
+flowchart TB
+  B["浏览器 / Web 静态页"] -->|"HTTP / REST"| A["Go api 进程"]
+  B -->|"HTTP / 预签名上传与播放"| O["MinIO / S3"]
+  A -->|"Redis / 投递任务"| Q["Redis"]
+  Q -->|"Asynq / 消费任务"| W["Go worker 进程"]
+  A -->|SQL| D["Postgres / pgvector"]
+  W -->|SQL| D
+  W -->|"HTTP / 媒体读写"| O
+  A -->|"HTTP / ML 契约"| M
+  W -->|"HTTP / ML 契约"| M
+  A -->|"HTTP / ML 契约"| C
+  W -->|"HTTP / ML 契约"| C
+  subgraph MP["Mac 原生环境 / 进程：wemm-mps"]
+    M["公共服务"] -->|函数调用| WM["WeMM 插件 / MPS"]
+  end
+  subgraph CP["独立环境 / 进程：speech-audio-cpu"]
+    C["公共服务"] -->|函数调用| SA["FunASR + CLAP 插件 / CPU"]
+  end
+  M -->|"HTTP / 读取媒体"| O
+  C -->|"HTTP / 读取媒体"| O
+```
+
+1. 启动本地 Postgres、Redis、MinIO，执行迁移与 `local-init`，准备本地认证与 Web。
+2. 在每个目标 `ml/profiles/<profile>/` 目录执行 `uv sync --locked --no-dev --no-editable`，安装公共包、所需插件和锁定推理依赖。MPS 在 Mac arm64 原生运行；Linux CPU / CUDA 可用 `deploy/ml-compose.yml` 构建。CUDA 通过 Compose 的 `cuda` profile 显式启用，且需要 NVIDIA 设备。
+3. 每个环境运行 `videohelper-ml prepare --models models.yaml` 准备固定修订的权重，再在同一环境以 `HF_HUB_OFFLINE=1 videohelper-ml serve --models models.yaml --host 127.0.0.1 --port <端口>` 启动前台进程。容器映射到宿主的端口仅绑定 loopback；容器读取宿主 MinIO 时须配置容器可达的 `ML_S3_ENDPOINT`。
+4. 检查每个实例的 `/readyz`、鉴权 `/v1/spaces` 与 `/v1/runtime`。在 Go 的 `ml.endpoints` 配置地址，选择 `ml.transcriber`；同 ID 多提供者设置 `ml.model_endpoints`。先执行各通道的 `space add`，再启动 api / worker。
+5. 通过现有上传、阶段状态和检索做验收。停止模型进程后保留权重缓存、媒体缓存、数据库与对象卷，便于重启；不自动卸载插件或清理旧索引。
+
+上述 serve 命令用于原生前台进程；容器由镜像 CMD 使用 `0.0.0.0:8000`，通过 Compose 的 loopback 映射访问。共享令牌、对象存储凭据与缓存路径按 README 配置。
+
+`wemm-cuda` 使用独立候选空间 `wemm-2b-cuda-experimental@r1`；它可另开环境 / 进程作为 shadow，不与 MPS 共用旧索引。CPU / MPS / CUDA 的依赖锁定不构成跨设备数值等价或真实硬件验收。
+
+### 14.3 Makefile 目标
 
 | 目标 | 作用 |
 |---|---|
@@ -2598,10 +2489,16 @@ MinIO 源码固定为 `v0.0.0-20251015172955-9e49d5e7a648`。本地默认凭证�
 | `make build` / `make generate` | 构建 Go 二进制 / 按包重新生成 sqlc 代码 |
 | `make test-go` | 已实现 Go 包的 race 测试，排除 `model-test/` |
 | `make vet` / `make fmt` | Go 静态检查 / 格式化 |
+| `make test-web` | Web 纯函数测试 |
+| `make ml-install ML_PROFILE=<profile>` | 用 profile 锁文件安装普通包与推理依赖 |
+| `make ml-prepare ML_PROFILE=<profile>` | 准备对应清单的固定权重 |
+| `make ml-serve ML_PROFILE=<profile> ML_PORT=<port>` | 前台启动该 profile；离线模式需另设 `HF_HUB_OFFLINE=1` |
+| `make ml-status ML_PORT=<port>` | 检查该端口的 `/readyz`；不抓取 runtime 元数据 |
+| `make test-ml-lifecycle` | 临时环境中构建 / 安装公共 wheel，显式 fake 检查启动、请求与停止，无权重下载 |
 | `cd ml && uv run pytest` | Python 协议与 fake 测试 |
 | `cd ml && uv run ruff check .` | Python 静态检查 |
 
-### 14.3 AWS 资源（暂缓）
+### 14.4 AWS 资源（暂缓）
 
 | 组件 | AWS 资源 |
 |---|---|
@@ -2613,9 +2510,9 @@ MinIO 源码固定为 `v0.0.0-20251015172955-9e49d5e7a648`。本地默认凭证�
 | 文件 | S3 |
 | 入口 | ALB + HTTPS |
 
-### 14.4 发布流程（GitHub Actions，暂缓）
+### 14.5 发布流程（GitHub Actions，暂缓）
 
-代码放在私有 GitHub 仓库，用 GitHub Actions 自动部署到 AWS（已定）。
+以下是后续 AWS 发布设计，当前没有完成这些工作流与云资源的部署验收。发布按 Go 二进制和各 ML profile 分开，不将全部模型依赖合并进一个通用环境。
 
 | 工作流 | 触发 | 做什么 |
 |---|---|---|
@@ -2637,36 +2534,38 @@ MinIO 源码固定为 `v0.0.0-20251015172955-9e49d5e7a648`。本地默认凭证�
 - **迁移要向后兼容**：滚动发布时新旧代码同时在跑，所以表结构「先加后删」，不在同一次发布里删掉旧代码还在用的字段。回滚时只回滚代码，不回滚数据库。
 - **密钥**：数据库地址、DeepSeek key、ML 共享令牌放在 AWS Secrets Manager，ECS 启动任务时注入。
 - **数据库不归部署流程管**：RDS 实例由 `infra/` 创建一次，之后一直保留。`deploy.yml` 只执行迁移，不会重建数据库。
-- **ml 镜像**：只放代码和依赖，不打包模型权重；权重在启动时从 S3 的 `models/` 拉取并缓存到本地（10.3 节），否则镜像会有几十 GB。
+- **ml 镜像**：按 profile 安装代码与锁定依赖，不打包权重。先用 `prepare` 将固定修订下载到挂载缓存，再离线启动（10.3 节）。MPS 使用 Mac 原生环境；CUDA 镜像需要目标 Linux GPU 环境验收。
 - **staging 与审批**：要不要 staging 环境、生产发布要不要人工审批，待定（设计文档问题 23）。
 
 ---
 
 ## 15. 测试策略
 
-| 层级 | 测什么 | 怎么测 |
+| 层级 | 当前检查范围 | 方式与边界 |
 |---|---|---|
-| Go 单元测试 | `timeline` 的格子和句子规则；`search/fuse` 的 RRF、合并、跳转点；`safehttp` 的地址规则；`ClassifyURL` 的域名规则；yt-dlp 错误分类；阶段依赖推进；`mlclient` 的错误处理 | 纯函数和表格驱动测试；`mlclient` 用 `httptest`；yt-dlp 错误分类用录下来的真实输出 |
-| 导入冒烟测试 | 真实的 YouTube、哔哩哔哩链接能否导入 | 需要外网，定期执行；导入成功率下降时说明 yt-dlp 需要升级 |
-| Go 集成测试 | sqlc 生成的查询；runner 全流程；检索全流程 | 用 docker compose 起真实的 Postgres、Redis 和假模型 ml 服务（已定） |
-| Python 单元测试 | 路由校验、注册表、媒体切取、缓存 | pytest + 假模型 |
-| 契约测试 | 两边是否都符合 `contracts/ml-v1.yaml` | Python 端按 OpenAPI 校验响应；Go 端集成测试对着假模型服务跑 |
-| 效果测试 | 召回质量 | `videohelper eval` + 评估集（第 11 章） |
-| 手动 | 真实模型在 GPU 上的速度和显存 | 验证计划（设计文档第 11 章） |
+| Go 单元测试 | timeline、检索融合、阶段计划与推进、ML 错误处理和路由绑定 | `make test-go`；ML HTTP 用 `httptest`，不代表真实模型效果 |
+| Go 集成测试 | 数据访问、runner、检索与对象存储 | 显式配置 `VH_TEST_*`，使用可丢弃数据库 / 存储；不连接普通开发数据 |
+| Python 公共服务 | 契约、输入输出、时间顺序、缓存、闸门、插件发现与 fingerprint | `cd ml && uv run pytest`；显式 fake，不能证明真实模型检索质量 |
+| 插件安装与生命周期 | 普通 wheel 的 entry point、缺包 / 冲突、安装后启动 / 请求 / 停止 | 打包测试与 `ml/tools/check_lifecycle.py`；无权重下载检查与真实推理分开 |
+| 运行诊断 | 已安装包、模型身份、设备、dtype、固定修订 | `/v1/runtime`；不证明不同硬件向量兼容 |
+| Web | 纯函数、类型检查与构建 | `make test-web`、`npm --prefix web run build` |
+| 效果评估 | 真实上传 / 索引、覆盖率、固定快照召回与定位指标 | `Eval/tools/run.py`（第 11 章），没有 `videohelper eval` 子命令 |
+| 真实硬件 | CPU / MPS / CUDA 的可启动性、数值、速度与显存 | 按 profile 单独验收；CUDA 当前仍是候选 |
+| 规划功能 | URL 导入、Agent、AWS | 随实现补充，当前不声称已测试 |
 
 ---
 
 ## 16. 前端
 
-前端在 `web/`：React、TypeScript 和 Tailwind，由 Vite 构建成静态文件（每页一个 HTML 入口，地址保持 `search.html`、`video.html?id=…`），任何静态主机都能托管（设计文档问题 11 已定）。认证服务确定前，登录页粘贴认证服务签发的 JWT 和 API 地址，存在浏览器 localStorage，令牌只放进 `Authorization` 头；本地开发用 `node web/dev/devauth.mjs` 签发令牌（`config/local.yaml` 的 `auth` 指向它）。纯函数测试：`make test-web`；类型检查与构建：`npm --prefix web run build`。首版需要的页面和它们依赖的接口：
+前端在 `web/`：React、TypeScript 和 Tailwind，由 Vite 构建成静态文件（每页一个 HTML 入口，地址保持 `search.html`、`video.html?id=…`），任何静态主机都能托管（设计文档问题 11 已定）。认证服务确定前，登录页粘贴认证服务签发的 JWT 和 API 地址，存在浏览器 localStorage，令牌只放进 `Authorization` 头；本地开发用 `node web/dev/devauth.mjs` 签发令牌（`config/local.yaml` 的 `auth` 指向它）。纯函数测试：`make test-web`；类型检查与构建：`npm --prefix web run build`。当前页面与后续规划：
 
-| 页面 | 依赖的接口 |
+| 页面 | 当前依赖的接口与状态 |
 |---|---|
-| 登录后首页：视频列表、上传 | `/v1/me`、`/v1/videos`、`/v1/uploads`、`/v1/videos/{id}/complete`、`/v1/imports`、工作区维度进度事件（以后） |
-| 视频详情：播放、阶段进度 | `/v1/videos/{id}`、`/v1/videos/{id}/playback`、`/v1/videos/{id}/events` |
-| 搜索页 | `/v1/search`、`/v1/videos/{id}/playback` |
-| 对话页 | `/v1/chat/sessions`、`/v1/chat/sessions/{id}`、`/v1/chat/sessions/{id}/messages` |
-| 项目管理 | `/v1/projects` 系列 |
+| 登录后资料库、上传 | 已实现：`/v1/me`、`/v1/videos`、`/v1/uploads`、`/v1/videos/{id}/complete`；链接导入与事件为规划 |
+| 视频详情、播放、阶段进度 | 已实现：`/v1/videos/{id}`、`/v1/videos/{id}/playback`；进度通过轮询读取 |
+| 搜索页 | 已实现：`/v1/search`、`/v1/videos/{id}/playback` |
+| 项目管理 | 已实现：`/v1/projects` 系列 |
+| 对话页 | 暂缓；依赖后续 chat 接口 |
 
 实现要点：
 
@@ -2720,4 +2619,4 @@ MinIO 源码固定为 `v0.0.0-20251015172955-9e49d5e7a648`。本地默认凭证�
 
 - **29. 短链解析**：`b23.tv` 短链由 Go 先解析成 `bilibili.com` 地址，再交给 yt-dlp（本文目前的做法），还是直接交给 yt-dlp 处理？前者 Go 要多发一次请求，但能在下载前确认落地域名在白名单里。
 - **31. 重新签发分片 URL**：上传不设上限之后，超大文件可能要传好几个小时，一开始签发的 URL 会过期，所以本文提议增加 `POST /v1/videos/{id}/upload-parts` 接口（4.4 节）。确认要加吗？
-- **32. 模型权重的来源**：原来文档里有三种说法：S3（14.4 节）、HF 仓库（10.3 节）、ModelScope（10.10 节），而 ml 服务的 S3 权限只能读标准化视频，从 S3 拉权重会被拒绝。本文提议统一成 S3（10.3 节）：用一个同步脚本把固定版本的权重从 HF、ModelScope 拷到 `models/`，ml 启动时从这里加载，同时开通 `models/*` 的只读权限。好处是线上不依赖外网、版本固定；代价是换模型时多一步同步。另一个做法是启动时直接从 HF、ModelScope 下载：少一步，但 ml 要能访问外网，还受对方限流影响。确认用 S3 吗？
+- **32. 模型权重的分发**：当前插件用 `prepare` 下载固定 Hugging Face 修订，部署时挂载缓存并离线启动。S3 镜像分发、同步与权限管理暂缓，未来有离线集群需求再补；不属于当前启动依赖。

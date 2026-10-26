@@ -59,7 +59,7 @@ func TestAudioPlanForSilentAndAudibleMedia(t *testing.T) {
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { json.NewEncoder(w).Encode(metadata) }))
 	defer server.Close()
-	registry := space.New(pool, mlclient.New(config.MLConfig{Endpoints: []string{server.URL}, Token: "fixture"}, nil))
+	registry := space.New(pool, mlclient.New(config.MLConfig{Endpoints: []string{server.URL}, Token: "fixture"}, nil), config.MLConfig{Transcriber: "asr@r1"})
 	if err := registry.Sync(ctx); err != nil {
 		t.Fatal(err)
 	}

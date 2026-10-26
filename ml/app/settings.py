@@ -2,12 +2,19 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
+_SOURCE_MODELS = Path(__file__).resolve().parents[1] / "models.yaml"
+_DEFAULT_MODELS = (
+    _SOURCE_MODELS
+    if _SOURCE_MODELS.is_file()
+    else (Path(__file__).resolve().parent / "resources" / "models.yaml")
+)
+
 
 @dataclass(frozen=True)
 class Settings:
     token: str
     fake: bool = False
-    models_file: Path = Path(__file__).resolve().parents[1] / "models.yaml"
+    models_file: Path = _DEFAULT_MODELS
     cache_dir: Path = Path("/var/cache/videohelper-ml")
     cache_max_bytes: int = 50_000_000_000
     s3_endpoint: str | None = None

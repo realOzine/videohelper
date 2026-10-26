@@ -21,7 +21,7 @@ func TestDefaultChannelWeightRouting(t *testing.T) {
 	}
 	defaults := map[string]float64{"visual": 1, "speech": 1, "audio": 0}
 	originalDefaults := maps.Clone(defaults)
-	service := New(nil, nil, space.New(nil, nil), channels, nil, config.SearchConfig{MaxLimit: 50, ChannelWeights: defaults})
+	service := New(nil, nil, space.New(nil, nil, config.MLConfig{}), channels, nil, config.SearchConfig{MaxLimit: 50, ChannelWeights: defaults})
 	for _, test := range []struct {
 		name  string
 		query Query

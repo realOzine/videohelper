@@ -67,7 +67,7 @@ func TestAudioEmbeddingResumesBoundedGridBatchesIntegration(t *testing.T) {
 			var registry *space.Registry
 			cfg := config.MLConfig{Endpoints: []string{server.URL}, Token: "fixture", EmbedTimeout: time.Second, EmbedBatch: 3}
 			client := mlclient.New(cfg, func(id string) (string, bool) { return registry.Resolve(id) })
-			registry = space.New(pool, client)
+			registry = space.New(pool, client, cfg)
 			if err := registry.Sync(ctx); err != nil {
 				t.Fatal(err)
 			}

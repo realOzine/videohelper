@@ -239,7 +239,7 @@ func run(ctx context.Context, args []string, input io.Reader, output io.Writer) 
 				if err != nil {
 					return err
 				}
-				registry = space.New(p, client)
+				registry = space.New(p, client, cfg.ML)
 				err = registry.Sync(ctx)
 				if err == nil {
 					err = channels.Validate(ctx, registry)

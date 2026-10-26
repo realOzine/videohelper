@@ -46,7 +46,7 @@ func TestAudioOnlySearchPreservesChineseQueryAndEvidenceIntegration(t *testing.T
 	defer server.Close()
 	var registry *space.Registry
 	client := mlclient.New(config.MLConfig{Endpoints: []string{server.URL}, Token: "audio-contract", QueryTimeout: time.Second}, func(id string) (string, bool) { return registry.Resolve(id) })
-	registry = space.New(pool, client)
+	registry = space.New(pool, client, config.MLConfig{})
 	if err := registry.Sync(ctx); err != nil {
 		t.Fatal(err)
 	}
