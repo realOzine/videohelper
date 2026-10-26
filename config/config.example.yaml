@@ -47,10 +47,11 @@ media:
   tmp_dir: /tmp/videohelper
 
 search:
-  k: 50                                # 每路召回数
+  k: 5                                 # 每路召回数
   rrf_k: 60
   merge_gap_cells: 1                   # 相邻命中间隔不超过 1 格就合并
   max_limit: 50
+  channel_weights: {visual: 1, speech: 1, audio: 0} # 默认查询倍率；请求同名值替换，未配置项为 1
 
 import:                                # 导入链接
   ytdlp_path: /usr/local/bin/yt-dlp    # 镜像里固定版本的 yt-dlp
