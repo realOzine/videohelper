@@ -99,7 +99,7 @@ docker compose -f deploy/ml-compose.yml up -d speech-audio
 docker compose -f deploy/ml-compose.yml stop speech-audio
 ```
 
-CPU 默认监听宿主机 8001；CUDA 用 `--profile cuda` 和服务名 `wemm-cuda`，监听 8002，需 NVIDIA Container Toolkit 与兼容驱动。将实际服务地址加入 Go `ml.endpoints`。CUDA 配置是待验收候选，使用 `wemm-2b-cuda-experimental@r1`，不能直接与 MPS 旧向量混用。
+CPU 默认监听宿主机 8001；CUDA 用 `--profile cuda` 和服务名 `wemm-cuda`，监听 8002，需 NVIDIA Container Toolkit。当前 CUDA 锁文件使用 13.0，驱动至少满足 [NVIDIA 的 580 系列下限](https://docs.nvidia.com/deploy/cuda-compatibility/minor-version-compatibility.html)，具体 GPU 与内核仍需实机验证。将实际服务地址加入 Go `ml.endpoints`。CUDA 配置是待验收候选，使用 `wemm-2b-cuda-experimental@r1`，不能直接与 MPS 旧向量混用。
 
 换模型时，先安装新插件与运行配置、prepare、启动、登记 shadow 空间并回填，验证后再切换 active；已有 ASR 任务仍依赖冻结的旧模型和指纹，保留旧服务直到任务与回滚窗口结束。同 ID 同时由多个服务提供时，在 `ml.model_endpoints` 显式绑定地址；绑定服务离线时不会自动换到其他服务。升级插件后重新锁定 profile 并重装，避免安装环境与锁文件不一致。只改打包方式保持现有空间指纹；改变输出行为必须使用新指纹和空间。
 
