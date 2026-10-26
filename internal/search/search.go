@@ -87,10 +87,7 @@ func (s *Service) routes(q Query) ([]route, map[string]bool, []error) {
 		if len(q.OnlyChannels) > 0 && !slices.Contains(q.OnlyChannels, channel.Name) {
 			continue
 		}
-		multiplier := 1.0
-		if weight, ok := s.cfg.ChannelWeights[channel.Name]; ok {
-			multiplier = weight
-		}
+		multiplier := s.defaultWeight(channel.Name)
 		if override, ok := q.ChannelWeights[channel.Name]; ok {
 			multiplier = override
 		}
@@ -205,6 +202,9 @@ func (s *Service) Search(ctx context.Context, p workspace.Principal, q Query) (R
 	}
 	ids, err := s.library.ResolveScope(ctx, p, q.Scope)
 	if err != nil {
+		return result, err
+	}
+	if err := s.validateOverrides(ctx, p, q, ids); err != nil {
 		return result, err
 	}
 	if ids != nil && len(ids) == 0 {

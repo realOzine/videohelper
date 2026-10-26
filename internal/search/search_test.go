@@ -257,8 +257,8 @@ func TestSearchPostgresIntegration(t *testing.T) {
 			t.Fatalf("all encoding failed: %+v %v", result, err)
 		}
 		result, err = s.Search(ctx, p, Query{Text: "主查询", SpaceOverride: map[string]string{"visual": "missing@r1"}})
-		if err != nil || len(result.Moments) != 1 || !slices.Equal(result.Skipped, []string{"visual"}) {
-			t.Fatalf("unavailable route did not preserve healthy channel: %+v %v", result, err)
+		if apperr.KindOf(err) != apperr.Invalid || len(result.Moments) != 0 {
+			t.Fatalf("unknown explicit space accepted: %+v %v", result, err)
 		}
 	})
 	t.Run("caller cancellation", func(t *testing.T) {
