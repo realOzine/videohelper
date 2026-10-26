@@ -78,6 +78,27 @@ class SpacesResponse(Schema):
     transcribers: list[TranscriberInfo]
 
 
+class RuntimeModel(Schema):
+    id: Identifier
+    kind: Literal["embedder", "transcriber"]
+    adapter: str
+    distribution: dict[str, str] | None
+    device: str
+    dtype: str
+    weights: str
+    revision: str | None
+    weights_digest: str | None
+    fingerprint: Fingerprint
+
+
+class RuntimeResponse(Schema):
+    runtime_version: Literal[1]
+    service_version: str
+    python_version: str
+    fake: bool
+    models: list[RuntimeModel]
+
+
 class EmbedResponse(Schema):
     space: Identifier
     fingerprint: Fingerprint

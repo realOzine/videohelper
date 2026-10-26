@@ -414,8 +414,210 @@ paths:
         schema:
           type: string
       description: 仅识别 [start_ms,end_ms)，end_ms 截到媒体结尾。返回完整媒体 duration_ms；句子和词为整个媒体的绝对时间，保留识别顺序，句子及跨句词序的起点非递减，允许区间重叠、包含和相同起点，结束时间不必递增。每个区间有正时长并位于请求窗口内，词在所属句子内；句子范围取所含词的最早起点和最晚终点。不为消除重叠移动时间或丢词。无语音返回空数组。
+  /v1/runtime:
+    get:
+      summary: Runtime provenance
+      operationId: runtime_v1_runtime_get
+      responses:
+        '200':
+          description: Successful Response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuntimeResponse'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+              description: 沿用请求 id；健康检查可生成。
+        '400':
+          description: invalid_input：请求、输入类型、批量或时间窗口不合法。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+        '401':
+          description: unauthorized：内部共享令牌不匹配。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+        '404':
+          description: unknown_space / unknown_model：本实例没有该模型。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+        '422':
+          description: media_unreadable：无法读取或解码媒体。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+        '500':
+          description: internal：推理失败或输出校验失败。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+        '503':
+          description: busy / not_ready：队列满、缓存占用或模型未就绪。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+            Retry-After:
+              schema:
+                type: integer
+                const: 2
+        '504':
+          description: deadline_exceeded：超过调用方剩余等待时间。
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorBody'
+          headers:
+            X-Request-ID:
+              schema:
+                type: string
+      security:
+      - InternalToken: []
+      parameters:
+      - name: X-Request-ID
+        in: header
+        required: true
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+      - name: X-Timeout-Ms
+        in: header
+        required: false
+        schema:
+          type: integer
+          minimum: 1
+        description: 从收到请求开始计时。超时排队请求不再推理；已开始的线程保留并发槽直到退出。
+      - name: traceparent
+        in: header
+        required: false
+        schema:
+          type: string
+      description: 已加载运行时快照；不包含令牌、缓存路径或对象存储配置。runtime_version 独立于 embedding fingerprint；不得用于判断向量兼容性。
 components:
   schemas:
+    RuntimeModel:
+      additionalProperties: false
+      properties:
+        id:
+          minLength: 1
+          pattern: ^[a-z0-9@._-]+$
+          title: Id
+          type: string
+        kind:
+          enum:
+          - embedder
+          - transcriber
+          title: Kind
+          type: string
+        adapter:
+          title: Adapter
+          type: string
+        distribution:
+          anyOf:
+          - additionalProperties:
+              type: string
+            type: object
+          - type: 'null'
+          title: Distribution
+        device:
+          title: Device
+          type: string
+        dtype:
+          title: Dtype
+          type: string
+        weights:
+          title: Weights
+          type: string
+        revision:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Revision
+        weights_digest:
+          anyOf:
+          - type: string
+          - type: 'null'
+          title: Weights Digest
+        fingerprint:
+          pattern: ^sha256:[0-9a-f]{64}$
+          title: Fingerprint
+          type: string
+      required:
+      - id
+      - kind
+      - adapter
+      - distribution
+      - device
+      - dtype
+      - weights
+      - revision
+      - weights_digest
+      - fingerprint
+      title: RuntimeModel
+      type: object
+    RuntimeResponse:
+      additionalProperties: false
+      properties:
+        runtime_version:
+          const: 1
+          title: Runtime Version
+          type: integer
+        service_version:
+          title: Service Version
+          type: string
+        python_version:
+          title: Python Version
+          type: string
+        fake:
+          title: Fake
+          type: boolean
+        models:
+          items:
+            $ref: '#/components/schemas/RuntimeModel'
+          title: Models
+          type: array
+      required:
+      - runtime_version
+      - service_version
+      - python_version
+      - fake
+      - models
+      title: RuntimeResponse
+      type: object
     EmbedInput:
       oneOf:
       - type: object

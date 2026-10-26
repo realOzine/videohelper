@@ -9,11 +9,13 @@ from app.api.errors import MLError
 from app.api.schemas import (
     EmbedRequest,
     EmbedResponse,
+    RuntimeResponse,
     SpacesResponse,
     TranscribeRequest,
     TranscribeResponse,
 )
 from app.media.probe import duration_ms
+from app.runtime import describe_runtime
 
 router = APIRouter(prefix="/v1", dependencies=[Depends(authenticate)])
 
@@ -27,6 +29,11 @@ def ready(request: Request):
 @router.get("/spaces", response_model=SpacesResponse)
 async def spaces(request: Request):
     return ready(request).spaces()
+
+
+@router.get("/runtime", response_model=RuntimeResponse)
+async def runtime(request: Request):
+    return describe_runtime(ready(request), fake=request.app.state.settings.fake)
 
 
 @router.post("/embed", response_model=EmbedResponse)
