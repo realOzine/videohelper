@@ -44,6 +44,8 @@ func (c Config) Validate(role Role) error {
 	if role == RoleSpace {
 		return errors.Join(errs...)
 	}
+	require(strings.TrimSpace(c.ML.Transcriber) != "" && c.ML.Transcriber == strings.TrimSpace(c.ML.Transcriber), "ml.transcriber")
+
 	require(c.S3.Bucket != "" && c.S3.Region != "", "s3.bucket / s3.region")
 	require(c.S3.Endpoint == "" || httpURL(c.S3.Endpoint), "s3.endpoint")
 	require(c.S3.PresignTTL > 0, "s3.presign_ttl")

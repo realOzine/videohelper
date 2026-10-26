@@ -56,7 +56,7 @@ func (r *runtime) close() {
 func modelRegistry(ctx context.Context, pool *pgxpool.Pool, cfg config.MLConfig) (*mlclient.Client, *space.Registry, error) {
 	var registry *space.Registry
 	client := mlclient.New(cfg, func(id string) (string, bool) { return registry.Resolve(id) })
-	registry = space.New(pool, client)
+	registry = space.New(pool, client, cfg)
 	return client, registry, registry.Sync(ctx)
 }
 

@@ -49,7 +49,7 @@ func enableBackfillAudio(t *testing.T, ctx context.Context, s *Service) {
 	}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { json.NewEncoder(w).Encode(metadata) }))
 	t.Cleanup(server.Close)
-	s.deps.Registry = space.New(s.deps.Pool, mlclient.New(config.MLConfig{Endpoints: []string{server.URL}, Token: "explicit-backfill-contract"}, nil))
+	s.deps.Registry = space.New(s.deps.Pool, mlclient.New(config.MLConfig{Endpoints: []string{server.URL}, Token: "explicit-backfill-contract"}, nil), config.MLConfig{Transcriber: "asr@r1"})
 	if err := s.deps.Registry.Sync(ctx); err != nil {
 		t.Fatal(err)
 	}

@@ -26,8 +26,8 @@ type asrProgress struct {
 
 func (h *Handlers) ASR(ctx context.Context, sc *pipeline.StageCtx) (pipeline.Commit, error) {
 	opts := sc.Def.Options
-	model, endpoint, ok := h.registry.Transcriber()
-	if !ok || model.ID != opts.Transcriber {
+	model, endpoint, ok := h.registry.GetTranscriber(opts.Transcriber)
+	if !ok {
 		return nil, apperr.New(apperr.Unavailable, "asr_unavailable", "转录模型暂时不可用")
 	}
 	if model.Fingerprint != opts.Fingerprint {

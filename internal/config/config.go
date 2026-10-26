@@ -59,6 +59,7 @@ type AuthConfig struct {
 }
 
 type MLConfig struct {
+	Transcriber         string        `yaml:"transcriber"`
 	Endpoints           []string      `yaml:"endpoints"`
 	TokenEnv            string        `yaml:"token_env"`
 	Token               string        `yaml:"-" json:"-"`

@@ -24,7 +24,7 @@ func TestExampleLoadsEnvironmentAndChannels(t *testing.T) {
 	if c.Database.URL != "postgres://example/database" || c.Redis.Addr != "redis:6379" || c.ML.Token != "ml-secret" {
 		t.Fatal("environment values were not resolved")
 	}
-	if c.ML.QueryTimeout != 5*time.Second || c.Limits.SoftDeletePurgeAfter != 720*time.Hour || c.Import.Timeout != 2*time.Hour {
+	if c.ML.Transcriber != "paraformer-zh@r1" || c.ML.QueryTimeout != 5*time.Second || c.Limits.SoftDeletePurgeAfter != 720*time.Hour || c.Import.Timeout != 2*time.Hour {
 		t.Fatal("duration fields were not parsed")
 	}
 	if len(c.Channels) != 3 || c.Channels["visual"].Active[0] != "wemm-2b@r1" || c.Channels["speech"].Doc != "text" || c.Channels["audio"].Active[0] != "clap-htsat-unfused@r1" || len(c.Import.Platforms["youtube"].Hosts) != 4 {
@@ -42,6 +42,11 @@ func TestExampleLoadsEnvironmentAndChannels(t *testing.T) {
 	if err := c.Validate(RoleAPI); err != nil {
 		t.Fatalf("core search API must run without LLM or ADK configuration: %v", err)
 	}
+	c.ML.Transcriber = ""
+	if err := c.Validate(RoleWorker); err == nil || !strings.Contains(err.Error(), "ml.transcriber") {
+		t.Fatalf("missing explicit ASR selection accepted: %v", err)
+	}
+	c.ML.Transcriber = "paraformer-zh@r1"
 	c.Worker.WorkspaceGPULimit = c.Worker.GPUConcurrency
 	if err := c.Validate(RoleWorker); err == nil {
 		t.Fatal("one workspace must not consume all GPU capacity")
@@ -130,7 +135,7 @@ func TestValidateSearchChannelDefaults(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			c := Config{
 				Database: DatabaseConfig{URL: "postgres://db/videohelper", MaxConns: 2},
-				ML:       MLConfig{Endpoints: []string{"http://ml:8000"}, Token: "test", QueryTimeout: time.Second, EmbedTimeout: time.Second},
+				ML:       MLConfig{Transcriber: "paraformer-zh@r1", Endpoints: []string{"http://ml:8000"}, Token: "test", QueryTimeout: time.Second, EmbedTimeout: time.Second},
 				S3:       S3Config{Bucket: "test", Region: "test", PresignTTL: time.Minute},
 				Search:   SearchConfig{K: 5, RRFK: 60, MaxLimit: 50, ChannelWeights: test.weights},
 				Channels: ChannelsConfig{
