@@ -190,7 +190,7 @@ internal/
 │   ├── reconcile.go / backfill.go # 补偿、ready 视频的缺失通道 / 空间回填
 │   ├── status.go        # 阶段状态
 │   └── stages/          # media.go / asr.go / encode.go：实际处理函数
-├── search/              # search.go / fuse.go：编码、召回、融合与证据
+├── search/              # models.go / search.go / fuse.go：模型目录与就绪校验、编码、召回、融合
 ├── usage/               # 当前记录 indexed_ms；配额与其他计量暂缓
 └── httpapi/             # httpapi.go / library.go / search.go：路由、中间件与协议转换
 ```
@@ -516,6 +516,7 @@ type Info struct {
 }
 func (r *Registry) Sync(ctx context.Context) error             // 启动时执行，之后每 5 分钟刷新
 func (r *Registry) Get(id string) (Info, bool)
+func (r *Registry) List() []Info                               // 排序、深拷贝发现快照；包含禁用或无可路由端点的条目
 func (r *Registry) Resolve(id string) (endpoint string, ok bool) // 传给 mlclient
 func (r *Registry) Transcriber() (info mlclient.TranscriberInfo, endpoint string, ok bool)
 func (r *Registry) GetTranscriber(id string) (info mlclient.TranscriberInfo, endpoint string, ok bool)
@@ -525,8 +526,8 @@ type Channel struct {
     Doc    string   // video | text | audio
     Seg    string   // grid@v1 | sentence@v1
     Weight float64
-    Active []string // 查询用
-    Shadow []string // 只回填，不参与查询
+    Active []string // 默认查询用
+    Shadow []string // 回填；不参与默认查询，完成后可被显式选择
 }
 func (c *Channels) List() []Channel
 func (c *Channels) Get(name string) (Channel, bool)
@@ -632,11 +633,13 @@ type VectorHit struct { VideoID int64; Span timeline.Span; Distance float32; Ran
 func UpsertVectors(ctx context.Context, q db.Querier, rows []VectorRow) error
 func SearchVectors(ctx context.Context, pool *pgxpool.Pool, vq VectorQuery) ([]VectorHit, error) // 内部开事务，用 SET LOCAL 设置 HNSW 参数
 func EnsureVectorIndex(ctx context.Context, pool *pgxpool.Pool, channel string, sp VectorSpace) error // 只由 space add 调用：CREATE INDEX CONCURRENTLY IF NOT EXISTS；同名索引无效（上次建到一半失败）时先删再建
-func VectorIndexReady(ctx context.Context, q db.Querier, channel, spaceID string) (bool, error)      // 部分索引存在且有效；Channels.Validate 用
+func VectorIndexReady(ctx context.Context, q db.Querier, channel, spaceID string) (bool, error)      // 部分索引存在且有效；启动校验与模型选择共用
+type CoverageCounts struct { EligibleVideos, IndexedVideos int }
+func SpaceCoverage(ctx context.Context, q db.Querier, workspaceID int64, videoIDs []int64, channel, seg, spaceID, fingerprint string) (CoverageCounts, error) // 按工作区与范围检查冻结编码阶段是否完整完成
 func DeleteVideoChannel(ctx context.Context, q db.Querier, videoID int64, channel string) error
 func DeleteVideo(ctx context.Context, q db.Querier, videoID int64) error // 删除一个视频的全部向量和文本；软删除时由 pipeline 的 DropDerived 调用
 func DropSpace(ctx context.Context, pool *pgxpool.Pool, spaceID string, batch int) error // 分批删除向量，再删除部分索引
-func Coverage(ctx context.Context, q db.Querier, channel, spaceID string) (videos int, err error)
+func Coverage(ctx context.Context, q db.Querier, channel, spaceID string) (videos int, err error) // 全局已有向量的视频数，不用于面向用户的索引就绪判断
 
 type Word struct { W string `json:"w"`; S int `json:"s"`; E int `json:"e"` }
 type TextSpan struct {
@@ -710,9 +713,8 @@ type Query struct {
     ChannelWeights map[string]float64 // visual / speech / audio
     ChannelQueries map[string]string  // 为某个通道单独指定查询文字
     Limit          int
-    // 只给 eval 用：
-    OnlyChannels   []string
-    SpaceOverride  map[string]string  // 通道 → space
+    OnlyChannels   []string           // 内部 eval 使用，不暴露 HTTP
+    SpaceOverride  map[string]string  // 通道 → space；HTTP space_overrides
 }
 type ChannelHit struct { Channel string; Rank int }
 type Moment struct {
@@ -729,6 +731,7 @@ type Result struct {
     Skipped []string // 这次没参与的通道：编码或召回失败（提议）
 }
 func (s *Service) Search(ctx context.Context, p workspace.Principal, q Query) (Result, error)
+func (s *Service) Models(ctx context.Context, p workspace.Principal, scope library.Scope) ([]ChannelModels, error)
 ```
 
 #### agent（暂缓）
@@ -895,7 +898,7 @@ channels_file: config/channels.yaml
 
 ```yaml
 # 召回通道：同一能力换模型无需改 Go；先安装插件、启动端点、登记并建索引。
-# active：参与查询；shadow：只回填和评估，不参与查询。
+# active：默认查询；shadow：回填与评估，索引就绪后可被单次请求显式选择。
 channels:
   visual:
     doc: video              # 文档输入类型，必须在 space 的 doc_inputs 里
@@ -1201,7 +1204,7 @@ LIMIT $2;                                      -- 每轮最多回填多少个视
 | 彻底清除（规划） | 软删除超过 `limits.soft_delete_purge_after`（期限待定）后，purge 任务先删 S3 前缀，再删 video 行，其余数据级联删除 |
 | ASR 重跑 | asr 阶段在一个事务里替换全部 speech 句子并删掉旧的 speech 向量（`ReplaceSpeech`），之后它的下游 `embed:speech:*` 一起重置并重新编码。触发重跑的入口首版不做，见设计文档问题 25 |
 | 重置阶段 | 重置一个阶段（重试、重跑）时，它的全部下游阶段一起重置为 pending，保证派生数据和来源一致 |
-| 换模型 | 接入时先执行 `videohelper space add`，再写进 channels.yaml 的 shadow；新 space 的向量写在新的 space_id 下，与旧数据并存；提为 active 前不参与查询；下线清理与 `space drop` 子命令尚未实现 |
+| 换模型 | 接入时先执行 `videohelper space add`，再写进 channels.yaml 的 shadow；新 space 的向量写在新的 space_id 下，与旧数据并存；索引就绪后可被显式选择，提为 active 后参与默认查询；下线清理与 `space drop` 子命令尚未实现 |
 | 切片规则升级 | seg 版本号变化（如 grid@v2）；新旧 seg 的向量并存，查询按 channels 配置里的 seg 过滤；切换后删除旧 seg。存量视频重跑的入口首版不做，见设计文档问题 25 |
 
 ### 3.6 迁移
@@ -1317,6 +1320,7 @@ LIMIT $2;                                      -- 每轮最多回填多少个视
 | `POST /v1/videos/{id}/retry` | 重试失败阶段 | 已实现 |
 | `GET /v1/videos/{id}/playback` | 预签名播放地址 | 已实现 |
 | `POST /v1/search` | 搜索 ready 视频中的时间片段 | 已实现 |
+| `POST /v1/search/models` | 按搜索范围列出各通道模型、默认值与索引就绪状态 | 已实现 |
 | `POST /v1/imports` | YouTube、哔哩哔哩链接导入 | 规划 |
 | `POST /v1/videos/{id}/upload-parts` | 重新签发过期的分片 URL | 规划 |
 | `GET /v1/videos/{id}/events` | SSE 索引进度 | 规划；当前轮询详情 |
@@ -1472,27 +1476,75 @@ data: {"video_id":"42","status":"ready"}
 - 每 15 秒发一行心跳注释，防止代理断开空闲连接。
 - 首版不支持 `Last-Event-ID` 断点续传。重连后前端先调一次 `GET /v1/videos/{id}` 对齐状态。
 
+#### `POST /v1/search/models`
+
+只读目录使用 POST 以复用搜索的 JSON 范围格式。需要 JWT，工作区由认证中间件确定；不接受调用方指定工作区身份。请求 `{}` 表示当前工作区全部视频，`project_id` 与 `video_ids` 互斥，显式空数组表示空范围；外部或已删除的视频 / 项目返回 404。不接收 query、time_range、limit。
+
+```jsonc
+// 请求
+{ "project_id": "7" }
+// 200，示例只展示 visual；实际包含所有已配置通道
+{
+  "channels": [{
+    "channel": "visual",
+    "doc_input": "video",
+    "default_space_ids": ["wemm-2b@r1"],
+    "default_weight": 1,
+    "models": [{
+      "space_id": "wemm-2b@r1",
+      "doc_inputs": ["video", "text", "image"],
+      "query_inputs": ["text"],
+      "status": "ready",
+      "eligible_videos": 2,
+      "indexed_videos": 2
+    }]
+  }]
+}
+```
+
+`default_space_ids` 是当前 active；`default_weight` 是默认**查询乘数**（未配置时 1），与 `channel_weights` 同义，仍会乘通道基础权重。`models` 包含发现且能力兼容的空间，以及当前 active/shadow 中尚不可用的空间；不包含 ASR transcriber。多模态空间可出现在多个通道；未配置的新兼容空间也可展示。ID 唯一且有序，数组没有内容时为 `[]`；响应不暴露 ML 端点或令牌。
+
+| status | 含义 |
+|---|---|
+| `ready` | 模型可路由且兼容、部分 HNSW 索引有效、范围内所有适用视频编码完成 |
+| `index_missing` | 对应通道 / 空间的 HNSW 索引尚不存在或无效 |
+| `indexing` | 适用视频中至少一条尚未完成当前模型的编码，含失败或待回填 |
+| `incompatible` | 已配置空间缺少文字查询 / 该通道文档能力，或无法处理 2.5 秒格子 |
+| `unavailable` | 发现快照中缺失，或端点绑定不可用 / 同 ID 多提供者无法路由 |
+| `disabled` | 空间因身份冲突或管理操作被停用 |
+
+覆盖计数仅针对该工作区 / 项目 / 视频范围中 ready、未删除且具备所需媒体的视频：visual 要有画面，speech/audio 要有音轨。已完成数来自 `stage_run.status=done`，且冻结计划的通道、seg、space.ID、space.Fingerprint 都匹配；不以“已有一条向量”判断完整性。静音 speech 完成但无句子也算完成。零适用视频为 0/0，在模型和 HNSW 索引就绪时仍为 ready；表示没有待完成的视频，不保证有命中。未就绪模型的计数应结合 status 解读。
+
+目录是发现与索引状态的快照，不主动调用推理、安装、建索引或回填。搜索提交时再次校验显式模型；就绪按整条视频判断，搜索中的 `time_range` 不缩小覆盖要求。
+
 #### `POST /v1/search`
 
 ```jsonc
 // 请求
 {
   "query": "海边有人弹吉他",           // 必填
-  "project_id": "7",                  // 可选，与 video_ids 二选一；都不给 = 当前工作区的全部视频
-  "video_ids": ["42", "43"],          // 可选
+  "project_id": "7",                  // 可选，也可改用 video_ids: ["42", "43"]；不能同时提供
   "time_range": { "start_ms": 0, "end_ms": 600000 },   // 可选，视频内的时间段
-  "limit": 20                         // 默认 20，最大 50
+  "limit": 20,                        // 默认 20，最大 50
+  "space_overrides": {                // 可选：每路一个 space ID，未提供的路沿用 active
+    "visual": "wemm-2b@r1",
+    "speech": "wemm-2b@r1",
+    "audio": "clap-htsat-unfused@r1"
+  },
+  "channel_weights": { "visual": 1, "speech": 1, "audio": 1 } // 可选，逐项覆盖默认查询乘数
 }
 // 200
 {
   "moments": [ /* Moment，按 score 降序 */ ],
-  "skipped_channels": ["audio"]       // 提议：这次没参与的通道（编码或召回失败）；都正常时为空数组
+  "skipped_channels": ["audio"]       // 编码或召回失败的通道；正常或权重为 0 时不计入
 }
 ```
 
-搜索框不暴露通道权重和通道查询这类参数，这些只给 Agent 用。
+`space_overrides` 与 `channel_weights` 已对 HTTP 开放，Web 选择控件尚未接入。权重必须是已配置通道的有限非负数，乘通道基础权重不能溢出；0 表示跳过查询，不停止后台索引。省略字段保持原默认行为；只选 audio 模型不会开启声音查询，还需将 audio 乘数设为正值。`ChannelQueries`、`OnlyChannels` 保留内部使用。
 
-某一路失败时跳过这一路，其余照常返回，前端可以提示「部分通道暂时不可用」；所有通道都失败才返回 503（`unavailable`）（提议）。
+每一个显式模型（包括权重为 0 的通道）都会检查：未知空间、未知通道、空 ID 或不兼容返回 400 `invalid_argument`；模型不可路由或 disabled 返回 503 `unavailable`；缺少 HNSW 索引或范围内编码不全返回 409 `not_ready`。即使空范围，也先验证显式选择。模型选择不改配置、不重建索引、不切换 ASR；不把请求自动换成另一个模型。相同模型维度不代表空间相同，查询编码及召回始终使用所选 ID / fingerprint。
+
+通过选择校验后，运行中某一路编码或召回失败时跳过这一路，其余照常返回；所有可用路线都失败才返回 503 `unavailable`。默认查询不增加完整覆盖要求，保持原有的降级行为。
 
 #### `POST /v1/chat/sessions`（暂缓）
 
@@ -1989,8 +2041,8 @@ Redis 里没有任何不能丢的数据。Redis 清空后，reconciler 会根据
 ### 8.2 算法步骤
 
 1. **校验**：`Text` 不能为空；`Limit` 不超过 `search.max_limit`。
-2. **解析范围**：`library.ResolveScope`。传了 project 就取项目里的视频；传了 video_ids 就逐个校验是否属于当前工作区；都没传就是当前工作区的全部视频（nil）。范围解析为空时直接返回空结果。
-3. **确定召回列表**：从 channels 配置取每个通道的 active 空间（eval 可以用 `SpaceOverride` 覆盖），得到若干个 (channel, space)。查询乘数先取 `search.channel_weights[channel]`（缺省 1），若请求显式提供 `ChannelWeights[channel]` 则替换默认乘数；再乘 channels 配置中的基础权重。有效权重为 0 的通道在编码前跳过，不删除其索引或停止索引生成。默认乘数必须指向已配置通道、有限非负、乘积不溢出，且至少保留一路 active 正权重路线。
+2. **解析范围与模型校验**：`library.ResolveScope` 校验工作区归属；未传范围就是全部视频（nil）。逐项校验 `SpaceOverride` 的能力、路由、HNSW 索引及本范围内完成编码的覆盖情况，规则与模型目录相同；不就绪直接报错。之后若范围为空，返回空结果。未指定模型时保持原查询行为。
+3. **确定召回列表**：默认每路取 active，显式 `SpaceOverride[channel]` 替换该路为一个空间，得到若干个 (channel, space)。查询乘数先取 `search.channel_weights[channel]`（缺省 1），若请求显式提供 `ChannelWeights[channel]` 则替换默认乘数；再乘 channels 配置中的基础权重。有效权重为 0 的通道在编码前跳过，不删除其索引或停止索引生成。默认乘数必须指向已配置通道、有限非负、乘积不溢出，且至少保留一路 active 正权重路线。
 4. **编码**：每个 (channel, space) 的查询文字是 `ChannelQueries[channel]`，没有就用 `Text`。按 (space, 文字) 去重后并行调用 `mlclient.Embed(role=query)`。某个编码失败（超时、503、504，或者空间已停用）时，用到它的通道记进 `Skipped`，不参与后面的召回（提议）。
 5. **召回**，全部并行：
    - 每个 (channel, space) 执行一次 `index.SearchVectors`，取前 K = `search.k` 条。
@@ -2357,7 +2409,7 @@ ml/.venv/bin/python Eval/tools/score.py compare --before Eval/runs/baseline-v1-a
 
 ### 11.3 把 shadow 提为 active 的检查清单
 
-下列是切换前的验收要求，当前评估工具未自动实现候选升级流程。先把受信任的插件安装到锁定环境并启动 profile，检查 `/readyz`、`/v1/spaces` 与 `/v1/runtime`；新空间先执行 `space add`，再加入 shadow 供回填。改变编码语义须用新 ID / fingerprint，不混用旧索引。
+下列是切换默认模型前的验收要求，当前评估工具未自动实现候选升级流程。先把受信任的插件安装到锁定环境并启动 profile，检查 `/readyz`、`/v1/spaces` 与 `/v1/runtime`；新空间先执行 `space add`，再加入 shadow、重启 api/worker 供发现与回填。目录 `POST /v1/search/models` 在目标范围显示 ready 后，可通过 `space_overrides` 单次试用，无须先提升为 active；请求不会自动安装插件或生成索引。改变编码语义须用新 ID / fingerprint，不混用旧索引。
 
 1. 评估集上 recall@10 和 MRR 不低于当前的 active。
 2. coverage 达到 100%。

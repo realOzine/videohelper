@@ -75,6 +75,11 @@ func (c *Channels) List() []Channel {
 	return out
 }
 
+func (c Channel) Compatible(info Info) bool {
+	return slices.Contains(info.DocInputs, c.Doc) && slices.Contains(info.QueryInputs, "text") &&
+		((c.Doc != "video" && c.Doc != "audio") || info.MaxSpanMs >= 2500)
+}
+
 func (c *Channels) Validate(ctx context.Context, r *Registry) error {
 	for _, channel := range c.List() {
 		if channel.Name == "speech" {
@@ -88,11 +93,8 @@ func (c *Channels) Validate(ctx context.Context, r *Registry) error {
 				if !ok || info.Disabled {
 					return fmt.Errorf("channel %s space %s is unavailable or disabled", channel.Name, id)
 				}
-				if !slices.Contains(info.DocInputs, channel.Doc) || !slices.Contains(info.QueryInputs, "text") {
+				if !channel.Compatible(info) {
 					return fmt.Errorf("channel %s space %s lacks required inputs", channel.Name, id)
-				}
-				if (channel.Doc == "video" || channel.Doc == "audio") && info.MaxSpanMs < 2500 {
-					return fmt.Errorf("space %s cannot encode grid@v1 cells", id)
 				}
 				ready, err := index.VectorIndexReady(ctx, r.pool, channel.Name, id)
 				if err != nil {

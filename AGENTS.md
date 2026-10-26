@@ -28,7 +28,14 @@ Name Go tests `Test...` in `_test.go`, and Python tests `test_...`. Add meaningf
 
 History uses short imperative messages, sometimes `feat:` or `test:` prefixes. Commit small verified units. PRs should explain behavior, scope, relevant issues, and checks actually run.
 
-Use isolated worktrees for parallel execution with `gpt-6.1-sol` at high effort. The coordinator reviews, merges into `main`, then removes merged worktrees. Avoid development journals. Ponytail full applies: minimal complete changes, preserving validation, cancellation, and data safety.
+## Agent Development Workflow
+
+- Start each new implementation on a new feature branch in a new, isolated worktree. Keep `main` for reviewed changes.
+- Enable Ponytail FULL for every execution, including sub-agents: make minimal complete changes while preserving validation, cancellation, and data safety.
+- Use `gpt-6.1-sol` at high effort for implementation sub-agents. Give independent parallel tasks separate branches and worktrees based on the feature branch.
+- Work in small, verifiable units and commit frequently. Merge each completed and checked unit into the feature branch promptly.
+- Update affected documentation, especially `docs/design.md` and `docs/spec.md`, alongside implementation. Avoid development journals and redundant acceptance reports.
+- Review and verify the combined feature before merging it into `main`. Then remove the worktrees, merged task branches, and temporary services or artifacts created by this work; preserve unrelated changes, user data, and useful validation evidence.
 
 ## Current Implementation Boundary
 

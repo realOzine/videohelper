@@ -40,7 +40,7 @@ bin/videohelper local-video 1
 bin/videohelper local-search '如何搜索视频内容'
 ```
 
-声音通道采用 edit-mind 同款 CLAP HTSAT unfused 的 Python 原版权重。查询文字原样传入，英文转换后续再做。启用新通道后重启 api/worker；已有视频在 worker 启动及定期对账时补建缺失的声音索引，保留原有 ASR/画面索引和 `ready` 状态；切片版本变更的重建另行处理。默认查询关闭声音召回，但继续生成声音索引。需要搜索环境音时，将 `search.channel_weights.audio` 设为 1 并重启 API；`local-search` 每次启动读取配置。内部调用也可用显式 `Query.ChannelWeights["audio"]=1` 覆盖默认值。`channels.yaml` 的基础权重保持为 1，ASR 和原始音轨不受查询默认值影响。
+声音通道采用 edit-mind 同款 CLAP HTSAT unfused 的 Python 原版权重。查询文字原样传入，英文转换后续再做。启用新通道后重启 api/worker；已有视频在 worker 启动及定期对账时补建缺失的声音索引，保留原有 ASR/画面索引和 `ready` 状态；切片版本变更的重建另行处理。默认查询关闭声音召回，但继续生成声音索引。HTTP 搜索可传 `channel_weights.audio=1` 单次启用声音查询；全局默认则修改 `search.channel_weights.audio` 并重启 API，`local-search` 每次启动读取配置。`channels.yaml` 的基础权重保持为 1，ASR 和原始音轨不受查询默认值影响。
 
 ASR 允许起点有序的词、句时间重叠，合并范围取最早起点和最晚终点，保留原文。真实清单的 `adapter_version: 2` 会改变 ASR fingerprint；部署时同步更新并重启 Go 与 ML 服务。已有已完成索引仍可查询，旧计划和断点不会自动迁移到新 fingerprint，普通 retry 也不会改写它们；验证新行为请使用新上传或新的隔离 Eval run，保留旧基线。
 
@@ -59,6 +59,25 @@ npm --prefix web run dev                          # 改动即时刷新；npm --p
 浏览器上传直传对象存储，存储的 CORS 需要暴露 `ETag` 响应头（本地 MinIO 默认满足）。
 
 用 Ctrl-C 停止 Go/ML 进程，`make deps-down` 停止基础服务并保留数据卷。`make test-go`、`make vet` 检查 Go；Python 常规检查为 `uv --directory ml run pytest` 和 `uv --directory ml run ruff check .`。真实模型与 MinIO 网络测试需要显式 `VH_TEST_REAL_MODELS=1`、`VH_TEST_S3_ENDPOINT`，运行方式见 [测试文件](ml/tests/test_real_models.py)。CLAP 独立真实测试使用 `VH_TEST_REAL_CLAP=1`，见 [CLAP 测试](ml/tests/test_clap_real.py)。
+
+## 按检索通道选择模型（后端 API）
+
+已登录的调用方可先查询同一搜索范围的模型目录，再传入各路选择；未提供的模型 / 权重仍沿用默认值。接口只提供后端能力，Web 选择控件尚未接入。
+
+```sh
+# API_URL、TOKEN 使用当前 API 地址和有效 JWT；所有 ID 都是字符串。
+curl --fail-with-body "$API_URL/v1/search/models" \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"project_id":"7"}'
+
+curl --fail-with-body "$API_URL/v1/search" \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"query":"海边有人弹吉他","project_id":"7","space_overrides":{"visual":"wemm-2b@r1","speech":"wemm-2b@r1","audio":"clap-htsat-unfused@r1"},"channel_weights":{"audio":1}}'
+```
+
+目录按 `visual`、`speech`、`audio` 返回能力兼容的已发现空间、active/shadow 候选及状态。选择 `status=ready` 的空间；安装模型还不够，需要先 `space add` 建索引、加入 shadow、重启 api/worker 并完成回填。显式选择未完成索引的模型返回 409 `not_ready`；不兼容或未知选择返回 400，模型不可用返回 503，不会换成另一个模型。
+
+就绪检查按范围内 ready 视频的完整编码阶段计算，不以已有部分向量判断；没有适用视频时计数为 0/0。`speech` 选的是 ASR 文字的编码模型，不切换 ASR。当前 WeMM 不能用于 audio，CLAP 可用于 audio；同一多模态空间支持多路时可分别选择。请求不改变后台索引配置或后续请求的默认值。完整字段、范围与错误语义见 [Spec 接口定义](docs/spec.md#44-接口定义)。
 
 ## 模型插件与独立环境
 
