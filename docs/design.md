@@ -131,7 +131,7 @@ flowchart LR
 3. **只认契约，不认模型。** Go 只知道向量空间（space）的 id、维度和距离算法，代码里不出现任何模型名。
 4. **检索内核不依赖 LLM。** 搜索框和 Agent 共用同一个确定性的检索内核，内核可以单独测试、单独调参。
 5. **一切以时间为锚。** 所有检索结果、引用、跳转都用（视频, 起点, 终点）表示，和模型、切片方式无关。
-6. **先少后多。** 一个 Go 二进制分别启动 api、worker；Python 公共服务按 profile 独立安装依赖并启动进程，共用 ML 契约。当前有 WeMM MPS、ASR/CLAP CPU 与候选 WeMM CUDA 配置；业务数据仍集中在一个 Postgres、一个 Redis、一个对象存储。
+6. **先少后多。** 一个 Go 二进制分别启动 api、worker；Python 公共服务按 profile 独立安装依赖并启动进程，共用 ML 契约。当前有 WeMM MPS / CPU、ASR/CLAP CPU 与候选 WeMM CUDA 配置；业务数据仍集中在一个 Postgres、一个 Redis、一个对象存储。
 
 ### 3.2 用「变化场景」检验高内聚、低耦合
 
@@ -317,8 +317,11 @@ flowchart LR
 | Profile | 模型 / 设备 | 身份与用途 |
 |---|---|---|
 | `wemm-mps` | WeMM / MPS | `wemm-2b@r1`；video、text、image 文档与 text 查询 |
+| `wemm-cpu` | WeMM / CPU float32 | `wemm-2b-cpu@r1`；相同输入能力，独立空间，性能待验收 |
 | `speech-audio-cpu` | FunASR + CLAP / CPU | `paraformer-zh@r1` 转录；`clap-htsat-unfused@r1` 声音编码 |
 | `wemm-cuda` | WeMM / CUDA | `wemm-2b-cuda-experimental@r1`；独立候选，目标 GPU 验收暂缺 |
+
+架构图中的 WeMM 进程也可选择 `wemm-cpu`，运行于 Mac arm64 或 Linux amd64；仍调用同一个插件。CPU float32 与 MPS float16 的 fingerprint 不同，切换时按新空间回填和验证，不改变其他进程边界。
 
 同一模型的核心代码共用；硬件版本通过独立依赖锁文件、设备与执行配置交付。Mac MPS 原生运行，Linux CUDA 可用容器部署；CUDA 必须经过目标硬件验证。依赖兼容的插件可以共用进程，拆分进程不能替代共享 GPU 的资源限制。WeMM 查询与文档编码继续共用串行闸门；请求超时后，尚未退出的推理仍占用名额。
 
