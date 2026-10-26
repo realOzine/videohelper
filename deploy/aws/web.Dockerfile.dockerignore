@@ -1,0 +1,8 @@
+*
+!web/
+!web/**
+web/node_modules
+web/dist
+!deploy/
+!deploy/aws/
+!deploy/aws/nginx.conf

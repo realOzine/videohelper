@@ -1,0 +1,19 @@
+channels:
+  visual:
+    doc: video
+    seg: grid@v1
+    weight: 1
+    active: [wemm-2b-cuda-experimental@r1]
+    shadow: []
+  speech:
+    doc: text
+    seg: sentence@v1
+    weight: 1
+    active: [wemm-2b-cuda-experimental@r1]
+    shadow: []
+  audio:
+    doc: audio
+    seg: grid@v1
+    weight: 1
+    active: [clap-htsat-unfused@r1]
+    shadow: []
