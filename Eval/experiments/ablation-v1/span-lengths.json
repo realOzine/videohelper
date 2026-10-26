@@ -1,0 +1,22 @@
+{
+  "population": "fused rank-1 spans for all positive queries, including wrong-video predictions",
+  "unit": "ms",
+  "runs": {
+    "abl01-default": {
+      "n": 30,
+      "mean": 74216.66666666667,
+      "min": 15000,
+      "max": 120000,
+      "p50": 72500,
+      "p95": 120000
+    },
+    "abl02-combo06": {
+      "n": 30,
+      "mean": 20883.333333333332,
+      "min": 5000,
+      "max": 50000,
+      "p50": 17500,
+      "p95": 45000
+    }
+  }
+}

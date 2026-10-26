@@ -1,0 +1,94 @@
+{
+  "run_id": "abl02-combo06",
+  "baseline_run_id": "abl01-default",
+  "overrides": {
+    "k": 5,
+    "rrf-k": 60,
+    "merge-gap": 1
+  },
+  "fused_weights": {
+    "visual": 1,
+    "speech": 1,
+    "audio": 0
+  },
+  "search_config": {
+    "k": 5,
+    "rrf_k": 60,
+    "merge_gap_cells": 1,
+    "max_limit": 50
+  },
+  "fused_channel_weights": {
+    "multipliers": {
+      "visual": 1,
+      "speech": 1,
+      "audio": 0
+    },
+    "effective": {
+      "visual": 1.0,
+      "speech": 1.0,
+      "audio": 0.0
+    }
+  },
+  "selection_basis": {
+    "query_ids": [
+      "q001",
+      "q002",
+      "q003",
+      "q007",
+      "q008",
+      "q009",
+      "q013",
+      "q014",
+      "q015",
+      "q019",
+      "q020",
+      "q021",
+      "q025",
+      "q026",
+      "q027",
+      "q031",
+      "q032",
+      "q033"
+    ],
+    "mode": "fused",
+    "objective": "mean(jump_hit@1, tiou_0.5_recall@1)",
+    "guardrail": "video_recall@1 and @5 >= baseline on development",
+    "tie_break": "tiou_0.3_recall@1 desc, best_tiou desc, k asc, run_id asc",
+    "ranking": [
+      "abl02-combo06",
+      "abl02-combo09",
+      "abl01-k5",
+      "abl02-combo08",
+      "abl02-combo03",
+      "abl02-combo10",
+      "abl01-only-speech",
+      "abl02-combo07",
+      "abl02-combo02",
+      "abl02-combo01",
+      "abl02-combo05",
+      "abl02-combo04",
+      "abl01-no-speech",
+      "abl01-gap0",
+      "abl02-combo12",
+      "abl01-audio0",
+      "abl02-combo17",
+      "abl02-combo16",
+      "abl01-default",
+      "abl01-rrf100",
+      "abl01-rrf30",
+      "abl01-speech2",
+      "abl02-combo18",
+      "abl01-audio0p25",
+      "abl01-audio0p5",
+      "abl02-combo11",
+      "abl02-combo14",
+      "abl02-combo15",
+      "abl02-combo13",
+      "abl01-rrf10",
+      "abl01-speech0p5",
+      "abl01-visual2"
+    ]
+  },
+  "recommendation": "pending_final_verification",
+  "verification_performed": false
+}

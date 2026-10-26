@@ -235,8 +235,41 @@ class ScoreTests(unittest.TestCase):
         changed_code = score.evaluate(items, responses(items), metadata(code_revision="new"))
         delta = score.compare_reports(before, changed_code)
         self.assertTrue(delta["fixed_index_regression"])
-        self.assertTrue(delta["identical_retrieval_conditions"])
+        self.assertFalse(delta["identical_retrieval_conditions"])
         self.assertIn("code_revision", delta["metadata_changes"])
+
+    def test_fused_weight_changes_are_changed_conditions_on_fixed_index(self):
+        items = [query()]
+        weights = {"multipliers": {"visual": 1, "speech": 1, "audio": 1},
+                   "effective": {"visual": 1, "speech": 1, "audio": 1}}
+        before = score.evaluate(items, responses(items), metadata(fused_channel_weights=weights))
+        changed = copy.deepcopy(weights)
+        changed["multipliers"]["speech"] = 2
+        changed["effective"]["speech"] = 2
+        after = score.evaluate(items, responses(items), metadata(fused_channel_weights=changed))
+        delta = score.compare_reports(before, after)
+        self.assertTrue(delta["fixed_index_regression"])
+        self.assertFalse(delta["identical_retrieval_conditions"])
+        self.assertNotIn("channels", delta["metadata_changes"])
+        self.assertTrue(score.compare_reports(before, before)["identical_retrieval_conditions"])
+        legacy = score.evaluate(items, responses(items), metadata())
+        # Legacy reports do not prove that their effective weights matched.
+        self.assertFalse(score.compare_reports(legacy, before)["identical_retrieval_conditions"])
+        self.assertFalse(score.compare_reports(legacy, legacy)["identical_retrieval_conditions"])
+        self.assertTrue(score.compare_reports(legacy, before)["fixed_index_regression"])
+        for unknown in (None, {}, {"multipliers": {}},
+                        {"multipliers": {"visual": 1}, "effective": {"visual": 1}},
+                        {"multipliers": weights["multipliers"], "effective": {"visual": float("nan")}}):
+            with self.subTest(unknown=unknown):
+                report = copy.deepcopy(before)
+                report["metadata"]["fused_channel_weights"] = unknown
+                delta = score.compare_reports(report, report)
+                self.assertFalse(delta["identical_retrieval_conditions"])
+                self.assertTrue(delta["fixed_index_regression"])
+        disabled = copy.deepcopy(before)
+        for kind in ("multipliers", "effective"):
+            disabled["metadata"]["fused_channel_weights"][kind]["audio"] = 0
+        self.assertTrue(score.compare_reports(disabled, disabled)["identical_retrieval_conditions"])
 
 
 if __name__ == "__main__":

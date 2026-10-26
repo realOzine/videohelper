@@ -1,0 +1,8 @@
+{
+  "supersedes_selection_commit": "cd7846f",
+  "reason": "Equal integer hit totals must tie: (3/15+6/15)/2 previously exceeded (4/15+5/15)/2 by floating-point rounding. Divide the summed hit counts once.",
+  "selected_run_id": "abl02-combo06",
+  "selected_candidate_unchanged": true,
+  "stage2_derivation_unchanged": true,
+  "verification_viewed": false
+}

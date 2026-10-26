@@ -6,6 +6,8 @@
 
 固定的小型合成视频库 `videohelper-synthetic-v1` 包含 **5 个视频，30 条有答案查询，5 条无答案查询，总长 8 分 18 秒**。真实索引验收、快照保存/恢复、固定索引检索和评分工具已实现；执行方法、结果判读与数据保留规则见 [基线运行说明](RUNBOOK.md)，接口与验收边界见 [评估契约](CONTRACT.md)。工具已实现不代表真实模型质量基线已经通过；以具体运行报告为准。
 
+固定模型参数消融已形成独立的[对比报告与复跑流程](experiments/ablation-v1/REPORT.md)：41 组参数及两次重复运行，候选改善定位，全量跳转仍未改善。机器可读对照保存在 `baselines/ablation-v1-default.json` 和 `baselines/ablation-v1-selected.json`；生产默认参数未修改。
+
 ## 先看成片
 
 打开 [视频与标注复核页](review/index.html)，点击每条描述可跳到对应位置。推荐在仓库根目录启动支持视频分段读取的本地预览：
@@ -80,6 +82,7 @@ Eval/
   review/          复核页面、成片代表帧、校验报告
   baselines/       保留的机器可读基线汇总
   analysis/        检索质量结论与后续实验建议
+  experiments/     冻结实验方案、参数消融和比较结论
   defects/         缺陷结论、回归测试及所需 frozen ASR fixtures
 ```
 
