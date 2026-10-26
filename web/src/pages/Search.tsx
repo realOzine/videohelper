@@ -177,7 +177,7 @@ export default function Search() {
                 <header className="mb-3.5 flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-ink-3 pb-2.5">
                   <h2 id={`g${g.id}`} className="text-[17px] font-semibold">{g.items[0].m.video_title}</h2>
                   {dur ? <span className="text-fg-soft">{tc(dur)}</span> : null}
-                  <span className="inline-flex h-5 items-center rounded-full bg-ink-3 px-[7px] text-xs">{t('s.hits', { n: g.items.length })}</span>
+                  <span className="inline-flex h-5 items-center rounded-full bg-ink-3 px-[7px] text-xs">{t(g.items.length === 1 ? 's.hit' : 's.hits', { n: g.items.length })}</span>
                   <a className="ml-auto inline-flex items-center gap-0.5 font-medium text-fg-soft transition-colors hover:text-fg" href={`video.html?id=${g.id}`}>{t('s.openvideo')}<Icon.chevron className="size-3" /></a>
                 </header>
                 <div className="grid grid-cols-4 gap-6 max-xl:grid-cols-3 max-md:grid-cols-2 max-xs:grid-cols-1">
@@ -233,7 +233,7 @@ export default function Search() {
             <div className="border-b border-ink-3 px-5 pt-4 pb-[18px]">
               <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                 <h3 className="font-medium">{t('h.lanes')}</h3>
-                <span className="text-xs text-faint">{t('s.lanecap', { n: mine.length })}</span>
+                <span className="text-xs text-faint">{t(mine.length === 1 ? 's.lanecap1' : 's.lanecap', { n: mine.length })}</span>
               </div>
               <div className="grid grid-cols-[40px_minmax(0,1fr)] gap-3">
                 <span className="grid auto-rows-[18px] items-center gap-1.5" aria-hidden>

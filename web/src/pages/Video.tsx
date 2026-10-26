@@ -101,7 +101,7 @@ export default function Video() {
           <section aria-label={t('a.video')} className={cx(panelBase, 'mb-6 flex items-center gap-4 p-3.5 max-md:flex-wrap')}>
             <Thumb thumb={v.thumbnail} label={t('frame.of', { t: v.title })} className="w-28" />
             <div className="min-w-0">
-              <h1 className="disp flex flex-wrap items-center gap-2.5 text-xl leading-[1.3]">{v.title} <Pill status={v.status} /></h1>
+              <h1 className="flex flex-wrap items-center gap-2.5 text-xl leading-[1.3] font-semibold">{v.title} <Pill status={v.status} /></h1>
               <div className="mt-1 text-[13px] text-fg-soft">{v.duration_ms ? `${tc(v.duration_ms)} · ` : ''}{t('v.upload')} · {tracks(v)} · {t('v.added', { w: when(v.created_at) })}</div>
             </div>
             <div className="ml-auto flex flex-wrap gap-2 max-md:ml-0 max-md:w-full">

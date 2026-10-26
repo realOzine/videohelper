@@ -9,7 +9,7 @@ addStrings({
     'ch.visual': '画面', 'ch.speech': '台词', 'ch.audio': '声音', rank: '{ch} 第 {n} 名',
     'view.h': '拖一下就停在\n命中的那一秒', 'view.p': '每个结果都是一段时间。红线标出命中的几秒，在缩略帧上拖动就能逐帧预览；下面三格告诉你是画面、台词还是声音命中的。',
     'app.search': '搜索', 'app.lib': '资料库', 'app.proc': '处理中', 'app.qlabel': '描述画面、台词或声音', 'app.go': '搜索', 'app.count': '{n} 个片段 · 按相关度排序', 'app.nomatch': '示例库里没找到「{q}」，试试下面这几句',
-    'demo.views': '结果视图', 'demo.dir': '目录', 'demo.det': '详情', 'demo.back': '返回目录', 'demo.hits': '命中 {n} 处', 'demo.more': '还有 {n} 个视频 · 切到「详情」看全部片段', 'demo.ruler': '演示时间尺',
+    'demo.views': '结果视图', 'demo.dir': '目录', 'demo.det': '详情', 'demo.back': '返回目录', 'demo.hits': '命中 {n} 处', 'demo.hit': '命中 {n} 处', 'demo.more': '还有 {n} 个视频 · 切到「详情」看全部片段', 'demo.more1': '还有 {n} 个视频 · 切到「详情」看全部片段', 'demo.ruler': '演示时间尺',
     'done': '完成', 'stage.visual': '画面编码', 'stage.asr': '语音转录', 'stage.audio': '声音编码',
     'pl.h': '一个视频的\n全部线索', 'how.label': '处理步骤',
     'cta.q1': '先传一段视频', 'cta.q2': '还是先看演示', 'cta.up': '上传视频', 'cta.or': '或', 'cta.demo': '打开完整工作台', 'cta.after': '工作台需要登录；上面的迷你版用的是示例视频。',
@@ -22,7 +22,7 @@ addStrings({
     'ch.visual': 'Picture', 'ch.speech': 'Speech', 'ch.audio': 'Sound', rank: '{ch} #{n}',
     'view.h': 'Scrub to the second it matched', 'view.p': 'Every result is a span of time. The red line marks the seconds that matched; drag across the frames to preview them, and the three tiles below say whether picture, speech or sound matched.',
     'app.search': 'Search', 'app.lib': 'Library', 'app.proc': 'Processing', 'app.qlabel': 'Describe a scene, a line or a sound', 'app.go': 'Search', 'app.count': '{n} moments · by relevance', 'app.nomatch': 'Nothing for “{q}” in the sample library; try one of these',
-    'demo.views': 'Result view', 'demo.dir': 'Gallery', 'demo.det': 'Detail', 'demo.back': 'Back to gallery', 'demo.hits': '{n} hits', 'demo.more': '{n} more videos · switch to Detail for every moment', 'demo.ruler': 'Demo timeline',
+    'demo.views': 'Result view', 'demo.dir': 'Gallery', 'demo.det': 'Detail', 'demo.back': 'Back to gallery', 'demo.hits': '{n} hits', 'demo.hit': '{n} hit', 'demo.more': '{n} more videos · switch to Detail for every moment', 'demo.more1': '{n} more video · switch to Detail for every moment', 'demo.ruler': 'Demo timeline',
     'done': 'Done', 'stage.visual': 'Picture encoding', 'stage.asr': 'Transcription', 'stage.audio': 'Sound encoding',
     'pl.h': 'Everything one video can tell you', 'how.label': 'Processing steps',
     'cta.q1': 'Upload a video', 'cta.q2': 'or see the demo', 'cta.up': 'Upload a video', 'cta.or': 'or', 'cta.demo': 'Open the full workbench', 'cta.after': 'The workbench needs sign-in; the mini version above runs on sample clips.',
@@ -33,7 +33,7 @@ addStrings({
 export const CLIP: Record<string, [string, string, number, number, string]> = {
     jelly: ['幻影水母', 'Phantom jellyfish', 0, 8, 'p1'], reef: ['珊瑚礁鱼群', 'Coral reef fishes', 0, 8, 'p1'], surf: ['特拉维夫冲浪', 'Surfing in Tel Aviv', 0, 8, 'p1'],
     rocket: ['火箭夜间发射', 'Night rocket launch', 1.5, 5.5, 'p2'], earth: ['空间站俯瞰地球', 'Earth from the ISS', 33, 8, 'p2'], iss: ['空间站与地球', 'The station over Earth', 72, 8, 'p2'],
-    sintel: ['Sintel 预告片', 'Sintel trailer', 24, 7, 'p3'], bunny: ['Big Buck Bunny', 'Big Buck Bunny', 0, 6, 'p3'],
+    sintel: ['Sintel 预告片', 'Sintel trailer', 24, 6.6, 'p3'], bunny: ['Big Buck Bunny', 'Big Buck Bunny', 0, 6, 'p3'],
   };
 export type Hit = [string, [string, number][], number, number];
 // a query → ranked moments: [clip, [channel, rank]…, hit start, hit end] (seconds inside the clip, on the 2.5 s grid)

@@ -61,6 +61,7 @@
 
 @layer base {
   html { -webkit-text-size-adjust: 100%; color-scheme: dark; }
+  p { text-wrap: pretty; }
   body { background: var(--color-ink); color: var(--color-fg); -webkit-font-smoothing: antialiased; font-variant-numeric: tabular-nums; }
   :focus-visible { outline: 2px solid var(--color-red); outline-offset: 3px; }
   button { cursor: pointer; }

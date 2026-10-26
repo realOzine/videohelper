@@ -61,7 +61,7 @@ export default function Landing() {
           <p className={cx('disp', l ? 'text-(length:--step-display) max-sm:text-[16vw]' : 'text-[clamp(56px,7vw,120px)] max-sm:text-[12vw]')}>{t('cta.q2')}</p>
         </section>
       </main>
-      <footer className="pt-[26svh] pr-(--mr) pb-[30px] pl-(--m) text-(length:--step-small) max-sm:pt-[20svh]">
+      <footer className="pt-[12svh] pr-(--mr) pb-[30px] pl-(--m) text-(length:--step-small) max-sm:pt-[10svh]">
         <div className="grid grid-cols-[1fr_auto_1fr] items-baseline gap-6 max-sm:grid-cols-1 max-sm:gap-2">
           <span className="text-fg-soft">{t('ft.what')}</span>
           <nav aria-label={t('ft.nav')} className="flex gap-6 [&>a]:underline-offset-4 [&>a:hover]:underline">
@@ -96,7 +96,7 @@ function Hero({ l }: { l: 0 | 1 }) {
           <p className="mt-8 max-w-[44ch]">{t('hero.lede')}</p>
           <div className="mt-11">
             <a className={cx(btn, 'bg-red-fill text-white hover:bg-red')} href="#demo-q" onClick={(e) => { e.preventDefault(); document.getElementById('demo-q')?.focus(); }}>{t('hero.btn')}<Icon.arrow /></a>
-            <span className="mt-4 block text-(length:--step-small) whitespace-nowrap text-fg-soft max-sm:whitespace-normal">{t('hero.note')}</span>
+            <span className="mt-4 block text-(length:--step-small) text-fg-soft">{t('hero.note')}</span>
           </div>
         </div>
         <ul aria-label={t('wall.label')} className="mt-16 grid max-w-[540px] grid-cols-3 gap-2 max-sm:hidden">

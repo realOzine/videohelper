@@ -2,7 +2,7 @@
 import { addStrings } from './i18n.ts';
 
 addStrings({
-    'a.nav': '主导航', 'a.closenav': '关闭导航', 'a.views': '结果视图', 'v.dir': '目录', 'v.det': '详情', 's.back': '返回目录 · {n} 个视频', 's.hits': '命中 {n} 处', 's.nth': '第 {n} 个', 's.openvideo': '打开视频', 'st.importing': '导入中', 'top.account': '账号与登录', 'top.ws': '工作区 {id}',
+    'a.nav': '主导航', 'a.closenav': '关闭导航', 'a.views': '结果视图', 'v.dir': '目录', 'v.det': '详情', 's.back': '返回目录 · {n} 个视频', 's.hits': '命中 {n} 处', 's.hit': '命中 {n} 处', 's.nth': '第 {n} 个', 's.openvideo': '打开视频', 'st.importing': '导入中', 'top.account': '账号与登录', 'top.ws': '工作区 {id}',
     'stage.probe': '读取媒体信息', 'stage.prepare_media': '转码与缩略图', 'stage.visual': '画面编码', 'stage.asr': '语音转录', 'stage.speech': '台词编码', 'stage.audio': '声音编码', 'stage.finalize': '完成',
     queued: '排队中', 'err.network': '连不上 API（{base}），请检查地址和服务是否在运行。', 'p.name': '项目名称',
     's.title': '搜索', 's.empty': '输入一句话，在全部视频里找画面、台词或声音。', 's.none': '没有找到相关片段。', 's.skipped': '{chs}暂时不可用，结果只来自其余通道。',
@@ -19,7 +19,7 @@ addStrings({
     'nav.search': '搜索', 'nav.library': '资料库', 'nav.failed.aria': '{n} 个失败', 'nav.failed': '{n} 失败', 'nav.projects': '项目', 'nav.newproject': '新建项目',
     'top.menu': '打开导航', 'top.searchlabel': '搜索视频内容', 'top.placeholder': '描述画面、台词或声音', 'top.me': '我',
     's.sub': '{n} 个片段，来自 {v} 个视频。最接近的是<b>《{title}》{tc}</b>，{chs}都命中。', 's.count': '{n} 个片段',
-    rank: '{ch} 第 {n} 名', 'rank.b': '<b>{ch}</b> 第 {n} 名', 's.noaudio': '无音轨', 's.lanecap': '本视频命中 {n} 处', 's.valuetext': '{a}，共 {b}',
+    rank: '{ch} 第 {n} 名', 'rank.b': '<b>{ch}</b> 第 {n} 名', 's.noaudio': '无音轨', 's.lanecap': '本视频命中 {n} 处', 's.lanecap1': '本视频命中 {n} 处', 's.valuetext': '{a}，共 {b}',
     's.meta': '，共 {secs} 秒，从 {tc} 开始', 's.pos': '第 {n} 个', pause: '暂停', play: '播放',
     'l.sub': '{n} 个视频，{r} 个可以搜索，{i} 个处理中。', 'l.sub.failed': '<b>《{t}》{e}</b>，需要重试。', 'l.submitted': '已提交，开始处理', parts: '{a} / {b} 分片',
     'l.failedtries': '{s}失败 · 已试 {n} 次', retry: '重试', 'tab.all': '全部', 'l.total': '共 {n} 个视频',
@@ -38,7 +38,7 @@ addStrings({
     'th.video': '视频', 'th.status': '状态', 'th.dur': '时长', 'th.proj': '项目', 'th.added': '添加时间', 'th.actions': '操作',
     'h.progress': '处理进度', 'h.vsearch': '在这个视频里搜索', 'b.search': '搜索', 'h.info': '视频信息', 'a.video': '视频', 'a.player': '播放器',
 }, {
-    'a.nav': 'Main navigation', 'a.closenav': 'Close navigation', 'a.views': 'Result view', 'v.dir': 'Gallery', 'v.det': 'Detail', 's.back': 'Back to gallery · {n} videos', 's.hits': '{n} hits', 's.nth': '#{n}', 's.openvideo': 'Open video', 'st.importing': 'Importing', 'top.account': 'Account and sign-in', 'top.ws': 'Workspace {id}',
+    'a.nav': 'Main navigation', 'a.closenav': 'Close navigation', 'a.views': 'Result view', 'v.dir': 'Gallery', 'v.det': 'Detail', 's.back': 'Back to gallery · {n} videos', 's.hits': '{n} hits', 's.hit': '{n} hit', 's.nth': '#{n}', 's.openvideo': 'Open video', 'st.importing': 'Importing', 'top.account': 'Account and sign-in', 'top.ws': 'Workspace {id}',
     'stage.probe': 'Read media info', 'stage.prepare_media': 'Transcode and thumbnails', 'stage.visual': 'Picture encoding', 'stage.asr': 'Transcription', 'stage.speech': 'Speech encoding', 'stage.audio': 'Sound encoding', 'stage.finalize': 'Finish',
     queued: 'Queued', 'err.network': 'Cannot reach the API at {base}. Check the address and that the service is running.', 'p.name': 'Project name',
     's.title': 'Search', 's.empty': 'Describe a scene, a line or a sound to search every video.', 's.none': 'No matching moments.', 's.skipped': '{chs} unavailable for now; results come from the other channels.',
@@ -55,7 +55,7 @@ addStrings({
     'nav.search': 'Search', 'nav.library': 'Library', 'nav.failed.aria': '{n} failed', 'nav.failed': '{n} failed', 'nav.projects': 'Projects', 'nav.newproject': 'New project',
     'top.menu': 'Open navigation', 'top.searchlabel': 'Search your videos', 'top.placeholder': 'Describe a scene, a line or a sound', 'top.me': 'Me',
     's.sub': '{n} moments from {v} videos. The closest is <b>{title} at {tc}</b>, matched by {chs}.', 's.count': '{n} moments',
-    rank: '{ch} #{n}', 'rank.b': '<b>{ch}</b> #{n}', 's.noaudio': 'No audio track', 's.lanecap': '{n} hits in this video', 's.valuetext': '{a} of {b}',
+    rank: '{ch} #{n}', 'rank.b': '<b>{ch}</b> #{n}', 's.noaudio': 'No audio track', 's.lanecap': '{n} hits in this video', 's.lanecap1': '{n} hit in this video', 's.valuetext': '{a} of {b}',
     's.meta': ', {secs} s, plays from {tc}', 's.pos': 'Showing {n}', pause: 'Pause', play: 'Play',
     'l.sub': '{n} videos: {r} searchable, {i} processing. ', 'l.sub.failed': '<b>{t}</b>: {e}, needs a retry.', 'l.submitted': 'Submitted, processing starts', parts: '{a} / {b} parts',
     'l.failedtries': '{s} failed · tried {n} times', retry: 'Retry', 'tab.all': 'All', 'l.total': '{n} videos',

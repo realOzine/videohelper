@@ -129,7 +129,7 @@ export default function HeroStage({ l }: { l: 0 | 1 }) {
               let k = vids.slice(0, vi).reduce((n, x) => n + x.hits.length, 0);
               return (
                 <div key={v.title[0]} className="mb-3.5">
-                  <div className="mb-2 flex items-baseline gap-2"><b className="font-semibold">{v.title[l]}</b><span className="text-xs text-faint">{v.dur}</span><span className="h-[18px] rounded-full bg-ink-3 px-1.5 text-[11px] leading-[18px]">{t('demo.hits', { n: v.hits.length })}</span></div>
+                  <div className="mb-2 flex items-baseline gap-2"><b className="font-semibold">{v.title[l]}</b><span className="text-xs text-faint">{v.dur}</span><span className="h-[18px] rounded-full bg-ink-3 px-1.5 text-[11px] leading-[18px]">{t(v.hits.length === 1 ? 'demo.hit' : 'demo.hits', { n: v.hits.length })}</span></div>
                   <div className="grid grid-cols-4 gap-3 @max-xl:grid-cols-2 @max-xl:[&>*:nth-child(n+3)]:hidden">
                     {v.hits.slice(0, 4).map((h) => {
                       const gi = indexOf(h), shown = held || reduce || c.t >= TYPE + (k++) * 110, isTarget = gi === 0;
@@ -152,7 +152,7 @@ export default function HeroStage({ l }: { l: 0 | 1 }) {
                 </div>
               );
             })}
-            {vids.length > 3 && <p className="text-xs text-faint">{t('demo.more', { n: vids.length - 3 })}</p>}
+            {vids.length > 3 && <p className="text-xs text-faint">{t(vids.length === 4 ? 'demo.more1' : 'demo.more', { n: vids.length - 3 })}</p>}
           </div>
 
           {/* detail: player, lanes and the ranked list */}
