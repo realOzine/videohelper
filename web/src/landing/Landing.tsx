@@ -80,13 +80,14 @@ function Hero({ l }: { l: 0 | 1 }) {
   useEffect(() => { requestAnimationFrame(() => requestAnimationFrame(() => setShown(true))); }, []);
   const line = 'block transition-transform duration-[900ms] ease-out';
   return (
-    <header id="top" className="relative grid min-h-[min(100svh,940px)] grid-cols-[minmax(0,5fr)_minmax(0,7fr)] max-[900px]:min-h-0 max-[900px]:grid-cols-1">
+    <header id="top" className="relative grid min-h-[calc(100svh-96px)] grid-cols-[minmax(0,5fr)_minmax(0,7fr)] max-[900px]:min-h-0 max-[900px]:grid-cols-1">
       <a className="absolute top-[30px] left-(--m) z-[2] inline-flex items-center gap-2.5 font-semibold" href="#top"><Mark />VideoHelper</a>
       <div className="absolute top-[26px] right-(--mr) z-[2] flex items-center gap-5 text-(length:--step-small)">
         <a href="search.html" className="underline decoration-fg-soft underline-offset-[5px] max-sm:hidden">{t('nav.demo')}</a>
         <LangSwitch className="flex gap-0.5" button="h-11 min-w-11 whitespace-nowrap rounded-md px-2.5 text-fg-soft transition-colors duration-150 aria-pressed:bg-ink-3 aria-pressed:text-fg" />
       </div>
       <div className="flex flex-col justify-end pt-[120px] pr-8 pb-12 pl-(--m) max-[900px]:px-(--m) max-[900px]:pt-9 max-sm:pt-7">
+        <div className="w-fit max-w-full self-center max-[900px]:self-start">
         <h1 className={cx('disp', l ? 'text-[clamp(48px,5vw,88px)] max-[900px]:text-[11vw] max-sm:text-[12.5vw]' : 'text-[clamp(44px,4.86vw,84px)] max-[900px]:text-[8vw] max-sm:text-[11vw]')}>
           <span className="block overflow-hidden pb-[0.04em]"><span className={cx(line, !shown && 'translate-y-[105%]')}>{t('hero.h1a')}</span></span>
           <span className="block overflow-hidden pb-[0.04em] text-red"><span className={cx(line, 'delay-[110ms]', !shown && 'translate-y-[105%]')}>{t('hero.h1b')}</span></span>
@@ -106,6 +107,7 @@ function Hero({ l }: { l: 0 | 1 }) {
             </figure></li>
           ))}
         </ul>
+        </div>
       </div>
       <div className="pt-[88px] pr-8 pb-8 pl-2 max-[900px]:order-first max-[900px]:px-4 max-[900px]:pt-[84px] max-[900px]:pb-4 max-sm:pt-[72px]">
         <HeroStage l={l} />

@@ -66,7 +66,7 @@ export default function HeroStage({ l }: { l: 0 | 1 }) {
   };
 
   return (
-    <div ref={root} className="relative grid h-full place-items-center overflow-hidden rounded-[36px] bg-stage px-7 pt-10 pb-24 shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_40px_100px_-40px_rgba(0,0,0,0.55)] max-[900px]:rounded-3xl max-[900px]:px-3 max-[900px]:pt-3 max-[900px]:pb-16">
+    <div ref={root} className="relative flex h-full flex-col overflow-hidden rounded-[36px] bg-stage px-5 pt-5 pb-[84px] shadow-[inset_0_1px_0_rgba(255,255,255,0.03),0_40px_100px_-40px_rgba(0,0,0,0.55)] max-[900px]:rounded-3xl max-[900px]:px-3 max-[900px]:pt-3 max-[900px]:pb-16">
       <div className="scanlines pointer-events-none absolute inset-0" aria-hidden />
 
       {/* the timeline ruler; its playhead is the demo's own clock */}
@@ -78,7 +78,7 @@ export default function HeroStage({ l }: { l: 0 | 1 }) {
         </span>
       </div>
 
-      <div className="@container relative flex h-[552px] w-full max-w-[744px] flex-col overflow-hidden rounded-[14px] bg-ink text-sm leading-5 text-fg shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_40px_90px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.04)] max-[900px]:h-[500px]"
+      <div className="@container relative flex min-h-[540px] w-full flex-1 flex-col overflow-hidden rounded-[14px] bg-ink text-sm leading-5 text-fg shadow-[inset_0_1px_0_rgba(255,255,255,0.06),0_40px_90px_rgba(0,0,0,0.5),0_0_0_1px_rgba(255,255,255,0.04)] max-[900px]:h-[500px]"
         onPointerDown={() => { if (!held) grab({}); }}>
         <div className="flex h-[46px] flex-none items-center gap-1 border-b border-ink-3 bg-ink-2 px-3">
           <span className="mr-2.5 inline-flex items-center gap-[7px] font-semibold @max-xl:hidden"><Mark className="size-[18px]" />VideoHelper</span>
@@ -129,8 +129,8 @@ export default function HeroStage({ l }: { l: 0 | 1 }) {
           {/* gallery: one row per video */}
           <div className={cx('absolute inset-0 overflow-hidden px-3 pt-1 transition-opacity duration-300', ph === 'gallery' ? 'opacity-100' : 'pointer-events-none opacity-0')}>
             {miss && <p className="mb-2 text-fg-soft">{miss}</p>}
-            {vids.slice(0, 2).map((v, vi) => {
-              let k = vi === 0 ? 0 : vids[0].hits.length;
+            {vids.slice(0, 3).map((v, vi) => {
+              let k = vids.slice(0, vi).reduce((n, x) => n + x.hits.length, 0);
               return (
                 <div key={v.title[0]} className="mb-3.5">
                   <div className="mb-2 flex items-baseline gap-2"><b className="font-semibold">{v.title[l]}</b><span className="text-xs text-faint">{v.dur}</span><span className="h-[18px] rounded-full bg-ink-3 px-1.5 text-[11px] leading-[18px]">{t('demo.hits', { n: v.hits.length })}</span></div>
@@ -156,7 +156,7 @@ export default function HeroStage({ l }: { l: 0 | 1 }) {
                 </div>
               );
             })}
-            {vids.length > 2 && <p className="text-xs text-faint">{t('demo.more', { n: vids.length - 2 })}</p>}
+            {vids.length > 3 && <p className="text-xs text-faint">{t('demo.more', { n: vids.length - 3 })}</p>}
           </div>
 
           {/* detail: player, lanes and the ranked list */}
