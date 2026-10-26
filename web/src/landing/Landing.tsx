@@ -86,20 +86,20 @@ function Hero({ l }: { l: 0 | 1 }) {
         <a href="search.html" className="underline decoration-fg-soft underline-offset-[5px] max-sm:hidden">{t('nav.demo')}</a>
         <LangSwitch className="flex gap-0.5" button="h-11 min-w-11 whitespace-nowrap rounded-md px-2.5 text-fg-soft transition-colors duration-150 aria-pressed:bg-ink-3 aria-pressed:text-fg" />
       </div>
-      <div className="flex flex-col justify-end pt-[120px] pr-8 pb-12 pl-(--m) max-[900px]:px-(--m) max-[900px]:pt-9 max-sm:pt-7">
+      <div className="flex flex-col justify-center pt-[88px] pr-8 pb-8 pl-(--m) max-[900px]:px-(--m) max-[900px]:pt-9 max-[900px]:pb-12 max-sm:pt-7">
         <div className="w-fit max-w-full self-center max-[900px]:self-start">
         <h1 className={cx('disp', l ? 'text-[clamp(48px,5vw,88px)] max-[900px]:text-[11vw] max-sm:text-[12.5vw]' : 'text-[clamp(44px,4.86vw,84px)] max-[900px]:text-[8vw] max-sm:text-[11vw]')}>
           <span className="block overflow-hidden pb-[0.04em]"><span className={cx(line, !shown && 'translate-y-[105%]')}>{t('hero.h1a')}</span></span>
           <span className="block overflow-hidden pb-[0.04em] text-red"><span className={cx(line, 'delay-[110ms]', !shown && 'translate-y-[105%]')}>{t('hero.h1b')}</span></span>
         </h1>
         <div className={cx('transition-opacity delay-500 duration-700', shown ? 'opacity-100' : 'opacity-0')}>
-          <p className="mt-6 max-w-[44ch]">{t('hero.lede')}</p>
-          <div className="mt-8">
+          <p className="mt-8 max-w-[44ch]">{t('hero.lede')}</p>
+          <div className="mt-11">
             <a className={cx(btn, 'bg-red text-on-paper hover:bg-red-hi')} href="#demo-q" onClick={(e) => { e.preventDefault(); document.getElementById('demo-q')?.focus(); }}>{t('hero.btn')}<Icon.arrow /></a>
-            <span className="mt-3 block text-(length:--step-small) whitespace-nowrap text-fg-soft max-sm:whitespace-normal">{t('hero.note')}</span>
+            <span className="mt-4 block text-(length:--step-small) whitespace-nowrap text-fg-soft max-sm:whitespace-normal">{t('hero.note')}</span>
           </div>
         </div>
-        <ul aria-label={t('wall.label')} className="mt-10 grid max-w-[540px] grid-cols-3 gap-2 max-sm:hidden">
+        <ul aria-label={t('wall.label')} className="mt-16 grid max-w-[540px] grid-cols-3 gap-2 max-sm:hidden">
           {[['sintel', 'sintel_trailer.mp4'], ['surf', 'surf_tel_aviv.mp4'], ['rocket', 'rocket_launch.mp4']].map(([id, name]) => (
             <li key={id}><figure>
               <div className={cx(film, 'aspect-[16/10] rounded-[4px]')}><video src={media(`${id}.mp4`)} poster={media(`${id}.jpg`)} muted loop playsInline autoPlay={!reduce} preload="metadata" aria-hidden /></div>
