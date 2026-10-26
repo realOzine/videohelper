@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -19,6 +20,26 @@ import (
 	"github.com/ozine/videohelper/internal/platform/db"
 	"github.com/ozine/videohelper/migrations"
 )
+
+func TestRegistryListSnapshot(t *testing.T) {
+	r := New(nil, nil, config.MLConfig{})
+	if list := r.List(); list == nil || len(list) != 0 {
+		t.Fatalf("empty registry list=%v", list)
+	}
+	r.spaces = map[string]Info{
+		"z@r1": {ID: "z@r1", Disabled: true, Endpoint: "http://ml", DocInputs: []string{"video"}, QueryInputs: []string{"text"}},
+		"a@r1": {ID: "a@r1", DocInputs: []string{"audio"}, QueryInputs: []string{"text"}},
+	}
+	list := r.List()
+	if len(list) != 2 || list[0].ID != "a@r1" || list[1].ID != "z@r1" || !list[1].Disabled || list[0].Endpoint != "" {
+		t.Fatalf("snapshot dropped or reordered unroutable models: %+v", list)
+	}
+	list[0].DocInputs[0], list[0].QueryInputs[0], list[1].ID = "mutated", "mutated", "mutated"
+	again := r.List()
+	if !slices.Equal(again[0].DocInputs, []string{"audio"}) || !slices.Equal(again[0].QueryInputs, []string{"text"}) || again[1].ID != "z@r1" {
+		t.Fatalf("caller mutated registry snapshot: %+v", again)
+	}
+}
 
 func fixtureMetadata() mlclient.SpacesResponse {
 	span := 30000

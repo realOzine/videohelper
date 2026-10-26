@@ -41,3 +41,23 @@ func TestChannelsValidateConfigurationAndOwnership(t *testing.T) {
 		t.Fatalf("audio channel rejected: %v", err)
 	}
 }
+
+func TestChannelCompatibility(t *testing.T) {
+	for _, test := range []struct {
+		doc, name string
+		info      Info
+		want      bool
+	}{
+		{doc: "video", name: "grid boundary", info: Info{DocInputs: []string{"video"}, QueryInputs: []string{"text"}, MaxSpanMs: 2500}, want: true},
+		{doc: "audio", name: "short grid", info: Info{DocInputs: []string{"audio"}, QueryInputs: []string{"text"}, MaxSpanMs: 2499}},
+		{doc: "text", name: "text no span limit", info: Info{DocInputs: []string{"text"}, QueryInputs: []string{"text"}}, want: true},
+		{doc: "video", name: "wrong query input", info: Info{DocInputs: []string{"video"}, QueryInputs: []string{"image"}, MaxSpanMs: 30000}},
+		{doc: "audio", name: "wrong doc input", info: Info{DocInputs: []string{"video"}, QueryInputs: []string{"text"}, MaxSpanMs: 30000}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if got := (Channel{Doc: test.doc}).Compatible(test.info); got != test.want {
+				t.Fatalf("compatible=%v want=%v", got, test.want)
+			}
+		})
+	}
+}

@@ -164,6 +164,20 @@ func (r *Registry) Get(id string) (Info, bool) {
 	return info, ok && info.Endpoint != ""
 }
 
+// List includes unroutable and disabled spaces so callers can report their status.
+func (r *Registry) List() []Info {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	out := make([]Info, 0, len(r.spaces))
+	for _, id := range slices.Sorted(maps.Keys(r.spaces)) {
+		info := r.spaces[id]
+		info.DocInputs = slices.Clone(info.DocInputs)
+		info.QueryInputs = slices.Clone(info.QueryInputs)
+		out = append(out, info)
+	}
+	return out
+}
+
 func (r *Registry) Resolve(id string) (string, bool) {
 	info, ok := r.Get(id)
 	return info.Endpoint, ok && !info.Disabled
