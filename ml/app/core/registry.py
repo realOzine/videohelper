@@ -1,4 +1,5 @@
 from pathlib import Path
+from types import MappingProxyType
 from typing import Any, Literal
 
 import yaml
@@ -9,6 +10,7 @@ from app.adapters.fake import FakeEmbedder, FakeTranscriber
 from app.api.schemas import SpaceInfo, SpacesResponse, TranscriberInfo
 from app.core.fingerprint import fingerprint
 from app.core.gate import Gate
+from app.core.plugins import load_adapter
 
 
 class ModelConfig(BaseModel):
@@ -68,6 +70,12 @@ class Registry:
         ids = [config.id for config in manifest.models]
         if len(set(ids)) != len(ids):
             raise ValueError("Duplicate model id")
+        self.configs = MappingProxyType({config.id: config for config in manifest.models})
+        adapter_types = (
+            {config.id: load_adapter(config.adapter, config.kind) for config in manifest.models}
+            if not fake
+            else {}
+        )
         for config in manifest.models:
             digest = fingerprint(config.model_dump(), fake=fake)
             if config.kind == "embedder":
@@ -83,26 +91,17 @@ class Registry:
                 )
                 if fake:
                     adapter = FakeEmbedder(info, config.preprocess)
-                elif config.adapter == "wemm":
-                    from app.adapters.wemm import WeMMEmbedder
-
-                    adapter = WeMMEmbedder(info, config.model_dump())
-                elif config.adapter == "clap":
-                    from app.adapters.clap import CLAPEmbedder
-
-                    adapter = CLAPEmbedder(info, config.model_dump())
                 else:
-                    raise ValueError(f"Real adapter {config.adapter!r} is not installed")
+                    adapter = adapter_types[config.id](info, config.model_dump())
                 adapter.load()
                 self.embedders[config.id] = adapter
                 self.gates[config.id, "document"] = Gate(config.max_concurrency, config.queue_limit)
-                if fake or config.adapter != "wemm":
+                if fake or not adapter_types[config.id].shared_query_gate:
                     self.gates[config.id, "query"] = Gate(
                         config.query_concurrency,
                         config.query_queue_limit,
                     )
                 else:
-                    # WeMM's upstream forward mutates rope_deltas; share one gate across roles.
                     self.gates[config.id, "query"] = self.gates[config.id, "document"]
             else:
                 info = TranscriberInfo(
@@ -113,12 +112,8 @@ class Registry:
                 )
                 if fake:
                     adapter = FakeTranscriber(info, config.preprocess)
-                elif config.adapter == "funasr":
-                    from app.adapters.funasr import FunASRTranscriber
-
-                    adapter = FunASRTranscriber(info, config.model_dump())
                 else:
-                    raise ValueError(f"Real adapter {config.adapter!r} is not installed")
+                    adapter = adapter_types[config.id](info, config.model_dump())
                 adapter.load()
                 self.transcribers[config.id] = adapter
                 self.gates[config.id, "transcribe"] = Gate(

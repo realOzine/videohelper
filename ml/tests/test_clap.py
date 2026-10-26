@@ -60,7 +60,7 @@ def test_clap_registration_pins_and_fingerprints(tmp_path, monkeypatch):
 
 
 def test_bounded_audio_never_reaches_random_crop(monkeypatch, tmp_path):
-    import app.adapters.clap as clap
+    import videohelper_ml_clap as clap
 
     instance = adapter()
     monkeypatch.setattr(clap, "load", lambda *args: np.zeros(480001, np.float32))
@@ -72,9 +72,8 @@ def test_bounded_audio_never_reaches_random_crop(monkeypatch, tmp_path):
 
 def test_short_audio_padding_is_deterministic(monkeypatch, tmp_path):
     pytest.importorskip("torch")
+    import videohelper_ml_clap as clap
     from transformers import ClapFeatureExtractor
-
-    import app.adapters.clap as clap
 
     instance = adapter()
     instance.processor = SimpleNamespace(feature_extractor=ClapFeatureExtractor())

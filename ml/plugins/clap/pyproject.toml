@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=75,<83"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "videohelper-ml-clap"
+version = "0.1.0"
+requires-python = ">=3.12,<3.14"
+dependencies = ["videohelper-ml==0.1.0"]
+
+[project.optional-dependencies]
+inference = ["torch>=2.10,<3", "transformers==5.2.0"]
+
+[project.entry-points."videohelper.ml.adapters.v1"]
+clap = "videohelper_ml_clap:CLAPEmbedder"
+
+[tool.setuptools]
+packages = ["videohelper_ml_clap"]
