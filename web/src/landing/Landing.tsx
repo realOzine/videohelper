@@ -20,7 +20,7 @@ export default function Landing() {
       <Hero l={l} />
       <div className="overflow-hidden py-3" aria-hidden>
         <div className="-mx-5 -rotate-[1.2deg] overflow-hidden bg-red-fill text-white">
-          <ul className={cx('flex w-max animate-run gap-12 py-3.5', l ? 'font-disp text-[22px] tracking-[0.02em] uppercase' : 'font-cjk text-xl font-black')}>
+          <ul className={cx('flex w-max animate-run gap-12 py-3.5', l ? 'font-disp text-[23px] font-bold italic' : 'font-cjk text-xl font-black')}>
             {[...SETS, ...SETS].map((s, i) => <li key={i} className="whitespace-nowrap after:ml-12 after:align-middle after:text-[0.6em] after:content-['◆']">{s.q[l]}</li>)}
           </ul>
         </div>

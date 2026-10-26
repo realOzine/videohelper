@@ -32,9 +32,9 @@
   --color-hit: #6d6a7c;
   --color-stage: #141319;
 
-  --font-sans: "Geist", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", system-ui, sans-serif;
-  --font-disp: "Anton", "Noto Sans SC", "PingFang SC", Impact, sans-serif;
-  --font-cjk: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", sans-serif;
+  --font-sans: "Instrument Sans", "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", system-ui, sans-serif;
+  --font-disp: "Fraunces", "Noto Serif SC", "Songti SC", Georgia, serif;
+  --font-cjk: "Noto Serif SC", "Songti SC", "STSong", serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
 
   --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
@@ -76,9 +76,9 @@
 @media (width < 47.5rem) { .landing { --m: max(20px, env(safe-area-inset-left, 0px)); --mr: max(20px, env(safe-area-inset-right, 0px)); } }
 
 @layer components {
-  /* Anton is Latin only: Chinese headings fall to the heavy CJK sans, the way cindy.app sets them */
-  .disp { font-family: var(--font-disp); font-weight: 400; text-transform: uppercase; letter-spacing: 0.005em; line-height: 0.98; }
-  :lang(zh-CN) .disp { font-family: var(--font-cjk); font-weight: 900; text-transform: none; letter-spacing: -0.01em; line-height: 1.12; }
+  /* headings are set like film title cards: a heavy display serif, and heavy Song for Chinese; WONK off keeps Fraunces upright */
+  .disp { font-family: var(--font-disp); font-weight: 800; font-variation-settings: "WONK" 0; letter-spacing: -0.025em; line-height: 1; text-wrap: balance; }
+  :lang(zh-CN) .disp { font-family: var(--font-cjk); font-weight: 900; letter-spacing: 0; line-height: 1.16; }
 
   /* entrances: rise into place once on screen (see Rise in ui.tsx) */
   .rise { opacity: 0; transform: translateY(24px); transition: opacity 800ms var(--ease-out), transform 800ms var(--ease-out); transition-delay: var(--d, 0ms); }
