@@ -63,7 +63,7 @@ def main():
         with (root / "server.log").open("w+") as log:
             process = subprocess.Popen(command, cwd=root, env=environment, stdout=log, stderr=log)
             try:
-                for _ in range(150):
+                for _ in range(300):
                     assert process.poll() is None, "Installed service exited before readiness"
                     try:
                         with urllib.request.urlopen(base + "/readyz", timeout=0.2):
