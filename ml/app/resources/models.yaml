@@ -1,0 +1,55 @@
+# CPU 开发清单：必须显式设置 ML_FAKE=1；fingerprint 与真实 adapter 不同。
+models:
+  - id: wemm-2b@r1
+    kind: embedder
+    adapter: wemm
+    weights: Tencent/WeMM-Embedding-2B
+    revision: fake-v1
+    dtype: float32
+    dim: 1024
+    metric: cosine
+    query_inputs: [text]
+    doc_inputs: [video, text, image]
+    max_batch: 64
+    max_span_ms: 30000
+    max_concurrency: 1
+    queue_limit: 64
+    query_concurrency: 1
+    query_queue_limit: 8
+    preprocess: {frames_per_clip: 8, image_size: 224}
+  - id: paraformer-zh@r1
+    kind: transcriber
+    adapter: funasr
+    weights: paraformer-zh
+    revision: fake-v1
+    dtype: float32
+    max_concurrency: 1
+    queue_limit: 4
+    max_window_ms: 900000
+    languages: [zh]
+    preprocess: {sample_rate: 16000}
+  - id: clap-htsat-unfused@r1
+    kind: embedder
+    adapter: clap
+    weights: laion/clap-htsat-unfused
+    revision: 8fa0f1c6d0433df6e97c127f64b2a1d6c0dcda8a
+    device: cpu
+    dtype: float32
+    dim: 512
+    metric: cosine
+    query_inputs: [text]
+    doc_inputs: [audio]
+    max_batch: 32
+    max_span_ms: 10000
+    max_concurrency: 1
+    queue_limit: 8
+    query_concurrency: 1
+    query_queue_limit: 8
+    preprocess:
+      adapter_version: 1
+      transformers_version: 5.2.0
+      sample_rate: 48000
+      max_samples: 480000
+      padding: repeatpad
+      truncation: rand_trunc
+      max_text_tokens: 512

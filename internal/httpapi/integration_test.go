@@ -190,7 +190,7 @@ func TestCoreHTTPIntegration(t *testing.T) {
 	defer mlserver.Close()
 	var registry *space.Registry
 	ml := mlclient.New(config.MLConfig{Endpoints: []string{mlserver.URL}, Token: "explicit-http-contract-test"}, func(id string) (string, bool) { return registry.Resolve(id) })
-	registry = space.New(pool, ml)
+	registry = space.New(pool, ml, config.MLConfig{})
 	if err := registry.Sync(ctx); err != nil {
 		t.Fatal(err)
 	}

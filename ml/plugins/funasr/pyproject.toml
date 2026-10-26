@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=75,<83"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "videohelper-ml-funasr"
+version = "0.1.0"
+requires-python = ">=3.12,<3.14"
+dependencies = ["videohelper-ml==0.1.0"]
+
+[project.optional-dependencies]
+inference = ["funasr==1.3.14", "torchaudio>=2.10,<3"]
+
+[project.entry-points."videohelper.ml.adapters.v1"]
+funasr = "videohelper_ml_funasr:FunASRTranscriber"
+
+[tool.setuptools]
+packages = ["videohelper_ml_funasr"]
