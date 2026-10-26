@@ -56,6 +56,18 @@ class WeMMEmbedder:
                 ],
             )
         )
+        required = (
+            "config.json",
+            "processor_config.json",
+            "tokenizer.json",
+            "tokenizer_config.json",
+            "chat_template.jinja",
+            "model.safetensors",
+            "modeling_wemm_embedding.py",
+        )
+        missing = [name for name in required if not (directory / name).is_file()]
+        if missing:
+            raise RuntimeError(f"Pinned WeMM snapshot is incomplete: {', '.join(missing)}")
         code = directory / "modeling_wemm_embedding.py"
         if hashlib.sha256(code.read_bytes()).hexdigest() != REMOTE_CODE_SHA256:
             raise RuntimeError("Pinned WeMM remote code does not match the reviewed source")
