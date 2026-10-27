@@ -150,6 +150,10 @@ func (m *Manager) Ensure(ctx context.Context, notify func(Progress)) (err error)
 			return err
 		}
 	}
+	paths["ffmpeg"], paths["ffprobe"], err = mediaToolset(filepath.Join(m.dir, "runtime", "tools"), paths["ffmpeg"], paths["ffprobe"])
+	if err != nil {
+		return err
+	}
 	m.mu.Lock()
 	m.tools = Tools{FFmpeg: paths["ffmpeg"], FFprobe: paths["ffprobe"], YTDLP: paths["yt-dlp"], Deno: paths["deno"]}
 	m.mu.Unlock()

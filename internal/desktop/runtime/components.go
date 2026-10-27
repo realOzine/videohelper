@@ -5,6 +5,7 @@ import (
 	"archive/zip"
 	"compress/gzip"
 	"context"
+	"crypto/rand"
 	"crypto/sha256"
 	_ "embed"
 	"encoding/hex"
@@ -240,6 +241,56 @@ func downloadClient() *http.Client {
 		}
 		return nil
 	}}
+}
+
+// yt-dlp discovers both programs through one --ffmpeg-location directory.
+func mediaToolset(root, ffmpeg, ffprobe string) (string, string, error) {
+	ffmpegHash, err := fileHash(ffmpeg)
+	if err != nil {
+		return "", "", err
+	}
+	ffprobeHash, err := fileHash(ffprobe)
+	if err != nil {
+		return "", "", err
+	}
+	digest := sha256.Sum256([]byte(ffmpegHash + ":" + ffprobeHash))
+	dir := filepath.Join(root, "media-"+hex.EncodeToString(digest[:])[:20])
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return "", "", err
+	}
+	paths := make([]string, 0, 2)
+	for _, source := range []struct{ path, name, hash string }{{ffmpeg, "ffmpeg", ffmpegHash}, {ffprobe, "ffprobe", ffprobeHash}} {
+		dst := filepath.Join(dir, executable(source.name))
+		if existing, err := fileHash(dst); err != nil || existing != source.hash {
+			tmp := filepath.Join(dir, ".publish-"+rand.Text())
+			defer os.Remove(tmp)
+			if err := os.Link(source.path, tmp); err != nil {
+				in, err := os.Open(source.path)
+				if err != nil {
+					return "", "", err
+				}
+				out, err := os.OpenFile(tmp, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0700)
+				if err != nil {
+					in.Close()
+					return "", "", err
+				}
+				_, copyErr := io.Copy(out, in)
+				in.Close()
+				closeErr := out.Close()
+				if err := errors.Join(copyErr, closeErr); err != nil {
+					return "", "", err
+				}
+			}
+			if actual, err := fileHash(tmp); err != nil || actual != source.hash {
+				return "", "", fmt.Errorf("media toolset verification failed: %s", source.name)
+			}
+			if err := os.Rename(tmp, dst); err != nil {
+				return "", "", err
+			}
+		}
+		paths = append(paths, dst)
+	}
+	return paths[0], paths[1], nil
 }
 
 func toolsPath(tools Tools) string {
