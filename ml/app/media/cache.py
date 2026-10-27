@@ -61,11 +61,39 @@ class S3Downloader:
             body.close()
 
 
+def local_media_path(uri: str, root: Path | None) -> Path:
+    if root is None or not re.fullmatch(
+        r"local://media/[A-Za-z0-9_-][A-Za-z0-9._-]*(?:/[A-Za-z0-9_-][A-Za-z0-9._-]*)*",
+        uri,
+    ):
+        raise MLError(400, "invalid_input", "Local media is disabled or has an invalid key")
+    try:
+        root = root.resolve(strict=True)
+        path = root
+        for part in uri.removeprefix("local://media/").split("/"):
+            path = path / part
+            if path.is_symlink():
+                raise ValueError("Symbolic links are not local media")
+        resolved = path.resolve(strict=True)
+        if (
+            not resolved.is_relative_to(root)
+            or not resolved.is_file()
+            or resolved.stat().st_size == 0
+        ):
+            raise ValueError("Expected a nonempty regular file inside the media root")
+        return resolved
+    except (OSError, ValueError) as exc:
+        raise MLError(422, "media_unreadable", "Cannot read local media") from exc
+
+
 class MediaCache:
-    def __init__(self, directory: Path, max_bytes: int, download: Callable):
+    def __init__(
+        self, directory: Path, max_bytes: int, download: Callable, *, local_root: Path | None = None
+    ):
         self.directory = directory
         self.max_bytes = max_bytes
         self.download = download
+        self.local_root = local_root
         # shortcut: coordination is process-local; use a separate cache directory per worker.
         self.condition = threading.Condition()
         self.downloading: set[str] = set()
@@ -89,6 +117,10 @@ class MediaCache:
 
     @contextmanager
     def acquire(self, uri: str) -> Iterator[Path]:
+        if uri.startswith("local:"):
+            # The desktop owns this private root and retains inputs until inference completes.
+            yield local_media_path(uri, self.local_root)
+            return
         split_s3_uri(uri)
         key = hashlib.sha256(uri.encode()).hexdigest()
         path = self.directory / (key + ".media")
