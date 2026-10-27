@@ -1,11 +1,13 @@
 // One video: its header and actions, the pipeline in the order it runs (polled while busy), the player and a search inside it.
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import { call, get, post, type Moment, type Video as V } from '../api.ts';
-import { t, useLang } from '../i18n.ts';
+import { addStrings, t, useLang } from '../i18n.ts';
 import { CHANNELS, channelState, pipeline, stageKind, tc, type Stage } from '../lib.ts';
 import { Empty, newProject, panel, panelBase, PanelHead, Shell, useNotice, useLibrary } from '../Shell.tsx';
 import { btn, btnDanger, btnPrimary, Ch, cx, field, Icon, Pill, select, TcBadge, Thumb } from '../ui.tsx';
 import { busy, stageLabel, tracks, when } from './format.ts';
+
+addStrings({ 'v.reindex': '重新索引' }, { 'v.reindex': 'Rebuild index' });
 
 const params = new URLSearchParams(location.search);
 const id = params.get('id') || '';
@@ -106,6 +108,7 @@ export default function Video() {
             </div>
             <div className="ml-auto flex flex-wrap gap-2 max-md:ml-0 max-md:w-full">
               {(v.status === 'failed' || v.status === 'cancelled' || (v.status === 'ready' && failed)) && <button type="button" className={btnPrimary} onClick={(e) => retry(e.currentTarget)}>{t('retry')}</button>}
+              {v.status === 'ready' && !failed && <button type="button" className={btn} onClick={(e) => retry(e.currentTarget)}>{t('v.reindex')}</button>}
               {busy(v.status) && <button type="button" className={btn} onClick={() => post(`/v1/videos/${id}/cancel`).then(() => load()).catch(fail)}>{t('desktop.cancel')}</button>}
               {v.status === 'deleted' && <button type="button" className={btnPrimary} onClick={() => post(`/v1/videos/${id}/restore`).then(() => load()).then(() => reload()).catch(fail)}>{t('desktop.restore')}</button>}
               {!!ws?.projects.length && (
