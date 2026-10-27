@@ -9,7 +9,7 @@
 | 创建 CodeConnections | 让 AWS GitHub App 只读取授权的私有仓库 | 无常驻计算；保留连接方便后续发布 |
 | 创建 CloudFormation 栈 | 版本化管理网络、存储、角色、主机和构建配置 | 普通 AWS 资源类型的栈管理不另收资源运行费；实际资源各自计费 |
 | VPC、子网、路由、IGW、安全组 | 主机可主动联网；不开放入站端口 | 无 NAT Gateway / ALB 固定费用；动态公网 IPv4 只在实例运行时使用 |
-| EC2 `r6a.large`，2 vCPU / 16 GiB | 先验证 WeMM CPU + ASR/CLAP，避免 GPU 配额和费用 | Ohio 查询报价 $0.1134/小时，停止后无实例计算费；16 GiB 容量尚需实测 |
+| EC2 `r6a.large`，2 vCPU / 16 GiB | 先验证 WeMM CPU + ASR/CLAP，避免 GPU 配额和费用 | Ohio 查询报价 $0.1134/小时，停止后无实例计算费；无交换空间时首次并行加载曾触发 OOM |
 | 60 GiB gp3 EBS | 保存数据库、Redis、鉴权私钥和模型缓存 | 按配置容量持续计费；按 $0.08/GiB/月估算约 $4.80/月，停止也收费 |
 | 两个私有 S3 桶 | 媒体；版本包和数据库备份 | 按容量、请求和适用流量收费；停止 EC2 不影响 S3 |
 | ECR | 保存四类镜像，实例按 SHA 拉取 | 按镜像存储及适用流量收费；每类保留最近三个推送版本 |
@@ -57,6 +57,8 @@ python3 deploy/aws/demo.py connect
 ```
 
 `start` 从 CloudFormation 获取专用实例 ID，读取已完整发布的 SHA，开机、等待 SSM、部署；不会创建第二台服务器。`connect` 保持前台运行，在浏览器打开 `http://localhost:8080`。公网安全组没有入站规则，不能直接访问实例公网 IP。
+
+16 GiB 主机实测无法承受两个 ML 服务首次同时加载的峰值。部署先启动 ASR/CLAP，再启动 WeMM，并在现有加密 EBS 内建立 4 GiB、0600 权限的交换文件，写入 fstab 供后续开机启用；不扩容磁盘。交换可能显著拖慢推理，只作为单用户 Demo 的容量缓冲，不能代表适合长视频或并发；实际请求不可接受时再比较更大内存或 GPU 的总成本。
 
 另开终端进入管理会话并签发八小时 Demo token；复制到 Web 的登录 / token 输入位置。将登录页的“API 地址”改为 `http://localhost:8080`，不要沿用本地开发默认的 18000 端口。不要把令牌或 `runtime.env` 发到聊天、Git、日志中。
 

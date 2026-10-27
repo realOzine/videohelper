@@ -105,7 +105,22 @@ for key, tag in [('GO_IMAGE', 'go'), ('WEB_IMAGE', 'web'), ('WEMM_IMAGE', 'ml-we
 (base / 'runtime.next.env').write_text(''.join(f'{k}={v}\n' for k, v in env.items()))
 PY
 aws ecr get-login-password | docker login --username AWS --password-stdin "${IMAGE_REPOSITORY%%/*}"
-docker compose -p videohelper-demo --env-file "$base/runtime.next.env" -f "$release/compose.yml" pull
+docker compose -p videohelper-demo --env-file "$base/runtime.next.env" -f "$release/compose.yml" pull --quiet
+# shortcut: disk swap absorbs single-user CPU peaks; use more RAM if latency is unacceptable.
+swap="$data/swapfile"
+test ! -L "$swap" || { echo 'Refusing a symlink swap file' >&2; exit 1; }
+if ! test -e "$swap"; then
+    partial=$(mktemp "$data/.swap.XXXXXX")
+    if ! { fallocate -l 4G "$partial" && mkswap "$partial" && mv -T "$partial" "$swap"; }; then
+        rm -f -- "$partial"
+        exit 1
+    fi
+fi
+test -f "$swap" && test "$(stat -c %s "$swap")" = 4294967296 && \
+    test "$(blkid -p -s TYPE -o value "$swap")" = swap || { echo 'Invalid existing swap file' >&2; exit 1; }
+chmod 600 "$swap"
+swapon --show=NAME --noheadings | grep -Fxq "$swap" || swapon "$swap"
+grep -Fxq "$swap none swap sw 0 0" /etc/fstab || printf '%s none swap sw 0 0\n' "$swap" >>/etc/fstab
 # Preserve the previous release and environment for operator rollback; migrations need separate review.
 if test -L "$base/current"; then
     backup
@@ -120,7 +135,8 @@ ln -sfn "$release" "$base/current.next"
 mv -Tf "$base/current.next" "$base/current"
 compose run --rm --no-deps -e HF_HUB_OFFLINE=0 wemm videohelper-ml prepare --models models.yaml
 compose run --rm --no-deps -e HF_HUB_OFFLINE=0 speech-audio videohelper-ml prepare --models models.yaml
-compose up -d --wait postgres redis auth wemm speech-audio
+compose up -d --wait --wait-timeout 900 postgres redis auth speech-audio
+compose up -d --wait --wait-timeout 900 wemm
 compose run --rm --no-deps api -config /etc/videohelper/config.yaml migrate
 compose run --rm --no-deps api -config /etc/videohelper/config.yaml space add visual wemm-2b-cpu@r1
 compose run --rm --no-deps api -config /etc/videohelper/config.yaml space add speech wemm-2b-cpu@r1

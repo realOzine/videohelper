@@ -2560,7 +2560,7 @@ flowchart TB
 
 | 资源 | 用途与边界 |
 |---|---|
-| EC2 `r6a.large` + 60 GiB 加密 gp3 | 同机运行 API、Worker、Web、Postgres/pgvector、Redis、鉴权和两个 CPU ML profile；每次启动两小时自动停止 |
+| EC2 `r6a.large` + 60 GiB 加密 gp3 | 同机运行 API、Worker、Web、Postgres/pgvector、Redis、鉴权和两个 CPU ML profile；ASR/CLAP 与 WeMM 依次启动，现有盘内使用 4 GiB 交换文件缓冲内存峰值；每次启动两小时自动停止 |
 | VPC / 子网 / IGW / 安全组 | 无入站端口；用 SSM 端口转发；动态公网 IPv4 供出站访问 |
 | 两个私有 S3 桶 | 媒体；发布包和数据库备份。默认加密、版本控制、拒绝非 TLS；删除栈保留数据 |
 | ECR | 四类不可变 SHA 镜像，每类保留最近三个推送版本 |

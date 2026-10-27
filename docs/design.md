@@ -896,7 +896,7 @@ flowchart TB
   U -->|"预签名 HTTPS：上传 / 播放"| MEDIA
 ```
 
-网络无入站规则；动态公网 IPv4 仅供主机主动访问 SSM、镜像和模型源。无需 ALB、NAT Gateway、ECS 集群、RDS 或 ElastiCache。EC2 默认 `r6a.large`（2 vCPU / 16 GiB），不是 GPU；16 GiB 是否足够、CPU 搜索耗时必须实测，不足时再评估 32 GiB。AWS 新体验项目目前限定 `us-east-2`，不能直接跨区域创建资源。
+网络无入站规则；动态公网 IPv4 仅供主机主动访问 SSM、镜像和模型源。无需 ALB、NAT Gateway、ECS 集群、RDS 或 ElastiCache。EC2 默认 `r6a.large`（2 vCPU / 16 GiB），不是 GPU；首次并行加载真实模型触发 OOM，因此依次启动 ASR/CLAP、WeMM，并在原有 EBS 内保留 4 GiB 交换空间。交换只缓冲单用户峰值，CPU 推理延迟仍须实测，不足时再评估更大内存或 GPU。AWS 新体验项目目前限定 `us-east-2`，不能直接跨区域创建资源。
 
 ### 10.3 发布、停机与数据边界
 

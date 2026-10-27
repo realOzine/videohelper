@@ -46,6 +46,17 @@ elif tool == 'timeout':
     assert args[:2] == ['--kill-after=5s', '230s'], args
     duration = '0.3s' if os.environ.get('MOCK_HANG_DUMP') else '5s'
     os.execv('/usr/bin/timeout', ['timeout', '--kill-after=0.1s', duration, *args[2:]])
+elif tool == 'fallocate':
+    with open(args[-1], 'wb') as destination:
+        destination.truncate(4294967296)
+elif tool == 'blkid':
+    print(os.environ.get('MOCK_SWAP_TYPE', 'swap'))
+elif tool == 'swapon':
+    marker = pathlib.Path(os.environ['MOCK_LOG'] + '.swap')
+    if args[0] == '--show=NAME':
+        print(marker.read_text() if marker.exists() else '')
+    else:
+        marker.write_text(args[0])
 '''
 
 
@@ -63,7 +74,7 @@ class HostTests(unittest.TestCase):
         self.env = {**os.environ, 'MOCK_LOG': str(self.calls), 'MOCK_ARCHIVE': str(self.archive)}
         commands = self.root / 'bin'
         commands.mkdir()
-        for name in ('aws', 'docker', 'shutdown', 'curl', 'timeout'):
+        for name in ('aws', 'docker', 'shutdown', 'curl', 'timeout', 'fallocate', 'mkswap', 'blkid', 'swapon'):
             path = commands / name
             path.write_text(MOCK)
             path.chmod(0o700)
@@ -71,6 +82,9 @@ class HostTests(unittest.TestCase):
         # Test only the path constants; production exposes no test-directory option.
         self.script = self.root / 'host.sh'
         source = (HERE / 'host.sh').read_text().replace('/opt/videohelper', str(self.base))
+        self.fstab = self.root / 'fstab'
+        self.fstab.write_text('# existing mounts\n')
+        source = source.replace('/etc/fstab', str(self.fstab))
         self.script.write_text(source.replace('/var/lib/videohelper', str(self.data)))
         self.script.chmod(0o700)
         (self.base / 'aws.env').write_text(
@@ -266,6 +280,33 @@ class HostTests(unittest.TestCase):
         self.assertFalse((self.base / 'runtime.next.env').exists())
         self.assertFalse((self.base / 'current').exists())
         self.assertEqual((postgres / 'PG_VERSION').read_text(), '16\n')
+
+    def test_swap_is_private_persistent_and_idempotent_without_overwriting_existing_data(self):
+        self.archive_release()
+        swap = self.data / 'swapfile'
+        swap.write_text('operator data')
+        result = self.run_host('deploy', 'b' * 40)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(swap.read_text(), 'operator data')
+        self.assertFalse(any(call[0] == 'mkswap' for call in self.log()))
+        swap.unlink()
+        for _ in range(2):
+            result = self.run_host('deploy', 'b' * 40)
+            self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(swap.stat().st_mode & 0o777, 0o600)
+        self.assertEqual(self.fstab.read_text(), f'# existing mounts\n{swap} none swap sw 0 0\n')
+        self.assertEqual(sum(call[0] == 'mkswap' for call in self.log()), 1)
+        self.assertEqual(sum(call[0] == 'swapon' and call[-1] == str(swap) for call in self.log()), 1)
+        result = self.run_host('deploy', 'b' * 40, MOCK_SWAP_TYPE='ext4')
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn('Invalid existing swap file', result.stderr)
+        swap.unlink()
+        unrelated = self.root / 'unrelated'
+        unrelated.write_text('keep')
+        swap.symlink_to(unrelated)
+        result = self.run_host('deploy', 'b' * 40)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(unrelated.read_text(), 'keep')
 
 
 if __name__ == '__main__':
