@@ -24,13 +24,13 @@
 
 ## 第一次创建
 
-1. 在 AWS CLI 登录 `videohelper-demo` profile，并用 `aws sts get-caller-identity` 确认项目。CLI 凭据保存在用户的 AWS 凭据管理中，不提交 Git。
+1. 在 AWS CLI 登录 `videohelper-demo` profile，并用 `aws sts get-caller-identity` 确认项目。目标 `r6a.large` 不允许在 FREE 计划启动，须先由项目所有者确认升级 Paid；升级涉及其所有项目且不可撤销。CLI 凭据保存在用户的 AWS 凭据管理中，不提交 Git。
 2. 创建 CodeConnections GitHub 连接，在 AWS 控制台完成 GitHub App 授权，仅选择 `realOzine/videohelper`，验证状态为 `AVAILABLE`。
 3. 审查代码和历史的凭据风险，推送私有 GitHub `main`。AWS Toolkit 的 25 个技能仅在仓库 `.agents/skills/`；不是用户全局技能。
 4. 校验 `stack.yaml`：cfn-lint、`stack.guard`、CloudFormation change set。检查 AWS 服务返回的验证事件，再执行变更集。必须传入已验证的 AL2023 x86_64 AMI 和连接 ARN。创建 IAM 服务角色需要 `CAPABILITY_IAM`；这里不创建人的 IAM 用户或长期密钥。
 5. EC2 首次启动先安装两小时自动停机 timer，再准备 Docker / SSM。确认 `/opt/videohelper/bootstrap-ready` 和 timer 正常；首次镜像构建期间先停止空闲 EC2。
 6. 首次手动触发 `videohelper-demo-build`。后续 `main` 的代码 push 自动触发；仅文档 / 技能变化跳过。构建运行检查，依次推送 Go、Web、WeMM CPU、ASR/CLAP CPU 镜像，最后发布 S3 `latest.json`。
-7. 显式启动并部署，准备固定修订权重；用真实短视频检查上传、索引、搜索、播放，再检查停机 / 开机数据保留。
+7. 等待首次构建 `buildStatus=SUCCEEDED`（期望版本已发布），再显式启动并部署，准备固定修订权重；用真实短视频检查上传、索引、搜索、播放，再检查停机 / 开机数据保留。
 
 ```bash
 export AWS_PROFILE=videohelper-demo
@@ -89,6 +89,8 @@ Stop 先停止写入并尝试 `pg_dump` 上传 S3，再停止容器和 EC2；若
 python3 deploy/aws/demo.py deploy --sha COMMIT_SHA
 # 查看首次构建结果和日志位置。
 aws codebuild list-builds-for-project --project-name videohelper-demo-build
+aws codebuild batch-get-builds --ids BUILD_ID \
+  --query 'builds[].{Status:buildStatus,Logs:logs.deepLink}'
 aws cloudformation describe-stacks --stack-name videohelper-demo
 ```
 
