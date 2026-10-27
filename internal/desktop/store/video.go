@@ -218,7 +218,10 @@ func (s *Store) UpdateMedia(ctx context.Context, id int64, info MediaInfo) error
 
 func (s *Store) DeleteVideo(ctx context.Context, id int64) error {
 	return s.write(ctx, func(tx *sql.Tx) error {
-		if err := changed(tx.ExecContext(ctx, "UPDATE video SET deleted_at=coalesce(deleted_at,?),updated_at=? WHERE id=?", timestamp(), timestamp(), id)); err != nil {
+		if err := changed(tx.ExecContext(ctx, `UPDATE video SET deleted_at=coalesce(deleted_at,?),
+ status=CASE WHEN status IN ('uploading','importing','indexing') THEN 'failed' ELSE status END,
+ error=CASE WHEN status IN ('uploading','importing','indexing') THEN '任务已取消' ELSE error END,
+ updated_at=? WHERE id=?`, timestamp(), timestamp(), id)); err != nil {
 			return err
 		}
 		_, err := tx.ExecContext(ctx, "UPDATE job SET status='cancelled',updated_at=? WHERE video_id=? AND status IN ('queued','running')", timestamp(), id)

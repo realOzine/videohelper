@@ -93,6 +93,16 @@ func TestSQLiteVecKNNFiltersAndPurge(t *testing.T) {
 	if err != nil || len(hits) != 2 || hits[0].VideoID != c.ID {
 		t.Fatalf("soft deleted leak: %v %v", hits, err)
 	}
+	if restored, err := s.RestoreVideo(ctx, a.ID); err != nil || restored.Status != "ready" || restored.SourceKey != a.SourceKey {
+		t.Fatalf("ready media changed on restore: %+v %v", restored, err)
+	}
+	hits, err = s.SearchVectors(ctx, q)
+	if err != nil || len(hits) != 3 || hits[0].VideoID != a.ID {
+		t.Fatalf("ready index was not preserved: %v %v", hits, err)
+	}
+	if err := s.DeleteVideo(ctx, a.ID); err != nil {
+		t.Fatal(err)
+	}
 	if err := s.PurgeVideo(ctx, a.ID); err != nil {
 		t.Fatal(err)
 	}

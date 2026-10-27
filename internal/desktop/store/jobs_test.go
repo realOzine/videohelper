@@ -165,3 +165,83 @@ func TestConcurrentClaimAndDeleteFence(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestDeleteRestoreInterruptedVideoCanRetryWithoutProcessor(t *testing.T) {
+	for _, running := range []bool{false, true} {
+		name := "queued_import"
+		if running {
+			name = "running_index"
+		}
+		t.Run(name, func(t *testing.T) {
+			s := testStore(t)
+			ctx := context.Background()
+			var v Video
+			var err error
+			if running {
+				v = fixtureVideo(t, s)
+			} else {
+				v, err = s.CreateImport(ctx, "https://example.com/video.mp4", "direct", "queued download", nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+			}
+			j, err := s.CreateJob(ctx, v.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if running {
+				j, err = s.ClaimJob(ctx)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err := s.Checkpoint(ctx, j.ID, j.Attempt, "asr", map[string]int{"next": 2}, nil); err != nil {
+					t.Fatal(err)
+				}
+			}
+			before, err := s.Job(ctx, j.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			other := fixtureVideo(t, s)
+			otherJob, err := s.CreateJob(ctx, other.ID)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := s.DeleteVideo(ctx, v.ID); err != nil {
+				t.Fatal(err)
+			}
+			if err := s.CompleteJob(ctx, j.ID, j.Attempt, nil); !errors.Is(err, ErrStale) {
+				t.Fatal(err)
+			}
+			restored, err := s.RestoreVideo(ctx, v.ID)
+			if err != nil || restored.Status != "failed" || restored.Error != "任务已取消" || restored.SourceKey != v.SourceKey {
+				t.Fatalf("restored video is stuck: %+v %v", restored, err)
+			}
+			if n, err := s.RecoverJobs(ctx); err != nil || n != 0 {
+				t.Fatalf("cancelled job was auto-restarted: %d %v", n, err)
+			}
+			cancelled, err := s.Job(ctx, j.ID)
+			if err != nil || cancelled.Status != "cancelled" || string(cancelled.Progress) != string(before.Progress) {
+				t.Fatalf("checkpoint changed: %+v %v", cancelled, err)
+			}
+			unaffected, err := s.Job(ctx, otherJob.ID)
+			if err != nil || unaffected.Status != "queued" {
+				t.Fatalf("another video was cancelled: %+v %v", unaffected, err)
+			}
+			if _, err := s.RetryJob(ctx, j.ID); err != nil {
+				t.Fatal(err)
+			}
+			claimed, err := s.ClaimJob(ctx)
+			if err != nil || claimed.ID != j.ID || claimed.Attempt <= j.Attempt {
+				t.Fatalf("retry did not claim a fresh attempt: %+v %v", claimed, err)
+			}
+			if v.SourceKey != "" {
+				f, err := s.OpenFile(v.SourceKey)
+				if err != nil {
+					t.Fatal(err)
+				}
+				f.Close()
+			}
+		})
+	}
+}
