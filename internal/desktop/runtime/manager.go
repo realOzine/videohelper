@@ -420,11 +420,16 @@ func (m *Manager) Start(ctx context.Context) (services Services, err error) {
 		var logs tailBuffer
 		cmd.Stdout = &logs
 		cmd.Stderr = &logs
+		m.mu.Lock()
+		if m.closed {
+			m.mu.Unlock()
+			return Services{}, errors.New("runtime is closed")
+		}
 		process, startErr := startOwned(runCtx, cmd)
 		if startErr != nil {
+			m.mu.Unlock()
 			return Services{}, startErr
 		}
-		m.mu.Lock()
 		m.processes = append(m.processes, process)
 		m.mu.Unlock()
 		if err = waitReady(runCtx, endpoint, process, &logs); err != nil {
