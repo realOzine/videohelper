@@ -22,11 +22,16 @@ export const Icon = {
   chevron: (p: { className?: string }) => <svg {...svg} strokeWidth={1.5} viewBox="0 0 12 12" className={p.className}><path d="M4.5 2.5 8 6l-3.5 3.5" strokeLinejoin="round" /></svg>,
 };
 
-// the mark: a frame with a playhead through it, the playhead in the signal red
+// the mark (Design/Icon, small reversed cut for 24 px and under): three tracks, picture, speech and sound, in the text
+// colour, and the red playhead through the moment all three meet
 export const Mark = ({ className = 'size-[26px]' }: { className?: string }) => (
-  <svg viewBox="0 0 26 26" fill="none" aria-hidden className={cx('flex-none', className)}>
-    <rect x="1.5" y="5.5" width="23" height="15" rx="3.5" stroke="currentColor" strokeWidth="1.8" />
-    <path d="M15 2v22" stroke="#f43d3f" strokeWidth="2.4" strokeLinecap="round" />
+  <svg viewBox="0 0 256 256" aria-hidden className={cx('flex-none', className)}>
+    <g fill="currentColor">
+      <rect x="17" y="33" width="78" height="46" rx="23" /><rect x="169" y="33" width="46" height="46" rx="23" />
+      <rect x="49" y="105" width="46" height="46" rx="23" /><rect x="169" y="105" width="70" height="46" rx="23" />
+      <rect x="33" y="177" width="62" height="46" rx="23" /><rect x="169" y="177" width="54" height="46" rx="23" />
+    </g>
+    <rect x="117" y="9" width="30" height="238" rx="15" fill="#f43d3f" />
   </svg>
 );
 
