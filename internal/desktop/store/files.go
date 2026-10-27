@@ -37,6 +37,15 @@ func VideoKey(id int64, name string) string {
 	return "videos/" + strconv.FormatInt(id, 10) + "/" + name
 }
 
+// WorkDir creates an isolated disposable directory next to the desktop data.
+func (s *Store) WorkDir() (string, error) {
+	dir := filepath.Join(s.dir, "tmp")
+	if err := os.MkdirAll(dir, 0700); err != nil {
+		return "", err
+	}
+	return os.MkdirTemp(dir, "job-")
+}
+
 func (s *Store) OpenFile(key string) (*os.File, error) {
 	if err := validKey(key); err != nil {
 		return nil, err

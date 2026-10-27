@@ -190,6 +190,13 @@ func (s *Store) SetSource(ctx context.Context, id int64, key string) error {
 	return changed(s.db.ExecContext(ctx, "UPDATE video SET source_key=?,status='indexing',updated_at=? WHERE id=? AND deleted_at IS NULL AND status IN ('uploading','importing','failed')", key, timestamp(), id))
 }
 
+func (t *Tx) SetSource(ctx context.Context, id int64, key string) error {
+	if !validVideoKey(id, key) {
+		return ErrInvalid
+	}
+	return changed(t.tx.ExecContext(ctx, "UPDATE video SET source_key=?,status='indexing',updated_at=? WHERE id=? AND deleted_at IS NULL", key, timestamp(), id))
+}
+
 func (t *Tx) UpdateMedia(ctx context.Context, id int64, info MediaInfo) error {
 	if info.DurationMs <= 0 || info.DurationMs > math.MaxInt32 || (!info.HasAudio && !info.HasVideo) || (info.NormalizedVideoKey != "" && !validVideoKey(id, info.NormalizedVideoKey)) {
 		return ErrInvalid
