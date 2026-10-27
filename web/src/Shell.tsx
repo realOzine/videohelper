@@ -1,5 +1,5 @@
 // The desktop frame: a ruled T of sidebar and top bar on the ink ground, the canvas beside them.
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useState, type MouseEventHandler, type ReactNode } from 'react';
 import { get, post, type Project, type Video, type RuntimeState } from './api.ts';
 import { t, useLang } from './i18n.ts';
 import './strings.ts';
@@ -29,8 +29,8 @@ export function useNotice() {
 
 const navItem = 'desktop-nav';
 
-export function Shell({ page, query = '', ws, onNewProject, notice, children }: {
-  page: 'search' | 'library' | 'video'; query?: string; ws: LibraryState | null; onNewProject: () => void; notice: string; children: ReactNode;
+export function Shell({ page, query = '', ws, onNewProject, notice, children, onQueryLink }: {
+  page: 'search' | 'library' | 'video'; query?: string; ws: LibraryState | null; onNewProject: () => void; notice: string; children: ReactNode; onQueryLink?: MouseEventHandler<HTMLDivElement>;
 }) {
   const lang = useLang();
   const [open, setOpen] = useState(false);
@@ -49,7 +49,7 @@ export function Shell({ page, query = '', ws, onNewProject, notice, children }: 
   const here = page === 'video' ? 'library' : page;
 
   return (
-    <div className="grid min-h-svh grid-cols-[240px_minmax(0,1fr)] grid-rows-[76px_minmax(0,1fr)] text-sm leading-5 max-md:grid-cols-[minmax(0,1fr)] max-md:grid-rows-[68px_auto]">
+    <div onClick={(e) => { onQueryLink?.(e); if (e.defaultPrevented) setOpen(false); }} className="grid min-h-svh grid-cols-[240px_minmax(0,1fr)] grid-rows-[76px_minmax(0,1fr)] text-sm leading-5 max-md:grid-cols-[minmax(0,1fr)] max-md:grid-rows-[68px_auto]">
       <nav aria-label={t('a.nav')} className={cx('sticky top-0 row-span-2 flex h-svh flex-col gap-1.5 overflow-auto border-r border-ink-3 bg-ink-2/45 px-4 pb-5',
         'max-md:fixed max-md:inset-0 max-md:z-20 max-md:h-full max-md:w-full max-md:bg-ink max-md:transition-transform max-md:duration-200 max-md:ease-out', !open && 'max-md:invisible max-md:-translate-x-full')}>
         <div className="mb-5 flex h-[92px] flex-none items-center justify-between px-2">

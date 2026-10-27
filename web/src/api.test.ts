@@ -12,6 +12,12 @@ test('desktop connection stays in memory and API errors do not navigate to login
   const calls: [string, RequestInit | undefined][] = [];
   globalThis.fetch = async (url, init) => {
     calls.push([String(url), init]);
+    if (String(url).endsWith('/cancel')) return new Promise<Response>((_, reject) => {
+      const signal = init?.signal;
+      assert.ok(signal, 'list reads must forward cancellation to fetch');
+      if (signal.aborted) reject(signal.reason);
+      else signal.addEventListener('abort', () => reject(signal.reason), { once: true });
+    });
     return String(url).endsWith('/fail') ? new Response(JSON.stringify({ error: { code: 'not_ready', message: 'Models are preparing' } }), { status: 503 }) : new Response('{"videos":[]}');
   };
   try {
@@ -23,5 +29,9 @@ test('desktop connection stays in memory and API errors do not navigate to login
     assert.equal((calls[0][1]?.headers as Record<string, string>)['X-Desktop-Token'], 'process-capability');
     assert.equal(calls[1][1]?.body, '{"url":"https://example.com/video"}');
     await assert.rejects(get('/fail'), (err: unknown) => err instanceof ApiError && err.code === 'not_ready' && err.message === 'Models are preparing');
+    const controller = new AbortController(), reason = new Error('filter changed');
+    const pending = get('/cancel', controller.signal);
+    controller.abort(reason);
+    await assert.rejects(pending, (err: unknown) => err === reason);
   } finally { globalThis.fetch = originalFetch; }
 });

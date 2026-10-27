@@ -1,47 +1,65 @@
 // Library: imports copy into managed storage; processing continues in the desktop process.
-import { useCallback, useEffect, useReducer, useRef, useState } from 'react';
+import { useEffect, useReducer, useRef, useState } from 'react';
 import { get, pickFiles, post, type LocalFile, type Video } from '../api.ts';
 import { t, useLang } from '../i18n.ts';
 import { tc } from '../lib.ts';
 import { Empty, newProject, panel, PanelHead, Shell, TitleRow, useNotice, useLibrary } from '../Shell.tsx';
 import { btn, btnPrimary, cx, errText, Icon, input, Pill, select, Thumb } from '../ui.tsx';
 import { busy, tracks, when } from './format.ts';
+import { followQueryLink, setPageQuery, usePageQuery } from '../pageQuery.ts';
 
 interface Upload { key: number; name: string; size: number; done: number; total: number; state: 'run' | 'done' | 'fail'; controller: AbortController; error?: string }
 interface Page { videos: Video[]; next_cursor: string | null }
-const params = new URLSearchParams(location.search);
-const status = params.get('status') || '', project = params.get('project') || '';
-const query = (extra: Record<string, string>) => new URLSearchParams({ limit: '50', ...(status && { status }), ...(project && { project_id: project }), ...extra });
-const filter = (extra: Record<string, string>) => `library.html?${new URLSearchParams({ ...(project && { project }), ...extra })}`;
 const rule = 'border-t border-ink-3 first:border-t-0';
 
 export default function Library() {
   useLang();
+  const params = usePageQuery();
+  const status = params.get('status') || '', project = params.get('project') || '';
+  const query = (extra: Record<string, string>) => new URLSearchParams({ limit: '50', ...(status && { status }), ...(project && { project_id: project }), ...extra });
+  const filter = (extra: Record<string, string>) => `library.html?${new URLSearchParams({ ...(project && { project }), ...extra })}`;
   const { notice, fail } = useNotice();
   const { ws, reload } = useLibrary(fail);
   const [rows, setRows] = useState<Video[] | null>(null);
   const [cursor, setCursor] = useState<string | null>(null);
   const [attention, setAttention] = useState<{ failed: Page; indexing: Page } | null>(null);
-  const ups = useRef<Upload[]>([]), timer = useRef(0);
+  const ups = useRef<Upload[]>([]), requests = useRef<AbortController | null>(null);
+  const [revision, refresh] = useReducer((n: number) => n + 1, 0);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [sourceURL, setSourceURL] = useState(''), [addingURL, setAddingURL] = useState(false);
   const [, bump] = useReducer((n: number) => n + 1, 0);
 
   // re-reads the first page and the attention panel; repeats while anything on screen is still processing
-  const refresh = useCallback(async () => {
-    clearTimeout(timer.current);
-    const [first, failed, indexing] = await Promise.all([get<Page>(`/v1/videos?${query({})}`), get<Page>('/v1/videos?status=failed&limit=5'), get<Page>('/v1/videos?status=indexing&limit=5')]);
-    setRows(first.videos); setCursor(first.next_cursor); setAttention({ failed, indexing });
-    if ([...first.videos, ...failed.videos, ...indexing.videos].some((v) => busy(v.status))) timer.current = window.setTimeout(() => refresh().catch(fail), 5000);
-  }, [fail]);
-  useEffect(() => { refresh().catch(fail); return () => clearTimeout(timer.current); }, [refresh, fail]);
+  useEffect(() => {
+    const controller = new AbortController(), { signal } = controller;
+    requests.current = controller;
+    let timer = 0;
+    setRows(null); setCursor(null); setLoadingMore(false);
+    const poll = async () => {
+      try {
+        const [first, failed, indexing] = await Promise.all([get<Page>(`/v1/videos?${query({})}`, signal), get<Page>('/v1/videos?status=failed&limit=5', signal), get<Page>('/v1/videos?status=indexing&limit=5', signal)]);
+        if (signal.aborted) return;
+        setRows(first.videos); setCursor(first.next_cursor); setAttention({ failed, indexing });
+        if ([...first.videos, ...failed.videos, ...indexing.videos].some((v) => busy(v.status))) timer = window.setTimeout(poll, 5000);
+      } catch (err) { if (!signal.aborted) fail(err); }
+    };
+    poll();
+    return () => { controller.abort(); clearTimeout(timer); };
+  }, [status, project, revision, fail]);
 
   const more = async () => {
-    const r = await get<Page>(`/v1/videos?${query(cursor ? { cursor } : {})}`);
-    setRows((old) => [...(old || []), ...r.videos]); setCursor(r.next_cursor);
+    const signal = requests.current?.signal;
+    if (!signal || signal.aborted || loadingMore || !cursor) return;
+    setLoadingMore(true);
+    try {
+      const r = await get<Page>(`/v1/videos?${query({ cursor })}`, signal);
+      if (!signal.aborted) { setRows((old) => [...(old || []), ...r.videos]); setCursor(r.next_cursor); }
+    } catch (err) { if (!signal.aborted) fail(err); }
+    finally { if (!signal.aborted) setLoadingMore(false); }
   };
   const retry = async (id: string, b: HTMLButtonElement) => {
     b.disabled = true;
-    try { await post(`/v1/videos/${id}/retry`); await refresh(); reload().catch(fail); } catch (err) { b.disabled = false; fail(err); }
+    try { await post(`/v1/videos/${id}/retry`); refresh(); reload().catch(fail); } catch (err) { b.disabled = false; fail(err); }
   };
 
   async function upload(f: LocalFile) {
@@ -54,7 +72,7 @@ export default function Library() {
       u.state = 'fail'; u.error = u.controller.signal.aborted ? t('desktop.cancelled') : errText(err);
     }
     bump();
-    if (u.state === 'done') { refresh().catch(fail); reload().catch(fail); }
+    if (u.state === 'done') { refresh(); reload().catch(fail); }
   }
   const chooseFiles = async () => {
     try { for (const f of await pickFiles()) await upload(f); } catch (err) { fail(err); }
@@ -63,7 +81,7 @@ export default function Library() {
     e.preventDefault(); setAddingURL(true);
     try {
       await post('/v1/imports/url', { url: sourceURL.trim(), project_id: project || undefined });
-      setSourceURL(''); await refresh(); reload().catch(fail);
+      setSourceURL(''); refresh(); reload().catch(fail);
     } catch (err) { fail(err); } finally { setAddingURL(false); }
   };
   // A file copy is canceled on navigation; submitted processing jobs live in Go.
@@ -77,7 +95,7 @@ export default function Library() {
   const more2 = (p: Page) => p.videos.length + (p.next_cursor ? '+' : '');
 
   return (
-    <Shell page="library" ws={ws} notice={notice} onNewProject={() => newProject(reload, fail)}>
+    <Shell page="library" ws={ws} notice={notice} onNewProject={() => newProject(reload, fail)} onQueryLink={followQueryLink}>
       <TitleRow title={t('nav.library')} sub={attention ? t('l.sub2', { i: more2(attention.indexing), f: more2(attention.failed) }) : ' '}>
         <button type="button" className={btn.replace('h-8', 'h-10')} onClick={() => newProject(reload, fail)}><Icon.folder plus />{t('b.newproject')}</button>
         <button type="button" className={btnPrimary.replace('h-8', 'h-10')} onClick={chooseFiles}><Icon.import />{t('b.upload')}</button>
@@ -137,7 +155,7 @@ export default function Library() {
       </div>
       <div className="mb-4 flex items-center gap-3">
         <label htmlFor="proj" className="sr-only">{t('h.projfilter')}</label>
-        <select id="proj" className={select} value={project} onChange={(e) => { location.search = String(new URLSearchParams({ ...(status && { status }), ...(e.target.value && { project: e.target.value }) })); }}>
+        <select id="proj" className={select} value={project} onChange={(e) => setPageQuery(new URLSearchParams({ ...(status && { status }), ...(e.target.value && { project: e.target.value }) }))}>
           <option value="">{t('opt.allproj')}</option>
           {ws?.projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
@@ -145,7 +163,7 @@ export default function Library() {
         <span className="text-fg-soft">{rows ? t('l.total', { n: rows.length + (cursor ? '+' : '') }) : ''}</span>
         <span className="text-xs text-faint max-xs:hidden">{t('meta.sort')}</span>
       </div>
-      <div className="overflow-x-auto rounded-2xl border border-ink-3 bg-ink-2/40 px-4">
+      <div aria-busy={rows === null} className="overflow-x-auto rounded-2xl border border-ink-3 bg-ink-2/40 px-4">
         <table className="w-full border-collapse">
           <thead className="max-md:hidden">
             <tr className="[&>th]:h-9 [&>th]:border-b [&>th]:border-ink-3 [&>th]:px-3 [&>th]:text-left [&>th]:text-xs [&>th]:font-normal [&>th]:whitespace-nowrap [&>th]:text-fg-soft">
@@ -153,6 +171,7 @@ export default function Library() {
             </tr>
           </thead>
           <tbody>
+            {rows === null && <tr><td colSpan={4} className="py-3"><Empty>{t('l.loading')}</Empty></td></tr>}
             {rows && !rows.length && <tr><td colSpan={4} className="py-3"><Empty>{t('l.empty')}</Empty></td></tr>}
             {rows?.map((v) => (
               <tr key={v.id} className="border-b border-ink-3 transition-colors duration-150 last:border-b-0 hover:bg-ink-3/50 max-md:grid max-md:grid-cols-[minmax(0,1fr)_auto] max-md:items-center max-md:gap-x-3 max-md:gap-y-1.5 max-md:py-3 [&>td]:px-3 [&>td]:py-[12.5px] [&>td]:align-middle max-md:[&>td]:p-0">
@@ -168,7 +187,7 @@ export default function Library() {
           </tbody>
         </table>
       </div>
-      {cursor && <p className="mt-4 text-center"><button type="button" className={btn} onClick={() => more().catch(fail)}>{t('b.more')}</button></p>}
+      {cursor && <p className="mt-4 text-center"><button type="button" className={btn} disabled={loadingMore} onClick={more}>{loadingMore ? t('l.loading') : t('b.more')}</button></p>}
     </Shell>
   );
 }

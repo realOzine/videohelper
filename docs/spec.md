@@ -29,6 +29,8 @@ JSON 字段使用 snake_case，ID 在传输时为字符串；时间戳使用 UTC
 
 前端只通过 `Desktop.Bootstrap` 获取本进程的 loopback 地址与短期连接凭据，凭据不写 localStorage。`Desktop.PickFiles` 使用系统选择器。没有 `/me`、登录、注册或工作区接口。
 
+资料库的状态标签、项目筛选与「查看处理中」在当前页面更新 URL 和列表，不重新加载 WebView；返回/前进同步恢复筛选，保留链接草稿、导入进度与运行环境状态。切换筛选或离开页面时取消旧列表、分页读取及轮询，迟到的响应不能覆盖新筛选；已提交的导入与处理任务不受列表读取取消影响。
+
 macOS 裸二进制在打开数据库和启动模型前，将自身、内嵌图标及签名元数据恢复到 `Launcher/VideoHelper.app`，校验已有内容并原子更新，通过系统 `open` 启动后退出启动器。已有图标缺失或损坏时也重建包装。应用包装、开发模式与生成绑定不重复走此流程；实际 GUI 进程负责模型生命周期和退出清理。
 
 `mygo.json` 的 `icon` 指向 `Design/Icon/png/videohelper-app-icon-1024.png`，由 MyGo 生成平台图标。macOS 单文件同时内嵌 `desktop/AppIcon.icns`、`Info.plist` 和 `CodeResources`；更换图标时必须从 `make desktop-app` 的产物同步这三个文件，再执行 `make desktop` 的逐字节一致性检查。使用产出的二进制运行 `VH_TEST_DESKTOP_EXECUTABLE=... go test ./desktop -run TestBuiltStandaloneRestoresValidSignature`，验证恢复后的资源签名。网页 favicon 和界面 SVG 由 Vite 直接打包，运行时不访问设计目录或外网。

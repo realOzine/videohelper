@@ -54,5 +54,5 @@ export async function call<T = unknown>(method: string, path: string, body?: unk
   return data as T;
 }
 
-export const get = <T>(path: string) => call<T>('GET', path);
+export const get = <T>(path: string, signal?: AbortSignal) => call<T>('GET', path, undefined, signal);
 export const post = <T>(path: string, body?: unknown, signal?: AbortSignal) => call<T>('POST', path, body, signal);
