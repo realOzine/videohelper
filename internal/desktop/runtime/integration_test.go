@@ -176,6 +176,11 @@ func TestManagerIntegration(t *testing.T) {
 	if err := m.Ensure(ctx, func(p Progress) { t.Log(p.Stage, p.Message) }); err != nil {
 		t.Fatal(err)
 	}
+	for _, profile := range []string{m.visualProfile, "speech-audio-cpu"} {
+		if _, err := m.run(ctx, m.profilePython(profile), []string{"-c", "from importlib.util import find_spec; assert all(find_spec(name) is None for name in ('boto3','botocore','s3transfer'))"}, nil); err != nil {
+			t.Fatal(err)
+		}
+	}
 	services, err := m.Start(ctx)
 	if err != nil {
 		t.Fatal(err)
