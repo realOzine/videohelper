@@ -35,4 +35,13 @@ func TestDemoConfigValidForEveryCommandRole(t *testing.T) {
 			t.Errorf("%s: %v", role, err)
 		}
 	}
+	for _, channel := range []string{"visual", "speech"} {
+		spaces := cfg.Channels[channel].Active
+		if len(spaces) != 1 || spaces[0] != "wemm-2b-cpu@r1" {
+			t.Fatalf("%s must use the CPU space, got %v", channel, spaces)
+		}
+		if endpoint := cfg.ML.ModelEndpoints[spaces[0]]; endpoint != "http://wemm:8000" {
+			t.Errorf("%s CPU space bound to unexpected endpoint %q", channel, endpoint)
+		}
+	}
 }

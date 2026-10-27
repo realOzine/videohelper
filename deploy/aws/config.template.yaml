@@ -17,15 +17,15 @@ auth:
   jwks_url: http://auth:18001/jwks
 ml:
   transcriber: paraformer-zh@r1
-  endpoints: [http://wemm-cuda:8000, http://speech-audio:8000]
+  endpoints: [http://wemm:8000, http://speech-audio:8000]
   model_endpoints:
-    wemm-2b-cuda-experimental@r1: http://wemm-cuda:8000
+    wemm-2b-cpu@r1: http://wemm:8000
     paraformer-zh@r1: http://speech-audio:8000
     clap-htsat-unfused@r1: http://speech-audio:8000
   token_env: VH_ML_TOKEN
-  query_timeout: 30s
-  embed_timeout: 120s
-  embed_batch: 2
+  query_timeout: 120s
+  embed_timeout: 10m
+  embed_batch: 1
   transcribe_chunk_ms: 600000
   transcribe_overlap_ms: 30000
   transcribe_timeout: 10m
