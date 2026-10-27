@@ -7,7 +7,7 @@
 ## 首次启动与重复启动
 
 1. 根据打包资源内容生成隔离目录 `runtime/ml-<digest>`，保留 `ml/`、`plugins/`、`profiles/` 的相对关系。
-2. 按 `internal/desktop/runtime/components.json` 下载固定组件。下载写私有 staging，限制体积，核验发行文件 SHA256，提取固定目标文件后才发布。损坏的已安装文件不会直接执行；安装锁使用 OS 文件锁，失败或取消只清理本次 staging。
+2. 按 `internal/desktop/runtime/components.json` 下载固定组件。下载写私有 staging，限制体积，核验发行文件 SHA256，提取固定目标文件后才发布。损坏的已安装文件不会直接执行；安装锁使用 OS 文件锁，失败或取消只清理本次 staging。校验后的 FFmpeg 和 ffprobe 以本体哈希组合发布到同一个私有 `media-<digest>/` 目录，优先硬链接，跨文件系统时复制；yt-dlp 的 `--ffmpeg-location` 指向这个目录，不依赖系统 PATH 发现 ffprobe。
 3. 固定 uv 0.13.6 使用随包 `python-downloads.json` 安装 CPython 3.12.15、build 20261021。该目录来自同版 uv 的上游元数据，含各平台准确 URL 与 SHA256；不修改用户 PATH、Python 可执行入口或 Windows 注册表。
 4. profile 使用自己的私有 `.venv` 与 `uv sync --frozen --no-dev --no-default-groups --no-editable`，不依赖用户的 Python 环境。各依赖版本、下载地址与哈希来自该 profile 的 `uv.lock`。没有 NVIDIA 候选的 Linux/Windows 使用 CPU wheel；CUDA 候选才安装 cu130 wheel。
 5. 首先尝试用缓存离线 `prepare`，缺失时才联网准备固定 revision 的权重。`HF_HOME` 固定为数据目录下的 `models/`；生产明确 `ML_FAKE=0`。WeMM 的固定修订与远程代码哈希检查继续生效。
@@ -43,3 +43,16 @@
 FFmpeg 不能统一标作 LGPL：此功能需要 `libx264`，对应启用 GPL 的构建；macOS 选定构建配置为 `--enable-gpl --enable-version3`，无 `--enable-nonfree`；本机验证本体 `-L` 为 GPLv3+。Windows 构建 README 明示 GPLv3；所有平台在启动前执行 `-L`，拒绝自报不可再分发的二进制。若发行最终 App 包含这些组件，发行流程必须同时整理准确许可、第三方 notices 与适用的对应源码/构建材料；仅附项目主页或一条“开源”说明不足以完成分发义务。当前启动器直接下载上述上游独立组件，没有自行重新链接它们。
 
 yt-dlp 官方独立包已带 EJS，仍需 JS runtime。处理器须传私有 Deno 与 FFmpeg 的绝对路径，关闭用户配置与插件，不把 URL 拼接成 shell 命令；受控任务目录先保留完整下载原片，ASR/CLAP 读取保留原音频的输入。下载站点发生变化时要更新固定发行与校验和，再验证实际导入；运行时不执行隐式自更新。
+
+
+## 显式运行验证
+
+常规 `go test ./internal/desktop/runtime` 不下载组件和模型。显式提供独立数据目录后可执行：
+
+```sh
+VH_TEST_DESKTOP_TOOLS_DIR=/absolute/disposable/data go test ./internal/desktop/runtime -run '^TestPinnedToolsIntegration$' -v
+VH_TEST_DESKTOP_TOOLS_DIR=/absolute/disposable/data go test ./internal/desktop/runtime -run '^TestYTDLPPrivateMediaToolsIntegration$' -v
+VH_TEST_DESKTOP_DIR=/absolute/disposable/data go test ./internal/desktop/runtime -run '^TestManagerIntegration$' -v -timeout 35m
+```
+
+工具测试校验实际发行文件与版本/许可；yt-dlp 测试在清空 PATH 后从本地 HTTP DASH fixture 下载分离音视频、合并并提取 WAV，验证其确实找到私有 ffprobe；它不证明某个线上站点当前可下载。Manager 测试实际安装私有依赖、加载模型、验证 `fake=false` 并编码原文中文查询，保存无令牌诊断；已有权重缓存时属于 warm-cache 验证，不能当作全新设备冷下载证明。

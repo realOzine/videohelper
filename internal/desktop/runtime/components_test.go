@@ -12,6 +12,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -43,6 +44,42 @@ func TestComponentVerifiedAndCorruptionRecovered(t *testing.T) {
 	entries, _ := os.ReadDir(root)
 	if len(entries) != 1 {
 		t.Fatalf("failed install left files: %v", entries)
+	}
+}
+
+func TestMediaToolsPublishAsVerifiedExecutableNeighbors(t *testing.T) {
+	dir := t.TempDir()
+	ffmpeg := filepath.Join(dir, "ffmpeg-source")
+	ffprobe := filepath.Join(dir, "ffprobe-source")
+	for _, path := range []string{ffmpeg, ffprobe} {
+		if err := os.WriteFile(path, []byte(filepath.Base(path)), 0700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	first, second, err := mediaToolset(filepath.Join(dir, "tools"), ffmpeg, ffprobe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if filepath.Dir(first) != filepath.Dir(second) {
+		t.Fatal("media tools are not neighbors")
+	}
+	for _, pair := range [][2]string{{first, ffmpeg}, {second, ffprobe}} {
+		actual, err := fileHash(pair[0])
+		if err != nil {
+			t.Fatal(err)
+		}
+		expected, _ := fileHash(pair[1])
+		if actual != expected {
+			t.Fatal("published media tool differs")
+		}
+		info, _ := os.Stat(pair[0])
+		if runtime.GOOS != "windows" && info.Mode().Perm()&0111 == 0 {
+			t.Fatal("published tool is not executable")
+		}
+	}
+	otherFirst, otherSecond, err := mediaToolset(filepath.Join(dir, "tools"), ffmpeg, ffprobe)
+	if err != nil || first != otherFirst || second != otherSecond {
+		t.Fatalf("media toolset is not stable: %s %s %v", otherFirst, otherSecond, err)
 	}
 }
 

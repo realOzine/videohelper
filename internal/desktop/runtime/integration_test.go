@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -82,6 +83,78 @@ func TestPinnedToolsIntegration(t *testing.T) {
 		t.Fatalf("private Python: %q %v", version, err)
 	}
 	t.Log(strings.TrimSpace(version))
+}
+
+func TestYTDLPPrivateMediaToolsIntegration(t *testing.T) {
+	dir := os.Getenv("VH_TEST_DESKTOP_TOOLS_DIR")
+	if dir == "" {
+		t.Skip("set VH_TEST_DESKTOP_TOOLS_DIR to a disposable private directory")
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+	components, err := componentsFor(runtime.GOOS + "/" + runtime.GOARCH)
+	if err != nil {
+		t.Fatal(err)
+	}
+	paths := map[string]string{}
+	for _, component := range components {
+		if component.Notice || component.Name == "uv" {
+			continue
+		}
+		paths[component.Name], err = installComponent(ctx, downloadClient(), filepath.Join(dir, "runtime", "tools"), component)
+		if err != nil {
+			t.Fatal(err)
+		}
+	}
+	ffmpeg, ffprobe, err := mediaToolset(filepath.Join(dir, "runtime", "tools"), paths["ffmpeg"], paths["ffprobe"])
+	if err != nil {
+		t.Fatal(err)
+	}
+	if filepath.Dir(ffmpeg) != filepath.Dir(ffprobe) {
+		t.Fatal("private FFmpeg tools are not neighbors")
+	}
+	t.Setenv("PATH", "")
+	fixture := t.TempDir()
+	var logs tailBuffer
+	run := func(path string, args ...string) {
+		t.Helper()
+		if err := RunCommand(ctx, path, args, &logs, &logs); err != nil {
+			t.Fatalf("%s: %v\n%s", filepath.Base(path), err, logs.String())
+		}
+	}
+	run(ffmpeg, "-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i", "color=c=blue:s=32x32:r=10", "-t", "1", "-an", "-c:v", "libx264", filepath.Join(fixture, "video.mp4"))
+	run(ffmpeg, "-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i", "sine=frequency=440:sample_rate=48000", "-t", "1", "-vn", "-c:a", "aac", filepath.Join(fixture, "audio.m4a"))
+	manifest := `<MPD xmlns="urn:mpeg:dash:schema:mpd:2011" type="static" mediaPresentationDuration="PT1S" minBufferTime="PT1S"><Period duration="PT1S"><AdaptationSet mimeType="video/mp4" contentType="video" codecs="avc1.64000a" width="32" height="32" frameRate="10"><Representation id="video" bandwidth="100000"><BaseURL>video.mp4</BaseURL></Representation></AdaptationSet><AdaptationSet mimeType="audio/mp4" contentType="audio" codecs="mp4a.40.2"><Representation id="audio" bandwidth="64000" audioSamplingRate="48000"><BaseURL>audio.m4a</BaseURL></Representation></AdaptationSet></Period></MPD>`
+	if err := os.WriteFile(filepath.Join(fixture, "manifest.mpd"), []byte(manifest), 0600); err != nil {
+		t.Fatal(err)
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/manifest.mpd" {
+			w.Header().Set("Content-Type", "application/dash+xml")
+		}
+		http.ServeFile(w, r, filepath.Join(fixture, filepath.Base(r.URL.Path)))
+	}))
+	defer server.Close()
+	common := []string{"--ignore-config", "--no-plugin-dirs", "--no-playlist", "--no-update", "--ffmpeg-location", filepath.Dir(ffmpeg), "--js-runtimes", "deno:" + paths["deno"]}
+	run(paths["yt-dlp"], append(common, "--format", "bestvideo+bestaudio", "--merge-output-format", "mp4", "--output", filepath.Join(fixture, "merged.%(ext)s"), "--", server.URL+"/manifest.mpd")...)
+	var probe tailBuffer
+	if err := RunCommand(ctx, ffprobe, []string{"-v", "error", "-show_entries", "stream=codec_type", "-of", "json", filepath.Join(fixture, "merged.mp4")}, &probe, &logs); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(probe.String(), "video") || !strings.Contains(probe.String(), "audio") {
+		t.Fatalf("merged media lacks streams: %s", probe.String())
+	}
+	run(paths["yt-dlp"], append(common, "--format", "bestaudio", "--extract-audio", "--audio-format", "wav", "--output", filepath.Join(fixture, "extracted.%(ext)s"), "--", server.URL+"/manifest.mpd")...)
+	if _, err := os.Stat(filepath.Join(fixture, "extracted.wav")); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(logs.String(), "[Merger]") || !strings.Contains(logs.String(), "[ExtractAudio]") {
+		t.Fatalf("postprocessors did not run: %s", logs.String())
+	}
+	if err := os.WriteFile(filepath.Join(dir, "yt-dlp-private-tools.log"), []byte(logs.String()+"\nMerged streams:\n"+probe.String()), 0600); err != nil {
+		t.Fatal(err)
+	}
+	t.Log("yt-dlp downloaded separate DASH tracks, merged video+audio and probed/extracted WAV with empty PATH", filepath.Dir(ffmpeg))
 }
 
 // Opt-in real installation, model loading and text inference; diagnostic output never contains tokens.
