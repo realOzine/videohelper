@@ -60,43 +60,45 @@ func (s *Store) ListJobs(ctx context.Context, videoID int64) ([]Job, error) {
 func (s *Store) CreateJob(ctx context.Context, videoID int64) (Job, error) {
 	var j Job
 	err := s.write(ctx, func(tx *sql.Tx) error {
-		var source, kind string
-		if err := tx.QueryRowContext(ctx, "SELECT source_key,source_kind FROM video WHERE id=? AND deleted_at IS NULL", videoID).Scan(&source, &kind); err != nil {
-			return missing(err)
-		}
-		existing, err := scanJob(tx.QueryRowContext(ctx, "SELECT "+jobColumns+" FROM job WHERE video_id=? AND status IN ('queued','running')", videoID))
-		if err == nil {
-			j = existing
-			return nil
-		}
-		if !errors.Is(err, ErrNotFound) {
-			return err
-		}
-		stage := "probe"
-		status := "indexing"
-		if source == "" {
-			if kind == "upload" {
-				return ErrConflict
-			}
-			stage = "fetch"
-			status = "importing"
-		}
-		now := timestamp()
-		result, err := tx.ExecContext(ctx, "INSERT INTO job(video_id,status,stage,created_at,updated_at) VALUES(?,'queued',?,?,?)", videoID, stage, now, now)
-		if err != nil {
-			return err
-		}
-		id, err := result.LastInsertId()
-		if err != nil {
-			return err
-		}
-		if _, err := tx.ExecContext(ctx, "UPDATE video SET status=?,error='',updated_at=? WHERE id=?", status, now, videoID); err != nil {
-			return err
-		}
-		j, err = scanJob(tx.QueryRowContext(ctx, "SELECT "+jobColumns+" FROM job WHERE id=?", id))
+		var err error
+		j, err = createJob(ctx, tx, videoID)
 		return err
 	})
 	return j, err
+}
+
+func createJob(ctx context.Context, tx *sql.Tx, videoID int64) (Job, error) {
+	var source, kind string
+	if err := tx.QueryRowContext(ctx, "SELECT source_key,source_kind FROM video WHERE id=? AND deleted_at IS NULL", videoID).Scan(&source, &kind); err != nil {
+		return Job{}, missing(err)
+	}
+	existing, err := scanJob(tx.QueryRowContext(ctx, "SELECT "+jobColumns+" FROM job WHERE video_id=? AND status IN ('queued','running')", videoID))
+	if err == nil {
+		return existing, nil
+	}
+	if !errors.Is(err, ErrNotFound) {
+		return Job{}, err
+	}
+	stage, status := "probe", "indexing"
+	if source == "" {
+		if kind == "upload" {
+			return Job{}, ErrConflict
+		}
+		stage, status = "fetch", "importing"
+	}
+	now := timestamp()
+	result, err := tx.ExecContext(ctx, "INSERT INTO job(video_id,status,stage,created_at,updated_at) VALUES(?,'queued',?,?,?)", videoID, stage, now, now)
+	if err != nil {
+		return Job{}, err
+	}
+	id, err := result.LastInsertId()
+	if err != nil {
+		return Job{}, err
+	}
+	if _, err := tx.ExecContext(ctx, "UPDATE video SET status=?,error='',updated_at=? WHERE id=?", status, now, videoID); err != nil {
+		return Job{}, err
+	}
+	return scanJob(tx.QueryRowContext(ctx, "SELECT "+jobColumns+" FROM job WHERE id=?", id))
 }
 
 // ClaimJob atomically takes one queued job. ErrNotFound means the queue is idle.

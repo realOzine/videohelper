@@ -90,6 +90,44 @@ func TestPrivateLoopbackAndStrictJSON(t *testing.T) {
 	}
 }
 
+func TestImportsRemainDurablyQueuedWhileModelsPrepare(t *testing.T) {
+	s, db := startTest(t)
+	source := filepath.Join(t.TempDir(), "source.mp4")
+	if err := os.WriteFile(source, []byte("original file"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	for _, input := range []struct {
+		endpoint    string
+		body        map[string]string
+		kind, stage string
+	}{
+		{"/v1/imports/file", map[string]string{"path": source}, "upload", "probe"},
+		{"/v1/imports/url", map[string]string{"url": "https://www.youtube.com/watch?v=example"}, "youtube", "fetch"},
+	} {
+		body, err := json.Marshal(input.body)
+		if err != nil {
+			t.Fatal(err)
+		}
+		res := request(t, s, "POST", input.endpoint, string(body), nil)
+		if res.StatusCode != 200 {
+			t.Fatal(res.Status)
+		}
+		var response struct {
+			Video store.Video `json:"video"`
+		}
+		if err := json.NewDecoder(res.Body).Decode(&response); err != nil {
+			t.Fatal(err)
+		}
+		if response.Video.SourceKind != input.kind {
+			t.Fatalf("wrong source metadata: %+v", response.Video)
+		}
+		job, err := db.LatestJob(t.Context(), response.Video.ID)
+		if err != nil || job.Status != "queued" || job.Stage != input.stage {
+			t.Fatalf("unready import did not persist its job: %+v %v", job, err)
+		}
+	}
+}
+
 func TestMediaRangeCapabilityAndDeletion(t *testing.T) {
 	s, db := startTest(t)
 	input := filepath.Join(t.TempDir(), "clip.mp4")
