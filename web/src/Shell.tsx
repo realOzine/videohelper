@@ -1,20 +1,20 @@
-// The signed-in frame: a ruled T of sidebar and top bar on the ink ground, the canvas beside them.
+// The desktop frame: a ruled T of sidebar and top bar on the ink ground, the canvas beside them.
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { get, post, type Project, type Video } from './api.ts';
+import { get, post, type Project, type Video, type RuntimeState } from './api.ts';
 import { t, useLang } from './i18n.ts';
 import './strings.ts';
 import { cx, errText, Icon, LangSwitch, Mark } from './ui.tsx';
 
-export interface Workspace { projects: Project[]; workspaceId: string; failed: number }
+export interface LibraryState { projects: Project[]; failed: number }
 
-// The sidebar's data: projects, the workspace and how many videos failed. Pages share it for their own selects.
-export function useWorkspace(fail: (err: unknown) => void) {
-  const [ws, setWs] = useState<Workspace | null>(null);
+// The sidebar's projects and failed video count. Pages share it for their own selects.
+export function useLibrary(fail: (err: unknown) => void) {
+  const [ws, setWs] = useState<LibraryState | null>(null);
   const reload = useCallback(async () => {
-    const [{ projects }, me, failed] = await Promise.all([
-      get<{ projects: Project[] }>('/v1/projects'), get<{ workspace_id: string }>('/v1/me'), get<{ videos: Video[] }>('/v1/videos?status=failed&limit=100'),
+    const [{ projects }, failed] = await Promise.all([
+      get<{ projects: Project[] }>('/v1/projects'), get<{ videos: Video[] }>('/v1/videos?status=failed&limit=100'),
     ]);
-    setWs({ projects, workspaceId: me.workspace_id, failed: failed.videos.length });
+    setWs({ projects, failed: failed.videos.length });
   }, []);
   useEffect(() => { reload().catch(fail); }, [reload, fail]);
   return { ws, reload };
@@ -30,7 +30,7 @@ export function useNotice() {
 const navItem = 'flex h-9 items-center gap-2.5 rounded-lg px-2 text-fg-soft transition-colors duration-150 hover:bg-ink-2 hover:text-fg aria-[current=page]:bg-ink-2 aria-[current=page]:font-semibold aria-[current=page]:text-fg aria-[current=page]:shadow-edge [&>svg]:size-4';
 
 export function Shell({ page, query = '', ws, onNewProject, notice, children }: {
-  page: 'search' | 'library' | 'video'; query?: string; ws: Workspace | null; onNewProject: () => void; notice: string; children: ReactNode;
+  page: 'search' | 'library' | 'video'; query?: string; ws: LibraryState | null; onNewProject: () => void; notice: string; children: ReactNode;
 }) {
   const lang = useLang();
   const [open, setOpen] = useState(false);
@@ -79,13 +79,11 @@ export function Shell({ page, query = '', ws, onNewProject, notice, children }: 
           <kbd className="rounded bg-ink-3 px-1.5 font-sans text-xs text-fg-soft max-xs:hidden">/</kbd>
         </form>
         <LangSwitch className="ml-auto flex gap-0.5 rounded-lg bg-ink-2 p-[3px]" button="h-[30px] min-w-10 whitespace-nowrap rounded-md px-2.5 font-medium text-fg-soft transition-colors aria-pressed:bg-ink-3 aria-pressed:text-fg" />
-        <a className="ml-4 flex items-center gap-2.5 self-stretch border-l border-ink-3 pr-[29px] pl-5 max-md:pr-4 max-md:pl-3 max-xs:ml-2 max-xs:pr-3 max-xs:pl-2" href="signin.html" title={t('top.account')}>
-          <span className="grid size-7 place-items-center rounded-full bg-ink-3 text-[13px] font-semibold">{t('top.me')}</span>
-          <span className="text-fg-soft max-md:hidden">{ws ? t('top.ws', { id: ws.workspaceId }) : ''}</span>
-        </a>
+
       </header>
 
       <main className="col-start-2 min-w-0 px-[29px] pt-7 pb-12 max-md:col-start-1 max-md:px-4 max-md:pt-5 max-md:pb-10">
+        <RuntimeStatus />
         {notice && <p role="alert" className="mb-6 flex items-center gap-3 rounded-[10px] bg-red-soft px-4 py-3 text-neg-ink">{notice}</p>}
         {children}
       </main>
@@ -125,4 +123,27 @@ export async function newProject(reload: () => Promise<void>, fail: (err: unknow
   const name = prompt(t('p.name'));
   if (!name || !name.trim()) return;
   try { await post('/v1/projects', { name: name.trim() }); await reload(); } catch (err) { fail(err); }
+}
+
+function RuntimeStatus() {
+  const [state, setState] = useState<RuntimeState | null>(null);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    let stopped = false;
+    const poll = async () => {
+      try { const next = await get<RuntimeState>('/v1/desktop/runtime'); if (!stopped) { setState(next); setError(''); } }
+      catch (err) { if (!stopped) setError(err instanceof Error ? err.message : String(err)); }
+    };
+    poll(); const timer = window.setInterval(poll, 2000);
+    return () => { stopped = true; clearInterval(timer); };
+  }, []);
+  return <section aria-live="polite" className="mb-6 rounded-[10px] bg-ink-2 px-4 py-3 shadow-edge">
+    <div className="flex flex-wrap items-center gap-2 text-[13px]">
+      <span className={cx('size-1.5 rounded-full', state?.ready ? 'bg-pos' : state?.error || error ? 'bg-red' : 'animate-beat bg-red')} />
+      <span className="font-medium">{state?.ready ? t('desktop.ready') : t('desktop.preparing')}</span>
+      {state?.device && <span className="rounded bg-ink-3 px-1.5 font-mono text-xs text-fg-soft">{state.device.toUpperCase()}</span>}
+      <span className="min-w-0 text-fg-soft">{state?.error || error || state?.message}</span>
+    </div>
+    {state?.fraction != null && !state.ready && <progress aria-label={t('desktop.preparing')} className="mt-2 h-1 w-full accent-red" value={state.fraction} max={1} />}
+  </section>;
 }

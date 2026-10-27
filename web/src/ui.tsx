@@ -1,6 +1,6 @@
 // Small pieces shared by every page: icons, the mark, pills, thumbnails, buttons, rich strings, entrances.
 import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react';
-import { ApiError, settings, type Thumbnail } from './api.ts';
+import { ApiError, type Thumbnail } from './api.ts';
 import { setLang, t, useLang } from './i18n.ts';
 import { marks } from './lib.ts';
 
@@ -90,7 +90,7 @@ export function LangSwitch({ className, button }: { className?: string; button?:
 }
 
 export const errText = (err: unknown) =>
-  err instanceof ApiError && err.code === 'network' ? t('err.network', { base: settings().base || '' }) : err instanceof Error ? err.message : String(err);
+  err instanceof ApiError && err.code === 'network' ? t('err.network') : err instanceof Error ? err.message : String(err);
 
 type RiseTag = 'div' | 'h2' | 'p';
 // Rises into place once it scrolls into view; reduced motion shows it at once (index.css).
