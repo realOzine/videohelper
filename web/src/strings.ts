@@ -2,7 +2,7 @@
 import { addStrings } from './i18n.ts';
 
 addStrings({
-    'desktop.ready': '本地模型已就绪', 'desktop.preparing': '正在准备本地运行环境', 'desktop.url': '从视频链接导入', 'desktop.importURL': '导入链接', 'desktop.adding': '正在添加…', 'desktop.copying': '正在复制…', 'desktop.managedCopy': '复制到资料库', 'desktop.copied': '复制完成', 'desktop.cancel': '取消', 'desktop.cancelled': '已取消', 'desktop.restore': '恢复', 'st.cancelled': '已取消', 'st.deleted': '已删除',
+    'stage.fetch': '下载源视频', 'source.upload': '本地文件', 'source.direct': '视频链接', 'source.youtube': 'YouTube', 'source.bilibili': '哔哩哔哩', 'desktop.ready': '本地模型已就绪', 'desktop.preparing': '正在准备本地运行环境', 'desktop.url': '从视频链接导入', 'desktop.importURL': '导入链接', 'desktop.adding': '正在添加…', 'desktop.copying': '正在复制…', 'desktop.managedCopy': '复制到资料库', 'desktop.copied': '复制完成', 'desktop.cancel': '取消', 'desktop.cancelled': '已取消', 'desktop.restore': '恢复', 'st.cancelled': '已取消', 'st.deleted': '已删除',
 
     'a.nav': '主导航', 'a.closenav': '关闭导航', 'a.views': '结果视图', 'v.dir': '目录', 'v.det': '详情', 's.back': '返回目录 · {n} 个视频', 's.hits': '命中 {n} 处', 's.hit': '命中 {n} 处', 's.nth': '第 {n} 个', 's.openvideo': '打开视频', 'st.importing': '导入中',
     'stage.probe': '读取媒体信息', 'stage.prepare_media': '转码与缩略图', 'stage.visual': '画面编码', 'stage.asr': '语音转录', 'stage.speech': '台词编码', 'stage.audio': '声音编码', 'stage.finalize': '完成',
@@ -40,7 +40,7 @@ addStrings({
     'th.video': '视频', 'th.status': '状态', 'th.dur': '时长', 'th.proj': '项目', 'th.added': '添加时间', 'th.actions': '操作',
     'h.progress': '处理进度', 'h.vsearch': '在这个视频里搜索', 'b.search': '搜索', 'h.info': '视频信息', 'a.video': '视频', 'a.player': '播放器',
 }, {
-    'desktop.ready': 'Local models ready', 'desktop.preparing': 'Preparing local runtime', 'desktop.url': 'Import a video link', 'desktop.importURL': 'Import link', 'desktop.adding': 'Adding…', 'desktop.copying': 'Copying…', 'desktop.managedCopy': 'Copy to library', 'desktop.copied': 'Copied', 'desktop.cancel': 'Cancel', 'desktop.cancelled': 'Canceled', 'desktop.restore': 'Restore', 'st.cancelled': 'Canceled', 'st.deleted': 'Deleted',
+    'stage.fetch': 'Download source video', 'source.upload': 'Local file', 'source.direct': 'Video link', 'source.youtube': 'YouTube', 'source.bilibili': 'Bilibili', 'desktop.ready': 'Local models ready', 'desktop.preparing': 'Preparing local runtime', 'desktop.url': 'Import a video link', 'desktop.importURL': 'Import link', 'desktop.adding': 'Adding…', 'desktop.copying': 'Copying…', 'desktop.managedCopy': 'Copy to library', 'desktop.copied': 'Copied', 'desktop.cancel': 'Cancel', 'desktop.cancelled': 'Canceled', 'desktop.restore': 'Restore', 'st.cancelled': 'Canceled', 'st.deleted': 'Deleted',
 
     'a.nav': 'Main navigation', 'a.closenav': 'Close navigation', 'a.views': 'Result view', 'v.dir': 'Gallery', 'v.det': 'Detail', 's.back': 'Back to gallery · {n} videos', 's.hits': '{n} hits', 's.hit': '{n} hit', 's.nth': '#{n}', 's.openvideo': 'Open video', 'st.importing': 'Importing',
     'stage.probe': 'Read media info', 'stage.prepare_media': 'Transcode and thumbnails', 'stage.visual': 'Picture encoding', 'stage.asr': 'Transcription', 'stage.speech': 'Speech encoding', 'stage.audio': 'Sound encoding', 'stage.finalize': 'Finish',

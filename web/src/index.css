@@ -3,7 +3,7 @@
 @font-face { font-family: "Instrument Sans"; src: url("./fonts/instrumentsans.ttf") format("truetype"); font-style: normal; font-weight: 400 700; font-display: swap; }
 @font-face { font-family: "Fraunces"; src: url("./fonts/fraunces.ttf") format("truetype"); font-style: normal; font-weight: 100 900; font-display: swap; }
 
-/* One palette for the landing page and the workbench, after cindy.app: ink grounds, paper text and fields, one signal red.
+/* The desktop palette, after cindy.app: ink grounds, paper text and fields, one signal red.
    The default Tailwind colours and breakpoints are cleared so only these exist. */
 @theme {
   --color-*: initial;
@@ -44,12 +44,11 @@
 
   --breakpoint-*: initial;
   --breakpoint-xs: 35rem;     /* 560: phone */
-  --breakpoint-sm: 47.5rem;   /* 760: landing phone */
+  --breakpoint-sm: 47.5rem;   /* 760 */
   --breakpoint-md: 53.75rem;  /* 860: workbench sidebar folds */
-  --breakpoint-lg: 60rem;     /* 960: landing notes stack */
+  --breakpoint-lg: 60rem;     /* 960 */
   --breakpoint-xl: 68.75rem;  /* 1100: tablet */
 
-  --animate-run: run 76s linear infinite;
   --animate-enter: enter 420ms var(--ease-out) both;
   --animate-beat: beat 1.6s ease-in-out infinite;
 
@@ -57,10 +56,8 @@
   --shadow-edge: inset 0 1px 0 rgb(255 255 255 / 0.045);
 }
 
-@keyframes run { to { transform: translateX(-50%); } }
 @keyframes enter { from { opacity: 0; transform: translateY(6px); } }
 @keyframes beat { 50% { opacity: 0.35; } }
-@keyframes scan { to { background-position: 0 3px; } }
 
 @layer base {
   html { -webkit-text-size-adjust: 100%; color-scheme: dark; }
@@ -71,22 +68,10 @@
   ::selection { background: var(--color-red-fill); color: #fff; }
 }
 
-/* the landing page's margins and five type steps: display, head, lead, body, small */
-.landing {
-  --m: max(40px, env(safe-area-inset-left, 0px)); --mr: max(40px, env(safe-area-inset-right, 0px));
-  --step-small: 15px; --step-body: clamp(17px, 16px + 0.2vw, 18px); --step-lead: clamp(24px, 2.2vw, 34px);
-  --step-head: clamp(44px, 5.6vw, 92px); --step-display: clamp(72px, 10vw, 168px);
-}
-@media (width < 47.5rem) { .landing { --m: max(20px, env(safe-area-inset-left, 0px)); --mr: max(20px, env(safe-area-inset-right, 0px)); } }
-
 @layer components {
   /* headings are set like film title cards: a heavy display serif, and heavy Song for Chinese; WONK off keeps Fraunces upright */
   .disp { font-family: var(--font-disp); font-weight: 800; font-variation-settings: "WONK" 0; letter-spacing: -0.025em; line-height: 1; text-wrap: balance; white-space: pre-line; }
   :lang(zh-CN) .disp { font-family: var(--font-cjk); font-weight: 900; letter-spacing: 0; line-height: 1.16; }
-
-  /* entrances: rise into place once on screen (see Rise in ui.tsx) */
-  .rise { opacity: 0; transform: translateY(24px); transition: opacity 800ms var(--ease-out), transform 800ms var(--ease-out); transition-delay: var(--d, 0ms); }
-  .rise.in { opacity: 1; transform: none; }
 
   /* channel marks: the shape tells the channel apart, the label says it */
   .ch { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
@@ -95,28 +80,11 @@
   .ch-speech::before { border-radius: 50%; }
   .ch-audio::before { transform: rotate(45deg) scale(0.85); }
 
-  /* the landing's drag-through-the-stages slider */
-  .stage-range { width: 100%; margin: 0; appearance: none; height: 32px; background: transparent; cursor: pointer; }
-  .stage-range::-webkit-slider-runnable-track { height: 8px; background: linear-gradient(var(--color-fg), var(--color-fg)) 0 / var(--pass, 0%) 100% no-repeat, var(--color-ink-4); }
-  .stage-range::-webkit-slider-thumb { appearance: none; width: 32px; height: 32px; margin-top: -12px; background: var(--color-red); transition: transform 140ms var(--ease-out); }
-  .stage-range:active::-webkit-slider-thumb { transform: scale(1.12); }
-  .stage-range::-moz-range-track { height: 8px; background: var(--color-ink-4); }
-  .stage-range::-moz-range-progress { height: 8px; background: var(--color-fg); }
-  .stage-range::-moz-range-thumb { width: 32px; height: 32px; border: 0; border-radius: 0; background: var(--color-red); }
-}
-
-/* the hero stage's texture: faint scanlines drifting, and the timeline ruler's ticks along its bottom */
-.scanlines { background-image: repeating-linear-gradient(0deg, rgb(255 255 255 / 0.014) 0 1px, transparent 1px 3px); animation: scan 1.2s linear infinite; }
-.ruler {
-  background-image: repeating-linear-gradient(90deg, rgb(243 237 226 / 0.28) 0 1px, transparent 1px 10%), repeating-linear-gradient(90deg, rgb(243 237 226 / 0.12) 0 1px, transparent 1px 2%);
-  background-size: 100% 14px, 100% 7px; background-repeat: no-repeat;
 }
 
 /* the cut corner on primary buttons, after cindy.app */
-@utility chamfer { clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%); }
 @utility chamfer-sm { clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: 0.01ms !important; animation: none !important; }
-  .rise { opacity: 1; transform: none; }
 }

@@ -21,9 +21,9 @@ export function pipeline<S extends Stage>(stages: S[]) {
     const k = stageKind(s.stage);
     if (k === 'asr') lanes.speech.unshift(s);
     else if (k in lanes) lanes[k].push(s);
-    else (k === 'probe' || k === 'prepare_media' ? before : after).push(s);
+    else (['fetch', 'probe', 'prepare_media'].includes(k) ? before : after).push(s);
   }
-  before.sort((a, b) => (a.stage === 'probe' ? -1 : b.stage === 'probe' ? 1 : 0));
+  before.sort((a, b) => ['fetch', 'probe', 'prepare_media'].indexOf(a.stage) - ['fetch', 'probe', 'prepare_media'].indexOf(b.stage));
   return { before, lanes: Object.entries(lanes).filter(([, l]) => l.length), after };
 }
 

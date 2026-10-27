@@ -1,0 +1,12 @@
+{
+  "name": "VideoHelper",
+  "identifier": "app.ozine.videohelper",
+  "version": "0.1.0",
+  "main": "./cmd/videohelper-desktop",
+  "out": ".local/desktop-build",
+  "frontendDist": "web/dist",
+  "buildCommand": "npm --prefix web run build",
+  "bindings": ".local/desktop-build/bindings.ts",
+  "devUrl": "http://127.0.0.1:5173",
+  "devCommand": "npm --prefix web run dev"
+}

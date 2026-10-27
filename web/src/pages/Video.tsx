@@ -102,7 +102,7 @@ export default function Video() {
             <Thumb thumb={v.thumbnail} label={t('frame.of', { t: v.title })} className="w-28" />
             <div className="min-w-0">
               <h1 className="flex flex-wrap items-center gap-2.5 text-xl leading-[1.3] font-semibold">{v.title} <Pill status={v.status} /></h1>
-              <div className="mt-1 text-[13px] text-fg-soft">{v.duration_ms ? `${tc(v.duration_ms)} · ` : ''}{t('v.upload')} · {tracks(v)} · {t('v.added', { w: when(v.created_at) })}</div>
+              <div className="mt-1 text-[13px] text-fg-soft">{v.duration_ms ? `${tc(v.duration_ms)} · ` : ''}{t(`source.${v.source_kind}`)} · {tracks(v)} · {t('v.added', { w: when(v.created_at) })}</div>
             </div>
             <div className="ml-auto flex flex-wrap gap-2 max-md:ml-0 max-md:w-full">
               {(v.status === 'failed' || v.status === 'cancelled' || (v.status === 'ready' && failed)) && <button type="button" className={btnPrimary} onClick={(e) => retry(e.currentTarget)}>{t('retry')}</button>}
@@ -188,7 +188,7 @@ export default function Video() {
               <section aria-labelledby="ih" className={panel}>
                 <PanelHead id="ih" title={t('h.info')} />
                 <dl className="grid">
-                  {[[t('kv.dur'), v.duration_ms ? tc(v.duration_ms) : '—'], [t('kv.src'), t('v.upload')], [t('kv.tracks'), tracks(v)], [t('kv.added'), when(v.created_at)]].map(([k, val]) => (
+                  {[[t('kv.dur'), v.duration_ms ? tc(v.duration_ms) : '—'], [t('kv.src'), t(`source.${v.source_kind}`)], [t('kv.tracks'), tracks(v)], [t('kv.added'), when(v.created_at)]].map(([k, val]) => (
                     <div key={k} className="flex justify-between gap-3 border-t border-ink-3 py-2.5 first:border-t-0"><dt className="text-fg-soft">{k}</dt><dd className="text-right">{val}</dd></div>
                   ))}
                 </dl>

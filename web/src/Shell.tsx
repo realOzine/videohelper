@@ -143,6 +143,7 @@ function RuntimeStatus() {
       <span className="font-medium">{state?.ready ? t('desktop.ready') : t('desktop.preparing')}</span>
       {state?.device && <span title={state.reason} className="rounded bg-ink-3 px-1.5 font-mono text-xs text-fg-soft">{state.device.toUpperCase()}</span>}
       <span className="min-w-0 text-fg-soft">{state?.error || error || state?.message}</span>
+      {state?.error && <button type="button" className="ml-auto text-fg underline underline-offset-[3px]" onClick={() => post('/v1/desktop/runtime/retry').catch((err) => setError(errText(err)))}>{t('retry')}</button>}
     </div>
     {state?.fraction != null && !state.ready && <progress aria-label={t('desktop.preparing')} className="mt-2 h-1 w-full accent-red" value={state.fraction} max={1} />}
   </section>;

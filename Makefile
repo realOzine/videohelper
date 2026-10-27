@@ -1,11 +1,34 @@
 COMPOSE = docker compose -f deploy/docker-compose.yml
-GO_PACKAGES = ./cmd/... ./internal/... ./migrations/...
+GO_PACKAGES = . ./desktop/... ./cmd/... ./internal/... ./migrations/...
 ML_PROFILE ?= wemm-mps
 ML_PROFILE_DIR = ml/profiles/$(ML_PROFILE)
 ML_PORT ?= 8000
+DESKTOP_OS = $(shell go env GOOS)
+DESKTOP_ARCH = $(shell go env GOARCH)
+ifeq ($(DESKTOP_OS),darwin)
+DESKTOP_BINARY = .local/desktop-build/darwin-$(DESKTOP_ARCH)/VideoHelper.app/Contents/MacOS/VideoHelper
+else ifeq ($(DESKTOP_OS),windows)
+DESKTOP_BINARY = .local/desktop-build/windows-$(DESKTOP_ARCH)/VideoHelper.exe
+else
+DESKTOP_BINARY = .local/desktop-build/linux-$(DESKTOP_ARCH)/videohelper
+endif
 
 .PHONY: deps-up deps-down test-go test-web vet fmt build generate
 .PHONY: ml-install ml-prepare ml-serve ml-status test-ml-lifecycle
+.PHONY: desktop desktop-app desktop-assets desktop-run
+
+desktop-assets:
+	npm --prefix web run build
+
+desktop: desktop-app
+	mkdir -p bin
+	cp $(DESKTOP_BINARY) bin/VideoHelper$(if $(filter windows,$(DESKTOP_OS)),.exe,)
+
+desktop-app:
+	CGO_ENABLED=1 go run github.com/egoist/mygo/cmd/mygo@v0.7.1 build -skip-dmg -skip-notarize
+
+desktop-run:
+	CGO_ENABLED=1 go run github.com/egoist/mygo/cmd/mygo@v0.7.1 dev
 
 deps-up:
 	$(COMPOSE) up -d --wait

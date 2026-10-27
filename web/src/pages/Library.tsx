@@ -130,7 +130,7 @@ export default function Library() {
       </div>
 
       <div role="tablist" className="mb-6 flex gap-6 overflow-x-auto border-b border-ink-3 whitespace-nowrap">
-        {[['', t('tab.all')], ...['indexing', 'ready', 'failed', 'cancelled', 'deleted'].map((s) => [s, t(`st.${s}`)])].map(([s, label]) => (
+        {[['', t('tab.all')], ...['importing', 'indexing', 'ready', 'failed', 'cancelled', 'deleted'].map((s) => [s, t(`st.${s}`)])].map(([s, label]) => (
           <a key={s} role="tab" href={filter(s ? { status: s } : {})} aria-selected={s === status}
             className="relative py-2.5 text-fg-soft transition-colors duration-150 hover:text-fg aria-selected:text-fg aria-selected:after:absolute aria-selected:after:inset-x-0 aria-selected:after:-bottom-px aria-selected:after:h-0.5 aria-selected:after:bg-fg aria-selected:after:content-['']">{label}</a>
         ))}
@@ -160,7 +160,7 @@ export default function Library() {
                   <Thumb thumb={v.thumbnail} label={t('frame.of', { t: v.title })} className="w-20" />
                   <span className="min-w-0"><span className="block truncate font-semibold">{v.title}</span><span className="block text-xs text-fg-soft">{tracks(v)}</span></span>
                 </a></td>
-                <td><Pill status={v.status} />{v.status === 'deleted' && <button type="button" className={btn} onClick={() => post(`/v1/videos/${v.id}/restore`).then(() => refresh()).then(() => reload()).catch(fail)}>{t('desktop.restore')}</button>}{v.status === 'failed' && <span className="block text-xs text-fg-soft">{v.error}<button type="button" className="ml-2 font-medium text-fg underline underline-offset-[3px]" onClick={(e) => retry(v.id, e.currentTarget)}>{t('retry')}</button></span>}</td>
+                <td><Pill status={v.status} />{v.status === 'deleted' && <button type="button" className={btn} onClick={() => post(`/v1/videos/${v.id}/restore`).then(() => refresh()).then(() => reload()).catch(fail)}>{t('desktop.restore')}</button>}{(v.status === 'failed' || v.status === 'cancelled') && <span className="block text-xs text-fg-soft">{v.error}<button type="button" className="ml-2 font-medium text-fg underline underline-offset-[3px]" onClick={(e) => retry(v.id, e.currentTarget)}>{t('retry')}</button></span>}</td>
                 <td className="text-right max-md:col-start-2">{v.duration_ms ? tc(v.duration_ms) : <span className="text-faint">—</span>}</td>
                 <td className="text-right max-md:hidden">{when(v.created_at)}</td>
               </tr>
