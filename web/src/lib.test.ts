@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { byVideo, channelState, defaultView, marks, modelPrefs, pipeline, searchFields, tc, ticks } from './lib.ts';
+import { byVideo, channelState, defaultView, marks, modelName, modelPrefs, pipeline, searchFields, tc, ticks } from './lib.ts';
+
+test('model names keep the model revision and omit local fingerprints', () => {
+  const fingerprint = 'a1'.repeat(32);
+  assert.equal(modelName(`wemm-2b@r1.${fingerprint}`), 'WeMM-Embedding-2B · r1');
+  assert.equal(modelName(`clap-htsat-unfused@r1.${fingerprint}`), 'CLAP HTSAT unfused · r1');
+  assert.equal(modelName(`wemm-2b-cpu@r1.${fingerprint}`), 'WeMM-Embedding-2B · CPU · r1');
+});
 
 test('gallery groups moments by video in rank order, and picks the opening view', () => {
   const ms = [{ video_id: '7' }, { video_id: '3' }, { video_id: '7' }, { video_id: '9' }];

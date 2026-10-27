@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { get, post, type Moment, type Video } from '../api.ts';
 import { t, useLang } from '../i18n.ts';
-import { byVideo, CHANNELS, defaultView, modelPrefs, searchFields, tc, ticks, type ModelPrefs } from '../lib.ts';
+import { byVideo, CHANNELS, defaultView, modelName, modelPrefs, searchFields, tc, ticks, type ModelPrefs } from '../lib.ts';
 import { newProject, panel, PanelHead, Shell, TitleRow, useNotice, useLibrary } from '../Shell.tsx';
 import { btn, btnPrimary, Ch, cx, errText, Icon, Rich, select, TcBadge, Thumb } from '../ui.tsx';
 
@@ -369,13 +369,14 @@ function Models() {
                     <div className={cx('mt-3 grid gap-1', !on[c.channel] && 'opacity-50')}>
                       {c.models.map((md) => {
                         const dflt = c.default_space_ids[0] === md.space_id, ok = dflt || md.status === 'ready';
+                        const multiple = c.models.length > 1, Row = multiple ? 'label' : 'div';
                         return (
-                          <label key={md.space_id} className={cx('flex flex-wrap items-center gap-x-3 gap-y-0.5 rounded-md px-3 py-2 transition-colors max-xs:px-2', ok ? 'cursor-pointer hover:bg-ink-3' : 'cursor-not-allowed text-faint', pick[c.channel] === md.space_id && 'bg-ink-3')}>
-                            <input type="radio" className="accent-red" name={`m-${c.channel}`} checked={pick[c.channel] === md.space_id} disabled={!ok} onChange={() => setPick({ ...pick, [c.channel]: md.space_id })} />
-                            <span className="min-w-0 flex-1 truncate font-mono text-[13px]">{md.space_id}</span>
+                          <Row key={md.space_id} className={cx('flex flex-wrap items-center gap-x-3 gap-y-0.5 rounded-md px-3 py-2 transition-colors max-xs:px-2', !ok ? 'text-faint' : multiple && 'cursor-pointer hover:bg-ink-3', pick[c.channel] === md.space_id && 'bg-ink-3')}>
+                            {multiple && <input type="radio" className="accent-red" name={`m-${c.channel}`} checked={pick[c.channel] === md.space_id} disabled={!ok} onChange={() => setPick({ ...pick, [c.channel]: md.space_id })} />}
+                            <span className="min-w-0 flex-1 truncate text-[13px] font-medium">{modelName(md.space_id)}</span>
                             {dflt && <span className="rounded bg-ink-4 px-1.5 text-[11px] leading-[18px] text-fg-soft">{t('mdl.default')}</span>}
                             <span className={cx('text-xs whitespace-nowrap max-xs:w-full max-xs:pl-6', md.status === 'ready' ? 'text-pos-ink' : 'text-fg-soft')}>{t(`mst.${md.status}`)} · {t('mdl.count', { a: md.indexed_videos, b: md.eligible_videos })}</span>
-                          </label>
+                          </Row>
                         );
                       })}
                     </div>

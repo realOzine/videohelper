@@ -3,6 +3,17 @@
 export type Channel = 'visual' | 'speech' | 'audio';
 export const CHANNELS: Channel[] = ['visual', 'speech', 'audio'];
 
+export function modelName(spaceID: string): string {
+  const [name, version] = spaceID.replace(/\.[a-f0-9]{64}$/i, '').split('@');
+  const labels: Record<string, string> = {
+    'wemm-2b': 'WeMM-Embedding-2B',
+    'wemm-2b-cpu': 'WeMM-Embedding-2B · CPU',
+    'wemm-2b-cuda-experimental': 'WeMM-Embedding-2B · CUDA experimental',
+    'clap-htsat-unfused': 'CLAP HTSAT unfused',
+  };
+  return [labels[name] || name, version].filter(Boolean).join(' · ');
+}
+
 export interface Stage { stage: string; version?: string; status: string; attempt: number; required?: boolean; progress?: number | null; error?: string; updated_at: string }
 
 // mm:ss, or mm:ss.t with tenths; minutes keep counting past the hour, like an editor's timecode
