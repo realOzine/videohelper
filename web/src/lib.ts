@@ -77,7 +77,6 @@ export function byVideo<M extends { video_id: string }>(ms: M[]) {
 export const defaultView = (ms: { video_id: string }[]): 'dir' | 'detail' => (new Set(ms.map((m) => m.video_id)).size > 1 ? 'dir' : 'detail');
 
 // Only a page name of this app may follow sign-in, never another site.
-export const safeNext = (next: string | null) => (/^[a-z]+\.html(\?[^#]*)?$/.test(next || '') ? (next as string) : 'search.html');
 
 // Splits a translated string on <b>…</b> and <code>…</code> so markup in the dictionary renders without innerHTML.
 export function marks(s: string): { tag: '' | 'b' | 'code'; text: string }[] {

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { get, post, type Moment, type Video } from '../api.ts';
 import { t, useLang } from '../i18n.ts';
 import { byVideo, CHANNELS, defaultView, modelPrefs, searchFields, tc, ticks, type ModelPrefs } from '../lib.ts';
-import { newProject, panel, PanelHead, Shell, TitleRow, useNotice, useWorkspace } from '../Shell.tsx';
+import { newProject, panel, PanelHead, Shell, TitleRow, useNotice, useLibrary } from '../Shell.tsx';
 import { btn, btnPrimary, Ch, cx, errText, Icon, Rich, select, TcBadge, Thumb } from '../ui.tsx';
 
 interface Entry { id: string; v: Video; url: string; dur: number }
@@ -29,7 +29,7 @@ const urlWith = (extra: Record<string, string>) => `?${new URLSearchParams({ q, 
 export default function Search() {
   useLang();
   const { notice, fail } = useNotice();
-  const { ws, reload } = useWorkspace(fail);
+  const { ws, reload } = useLibrary(fail);
   const [found, setFound] = useState<{ ms: Moment[]; skipped: string[] } | null>(null);
   const [picked, setPicked] = useState(-1);
   const [entry, setEntry] = useState<Entry | null>(null);

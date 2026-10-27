@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { byVideo, channelState, defaultView, eachLimit, marks, modelPrefs, partRange, pipeline, safeNext, searchFields, tc, ticks } from './lib.ts';
+import { byVideo, channelState, defaultView, eachLimit, marks, modelPrefs, partRange, pipeline, searchFields, tc, ticks } from './lib.ts';
 
 test('gallery groups moments by video in rank order, and picks the opening view', () => {
   const ms = [{ video_id: '7' }, { video_id: '3' }, { video_id: '7' }, { video_id: '9' }];
@@ -57,13 +57,10 @@ test('dictionary markup splits without HTML', () => {
   assert.deepEqual(marks('<img src=x onerror=1>'), [{ tag: '', text: '<img src=x onerror=1>' }]);
 });
 
-test('ticks and sign-in redirects', () => {
+test('timeline ticks', () => {
   assert.deepEqual(ticks(90000), [0, 30000, 60000]);
   assert.deepEqual(ticks(28000), [0, 10000, 20000]);
   assert.equal(ticks(3480000).length, 6);
-  assert.equal(safeNext('video.html?id=3'), 'video.html?id=3');
-  assert.equal(safeNext('https://evil.example/x.html'), 'search.html');
-  assert.equal(safeNext('//evil.example'), 'search.html');
 });
 
 test('model choice keeps only what differs from the defaults', () => {

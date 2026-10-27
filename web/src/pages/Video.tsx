@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react'
 import { call, get, post, type Moment, type Video as V } from '../api.ts';
 import { t, useLang } from '../i18n.ts';
 import { CHANNELS, channelState, pipeline, stageKind, tc, type Stage } from '../lib.ts';
-import { Empty, newProject, panel, panelBase, PanelHead, Shell, useNotice, useWorkspace } from '../Shell.tsx';
+import { Empty, newProject, panel, panelBase, PanelHead, Shell, useNotice, useLibrary } from '../Shell.tsx';
 import { btn, btnDanger, btnPrimary, Ch, cx, field, Icon, Pill, select, TcBadge, Thumb } from '../ui.tsx';
 import { busy, stageLabel, tracks, when } from './format.ts';
 
@@ -38,7 +38,7 @@ function Cell({ s }: { s: Stage }) {
 export default function Video() {
   useLang();
   const { notice, fail } = useNotice();
-  const { ws, reload } = useWorkspace(fail);
+  const { ws, reload } = useLibrary(fail);
   const [data, setData] = useState<{ video: V; stages: Stage[] } | null>(null);
   const [url, setUrl] = useState('');
   const [added, setAdded] = useState('');
