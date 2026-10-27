@@ -6,7 +6,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "test": "node --test src/*.test.ts"
+    "test": "node --test src/*.test.ts",
+    "deploy": "npm run build && wrangler deploy"
   },
   "dependencies": {
     "react": "19.3.1",
@@ -20,6 +21,7 @@
     "@vitejs/plugin-react": "6.1.2",
     "tailwindcss": "4.3.3",
     "typescript": "7.0.2",
-    "vite": "8.3.5"
+    "vite": "8.3.5",
+    "wrangler": "4.154.0"
   }
 }

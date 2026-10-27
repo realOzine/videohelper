@@ -1,0 +1,11 @@
+// Cloudflare Workers static assets: dist/ served at videohelper.ozine.me (the zone is on the same account,
+// so deploying creates the DNS record and certificate). No Worker script; every file is a static asset.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "videohelper-landing",
+  "compatibility_date": "2026-10-01",
+  "assets": { "directory": "./dist" },
+  "routes": [{ "pattern": "videohelper.ozine.me", "custom_domain": true }],
+  "workers_dev": false,
+  "preview_urls": false
+}
