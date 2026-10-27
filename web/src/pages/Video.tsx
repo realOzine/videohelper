@@ -86,7 +86,7 @@ export default function Video() {
     if (!q) return;
     try { setFound((await post<{ moments: Moment[] }>('/v1/search', { query: q, video_ids: [id], limit: 20 })).moments); } catch (err) { fail(err); }
   };
-  const jump = (ms: number) => { const el = vid.current; if (!el) return; el.currentTime = ms / 1000; el.play().catch(() => {}); };
+  const jump = (ms: number) => { const el = vid.current; if (!el) return; el.currentTime = ms / 1000; el.play().catch(fail); };
 
   const stages = data?.stages ?? [];
   const failed = stages.find((s) => s.status === 'failed');
@@ -99,7 +99,7 @@ export default function Video() {
     <Shell page="video" ws={ws} notice={notice} onNewProject={() => newProject(reload, fail)}>
       <p className="mb-3"><a className="inline-flex items-center gap-0.5 font-medium text-fg-soft underline-offset-[3px] hover:underline" href="library.html">{t('nav.library')}<Icon.chevron className="size-3" /></a></p>
       {v && (
-        <div className="animate-enter">
+        <div>
           <section aria-label={t('a.video')} className={cx(panelBase, 'mb-6 flex items-center gap-4 p-3.5 max-md:flex-wrap')}>
             <Thumb thumb={v.thumbnail} label={t('frame.of', { t: v.title })} className="w-28" />
             <div className="min-w-0">
@@ -147,6 +147,7 @@ export default function Video() {
             <section aria-label={t('a.player')} className="col-span-8 min-w-0 overflow-hidden rounded-[10px] bg-ink-2 shadow-edge max-md:col-span-12">
               <div className="relative aspect-video bg-black">
                 {url ? <video ref={vid} src={url} controls playsInline preload="metadata" className="block size-full"
+                  onError={(e) => fail(new Error(t('err.playback', { code: e.currentTarget.error?.code ?? 0 })))}
                   onLoadedMetadata={(e) => { if (startAt) e.currentTarget.currentTime = startAt / 1000; }} />
                   : <p className="absolute inset-0 grid place-items-center p-4 text-center text-fg-soft">{t('v.noplay')}</p>}
               </div>

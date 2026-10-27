@@ -49,14 +49,12 @@
   --breakpoint-lg: 60rem;     /* 960 */
   --breakpoint-xl: 68.75rem;  /* 1100: tablet */
 
-  --animate-enter: enter 420ms var(--ease-out) both;
   --animate-beat: beat 1.6s ease-in-out infinite;
 
   /* the one elevation cue on ink: a hairline of light along a panel's top edge */
   --shadow-edge: inset 0 1px 0 rgb(255 255 255 / 0.045);
 }
 
-@keyframes enter { from { opacity: 0; transform: translateY(6px); } }
 @keyframes beat { 50% { opacity: 0.35; } }
 
 @layer base {

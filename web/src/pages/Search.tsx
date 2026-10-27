@@ -184,7 +184,7 @@ export default function Search() {
       </TitleRow>
 
       {ms.length > 0 && view === 'dir' && (
-        <div className="grid animate-enter gap-10">
+        <div className="grid gap-10">
           {groups.map((g) => {
             const v = meta[g.id], dur = v?.duration_ms;
             return (
@@ -226,10 +226,11 @@ export default function Search() {
       )}
 
       {ms.length > 0 && view === 'detail' && (
-        <div className="grid animate-enter grid-cols-12 items-start gap-6">
+        <div className="grid grid-cols-12 items-start gap-6">
           <section aria-label={t('a.player')} className="col-span-7 min-w-0 overflow-hidden rounded-[10px] bg-ink-2 shadow-edge max-md:col-span-12">
             <div className="relative aspect-video bg-black">
               <video ref={vid} src={entry?.url} playsInline preload="metadata" className="block size-full"
+                onError={(e) => fail(new Error(t('err.playback', { code: e.currentTarget.error?.code ?? 0 })))}
                 onLoadedMetadata={(e) => { if (pending.current != null) { e.currentTarget.currentTime = pending.current / 1000; pending.current = null; } }}
                 onPlay={() => { setPlaying(true); requestAnimationFrame(follow); }} onPause={() => setPlaying(false)} onSeeked={follow} />
             </div>

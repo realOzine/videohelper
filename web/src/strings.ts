@@ -6,7 +6,7 @@ addStrings({
 
     'a.nav': '主导航', 'a.closenav': '关闭导航', 'a.views': '结果视图', 'v.dir': '目录', 'v.det': '详情', 's.back': '返回目录 · {n} 个视频', 's.hits': '命中 {n} 处', 's.hit': '命中 {n} 处', 's.nth': '第 {n} 个', 's.openvideo': '打开视频', 'st.importing': '导入中',
     'stage.probe': '读取媒体信息', 'stage.prepare_media': '转码与缩略图', 'stage.visual': '画面编码', 'stage.asr': '语音转录', 'stage.speech': '台词编码', 'stage.audio': '声音编码', 'stage.finalize': '完成',
-    queued: '排队中', 'err.network': '本地服务暂时没有响应，请稍后重试。', 'p.name': '项目名称',
+    queued: '排队中', 'err.network': '本地服务暂时没有响应，请稍后重试。', 'err.playback': '视频播放失败（媒体错误 {code}），请重试或重新打开视频。', 'p.name': '项目名称',
     's.title': '搜索', 's.empty': '输入一句话，在全部视频里找画面、台词或声音。', 's.none': '没有找到相关片段。', 's.skipped': '{chs}暂时不可用，结果只来自其余通道。',
     'l.sub2': '{i} 个处理中，{f} 个失败。', 'l.empty': '还没有视频，导入文件或粘贴链接开始。', 'b.more': '加载更多', 'u.none': '选择本地文件，或使用上方链接导入。', 'u.failed': '导入未完成：{e}', 'att.none': '没有需要处理的视频。',
     'v.missing': '缺少视频 ID。', 'v.confirmdelete': '删除《{t}》？视频会立刻从列表和搜索里消失。', 'v.noplay': '视频还在处理，转码完成后可以播放。', 'v.added2': '已加入「{p}」',
@@ -40,7 +40,7 @@ addStrings({
     'th.video': '视频', 'th.status': '状态', 'th.dur': '时长', 'th.proj': '项目', 'th.added': '添加时间', 'th.actions': '操作',
     'h.progress': '处理进度', 'h.vsearch': '在这个视频里搜索', 'b.search': '搜索', 'h.info': '视频信息', 'a.video': '视频', 'a.player': '播放器',
 }, {
-    'stage.fetch': 'Download source video', 'source.upload': 'Local file', 'source.direct': 'Video link', 'source.youtube': 'YouTube', 'source.bilibili': 'Bilibili', 'desktop.ready': 'Local models ready', 'desktop.preparing': 'Preparing local runtime', 'desktop.url': 'Import a video link', 'desktop.importURL': 'Import link', 'desktop.adding': 'Adding…', 'desktop.copying': 'Copying…', 'desktop.managedCopy': 'Copy to library', 'desktop.copied': 'Copied', 'desktop.cancel': 'Cancel', 'desktop.cancelled': 'Canceled', 'desktop.restore': 'Restore', 'st.cancelled': 'Canceled', 'st.deleted': 'Deleted',
+    'stage.fetch': 'Download source video', 'source.upload': 'Local file', 'source.direct': 'Video link', 'source.youtube': 'YouTube', 'source.bilibili': 'Bilibili', 'err.playback': 'Video playback failed (media error {code}). Try again or reopen the video.', 'desktop.ready': 'Local models ready', 'desktop.preparing': 'Preparing local runtime', 'desktop.url': 'Import a video link', 'desktop.importURL': 'Import link', 'desktop.adding': 'Adding…', 'desktop.copying': 'Copying…', 'desktop.managedCopy': 'Copy to library', 'desktop.copied': 'Copied', 'desktop.cancel': 'Cancel', 'desktop.cancelled': 'Canceled', 'desktop.restore': 'Restore', 'st.cancelled': 'Canceled', 'st.deleted': 'Deleted',
 
     'a.nav': 'Main navigation', 'a.closenav': 'Close navigation', 'a.views': 'Result view', 'v.dir': 'Gallery', 'v.det': 'Detail', 's.back': 'Back to gallery · {n} videos', 's.hits': '{n} hits', 's.hit': '{n} hit', 's.nth': '#{n}', 's.openvideo': 'Open video', 'st.importing': 'Importing',
     'stage.probe': 'Read media info', 'stage.prepare_media': 'Transcode and thumbnails', 'stage.visual': 'Picture encoding', 'stage.asr': 'Transcription', 'stage.speech': 'Speech encoding', 'stage.audio': 'Sound encoding', 'stage.finalize': 'Finish',
