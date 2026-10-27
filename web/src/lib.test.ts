@@ -24,8 +24,8 @@ test('timecodes', () => {
 });
 
 test('pipeline puts probe first, asr before speech encoding, and drops empty lanes', () => {
-  const p = pipeline(stages);
-  assert.deepEqual(p.before.map((s) => s.stage), ['probe', 'prepare_media']);
+  const p = pipeline([...stages, { stage: 'fetch', status: 'done', attempt: 1, updated_at: at }]);
+  assert.deepEqual(p.before.map((s) => s.stage), ['fetch', 'probe', 'prepare_media']);
   assert.deepEqual(p.lanes.map(([c, l]) => [c, l.map((s) => s.stage)]), [['visual', ['embed:visual:wemm-2b@r1']], ['speech', ['asr', 'embed:speech:wemm-2b@r1']]]);
   assert.deepEqual(p.after.map((s) => s.stage), ['finalize']);
 });

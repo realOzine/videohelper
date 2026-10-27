@@ -1,5 +1,5 @@
 // Small pieces shared by every page: icons, the mark, pills, thumbnails, buttons, rich strings, entrances.
-import { useEffect, useRef, type CSSProperties, type ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { ApiError, type Thumbnail } from './api.ts';
 import { setLang, t, useLang } from './i18n.ts';
 import { marks } from './lib.ts';
@@ -91,17 +91,3 @@ export function LangSwitch({ className, button }: { className?: string; button?:
 
 export const errText = (err: unknown) =>
   err instanceof ApiError && err.code === 'network' ? t('err.network') : err instanceof Error ? err.message : String(err);
-
-type RiseTag = 'div' | 'h2' | 'p';
-// Rises into place once it scrolls into view; reduced motion shows it at once (index.css).
-export function Rise({ as: Tag = 'div', delay = 0, className, style, ...rest }: { as?: RiseTag; delay?: number; className?: string; style?: CSSProperties; id?: string; children?: ReactNode }) {
-  const ref = useRef<HTMLElement>(null);
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-    const io = new IntersectionObserver(([e]) => { if (e.isIntersecting) { el.classList.add('in'); io.disconnect(); } }, { rootMargin: '0px 0px -6% 0px' });
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
-  return <Tag ref={ref as never} className={cx('rise', className)} style={{ ...style, '--d': `${delay}ms` } as CSSProperties} {...rest} />;
-}
