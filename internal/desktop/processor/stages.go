@@ -307,14 +307,13 @@ func (p *Processor) transcribe(ctx context.Context, j store.Job, cp *checkpoint,
 			return err
 		}
 		for _, sentence := range response.Sentences {
-			// shortcut: a sentence belongs to the chunk containing its start;
-			// increase overlap if real samples contain longer boundary speech.
+			// shortcut: sentence-start ownership may repeat boundary speech, revisit after real long-video validation.
 			if sentence.StartMs < start || sentence.StartMs >= end {
 				continue
 			}
 			item := store.Sentence{StartMs: sentence.StartMs, EndMs: sentence.EndMs, Text: sentence.Text, Model: p.asr.ID + "." + strings.TrimPrefix(p.asr.Fingerprint, "sha256:")}
 			for _, w := range sentence.Words {
-				// Windows overlap; ValidateTranscript checks ordering within each response.
+				// ASR windows overlap; ValidateTranscript checks ordering within each response.
 				item.Words = append(item.Words, store.Word{W: w.W, S: w.S, E: w.E})
 			}
 			if len(sentences) > 0 && sentences[len(sentences)-1].StartMs == item.StartMs {
