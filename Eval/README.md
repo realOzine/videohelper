@@ -1,10 +1,10 @@
 # VideoHelper Eval
 
-当前真实运行结果见 [基线报告](BASELINE.md)：`baseline-v1` 索引验收失败、ASR 修复后 `baseline-v2` 的真实索引验收、重复检索与恢复验证均有历史结论。保留[基线汇总](baselines/baseline-v2.json)供比较；原始报告可从提交 `11a6668` 查看，旧运行资源与快照已清理。
+历史服务器真实运行结果见 [基线报告](BASELINE.md)：`baseline-v1` 索引验收失败、ASR 修复后 `baseline-v2` 的真实索引验收、重复检索与恢复验证均有历史结论。保留[基线汇总](baselines/baseline-v2.json)供比较；原始报告可从提交 `11a6668` 查看，旧运行资源与快照已清理。
 
 这个目录集中保存评估工具、视频、素材、标注、复核页面和必要结论。后续的 Eval / Evaluation 系统也放在这里；已有应用单元测试保持原位。
 
-固定的小型合成视频库 `videohelper-synthetic-v1` 包含 **5 个视频，30 条有答案查询，5 条无答案查询，总长 8 分 18 秒**。真实索引验收、快照保存/恢复、固定索引检索和评分工具已实现；执行方法、结果判读与数据保留规则见 [基线运行说明](RUNBOOK.md)，接口与验收边界见 [评估契约](CONTRACT.md)。工具已实现不代表真实模型质量基线已经通过；以具体运行报告为准。
+固定的小型合成视频库 `videohelper-synthetic-v1` 包含 **5 个视频，30 条有答案查询，5 条无答案查询，总长 8 分 18 秒**。旧服务器版本实现过真实索引验收、快照保存/恢复和固定索引检索；当前保留独立评分工具。当前命令、结果判读与数据保留规则见 [基线运行说明](RUNBOOK.md)，接口与验收边界见 [评估契约](CONTRACT.md)。工具已实现不代表真实模型质量基线已经通过；以具体运行报告为准。
 
 固定模型参数消融已形成独立的[对比报告与复跑流程](experiments/ablation-v1/REPORT.md)：41 组参数及两次重复运行，候选改善定位，全量跳转仍未改善。机器可读对照保存在 `baselines/ablation-v1-default.json` 和 `baselines/ablation-v1-selected.json`。实验当时未修改生产默认参数；当前已采用 K=5、RRF=60、merge gap=1、融合乘数 visual/speech/audio=1/1/0，采用依据与边界见[评估说明](../docs/Evaluation.md)。历史报告和分数保留原样。
 
@@ -63,11 +63,13 @@ shasum -a 256 -c checksums.sha256
 
 `tools/build.py` 保存了完整合成流程。**成片已经生成，无须再次运行**；检测到 `manifest.json` 时会拒绝覆盖。重建还需要 macOS 的 `say`、Tingting / Samantha 语音和系统 Arial 字体。原图、语音和配乐源文件均已保存，使用现有视频不依赖生成服务。系统语音、编码器或依赖版本改变时，重建不保证字节一致；回归测试应固定当前文件与哈希。
 
-## 运行评估
+## 桌面版与历史评估
 
-[RUNBOOK.md](RUNBOOK.md) 给出可直接执行的命令。旧 `baseline-v2` 快照已清理，下一轮必须先新建索引：用 `tools/run.py index` 单独验收真实上传和索引并冻结快照，再用 `retrieve` 对同一索引执行两次完整检索，通过 `tools/score.py compare` 比较。`restore` 可将数据库和对象恢复到新的独立资源，再验证索引指纹。
+当前产品是单用户桌面 App，使用 SQLite、sqlite-vec、受管本地文件与进程内任务。原依赖 PostgreSQL、Redis、S3 的 `evalbridge`、索引 runner、快照恢复 runner 已移除；不为桌面版保留服务器测试环境。
 
-每轮都搜索全部 5 个视频，执行 35 条查询的 `visual`、`speech`、`fused` 三种模式；融合按运行配置及显式覆盖后的有效权重选通道，当前默认关闭 `audio` 查询，但保留 CLAP 索引及声音源文件。本库没有独立声音金标。查询、标注、字幕和参考讲解不作为视频内容导入。真实失败保留在报告中；不改本版标签或排除失败题来提高分数。
+现有 [基线](BASELINE.md)、`baselines/`、`analysis/`、`experiments/` 和 `defects/` 是旧服务器实现的历史证据。**桌面版尚未完成同语料的真实模型质量评估，不能继承旧服务器分数或索引验收结论。** 复现旧实现时，应在独立工作树检出相应报告记录的历史代码版本，并使用该版本的 RUNBOOK；不要在当前桌面数据目录恢复旧数据库或对象快照。
+
+固定视频、35 条查询、标签、字幕、素材哈希和复核证据保持原样。`tools/score.py` 与 `tools/ablate.py` 只读取保存的结果进行评分和比较；`tools/validate.py` 检查固定媒体与标注结构，`tools/serve.py` 提供本地复核预览。当前可执行命令见 [RUNBOOK.md](RUNBOOK.md)。它们均不证明桌面版的真实模型检索质量。
 
 ## 目录与边界
 
@@ -76,9 +78,7 @@ Eval/
   assets/          原始分镜、语音、配乐、提示词与来源说明
   videos/          固定 MP4 成片
   annotations/     脚本、查询、时间标注、外部字幕
-  cmd/evalbridge/  复用业务搜索与索引检查的 Go JSONL 桥接
-  tools/           合成、校验、预览、运行、评分工具及测试
-  deploy/          独立 Eval Redis 配置
+  tools/           独立的合成、校验、预览、评分及历史结果消融工具
   review/          复核页面、成片代表帧、校验报告
   baselines/       保留的机器可读基线汇总
   analysis/        检索质量结论与后续实验建议
@@ -86,7 +86,7 @@ Eval/
   defects/         缺陷结论、回归测试及所需 frozen ASR fixtures
 ```
 
-`runs/`、`snapshots/`、`.runtime/`、`bin/` 和 `.work/` 由后续构建或运行按需生成，当前旧内容已清理。旧 Eval 数据库和对象桶也不再保留；历史报告可用 `git show 11a6668:Eval/runs/baseline-v2-a/report.md` 查看。`defects/asr-timestamps/` 中最小复现与两个视频的 raw/stages JSON 是测试输入，不能按日志清理；其用途见[缺陷说明](defects/asr-timestamps/README.md)。
+历史 `runs/`、`snapshots/`、`.runtime/`、`bin/` 和 `.work/` 的旧内容已清理；当前分支不再提供生成或恢复服务器快照的入口。旧 Eval 数据库和对象桶也不再保留；历史报告可用 `git show 11a6668:Eval/runs/baseline-v2-a/report.md` 查看。`defects/asr-timestamps/` 中最小复现与两个视频的 raw/stages JSON 是测试输入，不能按日志清理；其用途见[缺陷说明](defects/asr-timestamps/README.md)。
 
 素材由内置 ImageGen、代码绘图、macOS 系统 TTS 和原创程序合成配乐构成，详见 [素材来源](assets/SOURCES.md) 与 [图像生成提示词](assets/image-prompts.json)。未下载外部图库或歌曲。
 

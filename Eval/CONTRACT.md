@@ -1,4 +1,6 @@
-# Evaluation v1 契约
+# Evaluation v1 历史服务器契约
+
+以下记录旧 PostgreSQL/Redis/S3 实现的协议，供冻结报告和 Git 历史追溯。对应服务器入口已从当前桌面版移除；这里的服务器运行命令不适用于当前分支。独立评分器的输入和评分定义仍由 `tools/score.py` 实现。桌面版需要另行建立真实模型评估证据。
 
 新增评估代码、配置、运行结果、快照均在 `Eval/`。集成分支为 `main`。语料身份由 `manifest.json`、`annotations/queries.jsonl` 与固定素材哈希决定；不改动现有 35 条标签。
 
