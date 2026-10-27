@@ -55,3 +55,18 @@ func TestClosingAppWaitsForProcessor(t *testing.T) {
 		t.Fatalf("shutdown did not join processor: %v", err)
 	}
 }
+
+func TestCancellationQuitsTheNativeEventLoop(t *testing.T) {
+	ctx, cancel := context.WithCancel(t.Context())
+	quit := make(chan struct{})
+	go quitWhenCanceled(ctx, make(chan struct{}), func() { close(quit) })
+	cancel()
+	select {
+	case <-quit:
+	case <-time.After(time.Second):
+		t.Fatal("cancellation did not quit the native event loop")
+	}
+	stopped := make(chan struct{})
+	close(stopped)
+	quitWhenCanceled(t.Context(), stopped, func() { t.Fatal("a stopped UI must not be quit again") })
+}

@@ -2,6 +2,15 @@
   "name": "VideoHelper",
   "identifier": "app.ozine.videohelper",
   "version": "0.1.0",
+  "macos": {
+    "minimumSystemVersion": "13.0",
+    "infoPlist": {
+      "NSAppTransportSecurity": {
+        "NSAllowsLocalNetworking": true,
+        "NSExceptionDomains": { "127.0.0.1": { "NSExceptionAllowsInsecureHTTPLoads": true } }
+      }
+    }
+  },
   "main": "./cmd/videohelper-desktop",
   "out": ".local/desktop-build",
   "frontendDist": "web/dist",
