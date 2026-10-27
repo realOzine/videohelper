@@ -1,45 +1,38 @@
 # Repository Guidelines
 
-## Project Structure & Module Organization
+## Desktop Scope and Structure
 
-VideoHelper combines a Go backend (`cmd/videohelper/`, `internal/`) with a Python model service (`ml/app/`) and a React frontend (`web/`). Tests live beside Go packages and in `ml/tests/`. Database migrations are in `migrations/`; configuration and the shared ML contract are in `config/` and `contracts/`. Keep the Chinese architecture documents, `docs/design.md` and `docs/spec.md`, aligned with contract changes. Runtime media belongs in object storage; local temporary files use `.local/`.
+VideoHelper is a personal cross-platform desktop app, with macOS Apple Silicon first. `cmd/videohelper-desktop/` owns startup/lifecycle; `desktop/` hosts MyGo; `web/` contains the embedded React UI. `internal/desktop/` owns SQLite/sqlite-vec, local files, durable jobs, local UI endpoints and private runtime setup. Reuse `internal/media/`, `internal/mlclient/`, `internal/retrieval/` and `internal/timeline/`. Python models remain in `ml/app/`, `ml/plugins/`, and locked `ml/profiles/`. Keep Chinese `docs/design.md`, `docs/spec.md` and the ML contract aligned.
+
+There are no accounts, tenants, JWT, public admin APIs, per-user limits, billing, PostgreSQL, Redis, S3 or Docker dependencies. Keep the desktop focused on responsiveness, clear UI, compatibility and search. The short-lived loopback capability and managed-file boundaries protect local process communication; they are not a user login system.
 
 ## Agent Scope: Ignore `model-test/`
 
-The entire `model-test/` directory is an experimental sandbox for validation, demos, and scratch work. Unless the user explicitly requests work there, do not read, list, search, execute, modify, move, delete, or otherwise operate on it or its contents. Exclude it from searches, builds, tests, and refactors. General repository work does not authorize access.
+The entire `model-test/` directory is an experimental sandbox. Unless the user explicitly requests work there, do not read, list, search, execute, modify, move, delete, or otherwise operate on it or its contents. Exclude it from searches, builds, tests and refactors. General repository work does not authorize access.
 
-## Build, Test, and Development Commands
+## Build and Validation
 
-- `make deps-up` / `make deps-down`: start/stop local Postgres, Redis, and MinIO; preserve volumes.
-- `make build`: build `bin/videohelper`; see `README.md` for local processing and search.
-- `make test-go` / `make vet`: scoped Go race tests and static checks.
-- `make fmt` / `make generate`: format Go and regenerate package-local sqlc outputs.
-- `cd ml && uv run pytest` / `uv run ruff check .`: Python tests and lint.
-- `npm --prefix web ci` / `npm --prefix web run dev` / `npm --prefix web run build`: install, serve on 5173, or type-check and build `web/dist`.
-- `make test-web`: frontend helper tests (Node 22+).
+- `npm --prefix web ci` installs frontend development dependencies.
+- `make desktop` / `make build` builds the embedded desktop executable; `make desktop-run` starts MyGo development mode.
+- `make test-go`, `make test-web`, `make vet` run scoped checks; do not use an unrestricted repository-wide test command.
+- Python checks use the managed development environment in `ml/`: `uv run pytest` and `uv run ruff check .`.
+- Real tool/model tests require explicit `VH_TEST_DESKTOP_*` directories. Use disposable task-owned data and preserve useful evidence. Fake-model tests do not establish real retrieval quality.
+- Runtime media belongs in the selected application data directory. Repository test artifacts belong in `.local/`; evaluation evidence follows `Eval/AGENTS.md`.
 
-## Coding Style & Testing Guidelines
+## Implementation Rules
 
-Use `gofmt`, Python four-space indentation, and Ruff. Keep functions focused and reuse existing helpers. SQL uses singular snake_case names; wire fields use snake_case, IDs are strings, and intervals are half-open integer milliseconds. Do not hand-edit `internal/*/*db/` generated code.
+Use gofmt, Python four-space indentation and Ruff. Keep functions focused, reuse existing helpers, add meaningful tests for non-trivial logic. SQL tables use singular snake_case, wire IDs are strings, and time intervals are half-open integer milliseconds.
 
-Name Go tests `Test...` in `_test.go`, and Python tests `test_...`. Add meaningful checks for non-trivial behavior. Integration tests require explicit `VH_TEST_*` variables and disposable databases. No numerical coverage target is set. Fake-model tests do not establish real-model retrieval quality.
+Preserve original media for ASR and CLAP. Pass query text unchanged. Keep model fingerprints and backend indexes isolated. LLM/Agent remains deferred. A single distributable executable may release components and download models; do not require the user's global Python, FFmpeg, yt-dlp or external services.
 
-## Commit & Pull Request Guidelines
+## Agent Workflow
 
-History uses short imperative messages, sometimes `feat:` or `test:` prefixes. Commit small verified units. PRs should explain behavior, scope, relevant issues, and checks actually run.
-
-## Agent Development Workflow
-
-- Start each new implementation on a new feature branch in a new, isolated worktree. Keep `main` for reviewed changes.
-- Enable Ponytail FULL for every execution, including sub-agents: make minimal complete changes while preserving validation, cancellation, and data safety.
-- Use `gpt-6.1-sol` at high effort for implementation sub-agents. Give independent parallel tasks separate branches and worktrees based on the feature branch.
-- Work in small, verifiable units and commit frequently. Merge each completed and checked unit into the feature branch promptly.
-- Update affected documentation, especially `docs/design.md` and `docs/spec.md`, alongside implementation. Avoid development journals and redundant acceptance reports.
-- Review and verify the combined feature before merging it into `main`. Then remove the worktrees, merged task branches, and temporary services or artifacts created by this work; preserve unrelated changes, user data, and useful validation evidence.
-
-## Current Implementation Boundary
-
-Local text search uses WeMM-Embedding-2B for video, text, and image encoding, ASR for `speech`, and CLAP HTSAT unfused for the `audio` sound channel. Preserve source audio for ASR and CLAP. Pass query text unchanged; English translation is deferred. The `web/` frontend is React, TypeScript and Tailwind on Vite, one HTML entry per page; style with the theme tokens in `web/src/index.css`. LLM/Agent remains deferred. The AWS single-user CPU demo has passed a six-second real-model smoke test; CodeBuild automatic delivery still awaits a nonzero concurrency quota, and CUDA, long-video performance, and retrieval quality remain unverified.
+- Start implementation in an isolated feature worktree; keep `main` for reviewed changes. Preserve unrelated changes and user data.
+- Enable Ponytail FULL for every execution, including sub-agents: minimal complete changes with validation, cancellation and data safety intact.
+- Use `gpt-6.1-sol` at high effort for implementation sub-agents. Independent parallel tasks use separate branches/worktrees based on the feature branch.
+- Work in small verified units, commit frequently, and integrate checked units into the feature branch promptly.
+- Update affected documentation without development journals or redundant acceptance reports.
+- Review and verify the combined feature before merging into `main`. Clean merged task worktrees/branches and task-created temporary services after preserving useful validation evidence. Keep the requested feature worktree while work remains there.
 
 <!-- BEGIN AWS Agent Toolkit rules -->
 # AWS Guidance for the new AWS experience
