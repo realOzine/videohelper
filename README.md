@@ -129,4 +129,4 @@ CPU 默认监听宿主机 8001；CUDA 用 `--profile cuda` 和服务名 `wemm-cu
 
 ## AWS 单用户 Demo
 
-部署、资源计费和启停操作见 [部署手册](deploy/aws/README.md)，架构见 [设计文档](docs/design.md#102-aws-单用户-demo)。私有 GitHub `main` 通过 CodeConnections / CodeBuild 发布；停止状态不自动开机。AWS Toolkit 技能仅安装于本仓库 `.agents/skills/`，未安装到用户全局技能目录。
+部署、资源计费和启停操作见 [部署手册](deploy/aws/README.md)，架构见 [设计文档](docs/design.md#102-aws-单用户-demo)。CPU Demo 已通过短样本和启停验证；私有 GitHub `main` 已配置 CodeConnections / CodeBuild 发布，但自动发布运行验收仍等待 AWS 并发配额。停止状态不自动开机。AWS Toolkit 技能仅安装于本仓库 `.agents/skills/`，未安装到用户全局技能目录。

@@ -9,7 +9,7 @@
 
 ## 当前实施范围（2026-10-27）
 
-本地处理链路为「视频 → 标准化视频 → WeMM 画面编码 / CLAP 声音编码 / ASR → WeMM 转录文本编码 → 文字检索 → 时间片段与证据」。WeMM-Embedding-2B 统一支持视频、文字、图片编码；图片是编码输入，本轮搜索入口只接受文字。启用 `visual`、`speech` 与 `audio`，保留音轨供 ASR 和 CLAP 使用。声音通道采用 edit-mind 同款 CLAP HTSAT unfused；查询文字原样传入，英文转换后续再做。LLM/Agent、AWS 部署与验收暂缓；前端已实现登录、资料库与上传、视频详情、搜索；下文相关章节保留为后续设计，不构成本轮实现要求。真实模型验证与显式 fake 的协议/流程测试分开。
+本地处理链路为「视频 → 标准化视频 → WeMM 画面编码 / CLAP 声音编码 / ASR → WeMM 转录文本编码 → 文字检索 → 时间片段与证据」。WeMM-Embedding-2B 统一支持视频、文字、图片编码；图片是编码输入，本轮搜索入口只接受文字。启用 `visual`、`speech` 与 `audio`，保留音轨供 ASR 和 CLAP 使用。声音通道采用 edit-mind 同款 CLAP HTSAT unfused；查询文字原样传入，英文转换后续再做。LLM/Agent 暂缓；AWS 单用户 CPU Demo 已通过六秒真实模型样本的上传、索引、三通道搜索和分段播放，CodeBuild 自动发布仍等待非零并发配额；前端已实现登录、资料库与上传、视频详情、搜索。标为规划的章节仍保留为后续设计。真实模型验证与显式 fake 的协议/流程测试分开。
 
 模型服务已拆成可安装的 `videohelper-ml` 公共包与 WeMM、FunASR、CLAP 三个插件包；插件通过 Python entry point 注册，在同一个 Python 进程内以函数调用执行。`ml/profiles/` 锁定各自依赖与模型清单，可分别运行 MPS、CPU 和 CUDA 服务；Go 通过 HTTP 发现能力、路由并调用推理（第 5、10、14 章）。CUDA profile 是候选配置，尚未完成真实 GPU 验收。
 
@@ -2596,7 +2596,7 @@ flowchart TB
 | Web | 纯函数、类型检查与构建 | `make test-web`、`npm --prefix web run build` |
 | 效果评估 | 真实上传 / 索引、覆盖率、固定快照召回与定位指标 | `Eval/tools/run.py`（第 11 章），没有 `videohelper eval` 子命令 |
 | 真实硬件 | CPU / MPS / CUDA 的可启动性、数值、速度与显存 | 按 profile 单独验收；CUDA 当前仍是候选 |
-| 云端 Demo | 基础设施、启停、镜像与 SSM 发布 | 本地部署测试与真实云端 / CPU 推理验收分别记录 |
+| 云端 Demo | 基础设施、启停、镜像与 SSM 发布 | 已通过六秒真实 CPU 样本、重启后查询 / 播放和 S3 备份隔离恢复；CodeBuild 自动发布仍待非零并发配额，详见部署手册 |
 | 规划功能 | URL 导入、Agent | 随实现补充，当前不声称已测试 |
 
 ---

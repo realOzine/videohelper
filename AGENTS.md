@@ -39,7 +39,7 @@ History uses short imperative messages, sometimes `feat:` or `test:` prefixes. C
 
 ## Current Implementation Boundary
 
-Local text search uses WeMM-Embedding-2B for video, text, and image encoding, ASR for `speech`, and CLAP HTSAT unfused for the `audio` sound channel. Preserve source audio for ASR and CLAP. Pass query text unchanged; English translation is deferred. The `web/` frontend is React, TypeScript and Tailwind on Vite, one HTML entry per page; style with the theme tokens in `web/src/index.css`. LLM/Agent and AWS acceptance remain deferred.
+Local text search uses WeMM-Embedding-2B for video, text, and image encoding, ASR for `speech`, and CLAP HTSAT unfused for the `audio` sound channel. Preserve source audio for ASR and CLAP. Pass query text unchanged; English translation is deferred. The `web/` frontend is React, TypeScript and Tailwind on Vite, one HTML entry per page; style with the theme tokens in `web/src/index.css`. LLM/Agent remains deferred. The AWS single-user CPU demo has passed a six-second real-model smoke test; CodeBuild automatic delivery still awaits a nonzero concurrency quota, and CUDA, long-video performance, and retrieval quality remain unverified.
 
 <!-- BEGIN AWS Agent Toolkit rules -->
 # AWS Guidance for the new AWS experience
