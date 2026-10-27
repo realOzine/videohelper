@@ -45,8 +45,10 @@ def main():
         assert str(root / "venv") in installed and "site-packages" in installed, installed
         manifest = root / "models.yaml"
         manifest.write_bytes((ML_ROOT / "models.yaml").read_bytes())
+        media = root / "media"
+        media.mkdir()
         environment.update(
-            ML_FAKE="1", ML_INTERNAL_TOKEN="lifecycle-secret", ML_CACHE_DIR=str(root / "cache")
+            ML_FAKE="1", ML_INTERNAL_TOKEN="lifecycle-secret", ML_LOCAL_MEDIA_ROOT=str(media)
         )
         with socket.socket() as sock:
             sock.bind(("127.0.0.1", 0))
