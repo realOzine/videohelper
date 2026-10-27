@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { get, post, type Moment, type Video } from '../api.ts';
 import { t, useLang } from '../i18n.ts';
-import { byVideo, CHANNELS, defaultView, modelName, modelPrefs, searchFields, tc, ticks, type ModelPrefs } from '../lib.ts';
+import { byVideo, CHANNELS, defaultView, modelName, modelPrefs, searchFields, seekMedia, tc, ticks, type ModelPrefs } from '../lib.ts';
 import { newProject, panel, PanelHead, Shell, TitleRow, useNotice, useLibrary } from '../Shell.tsx';
 import { btn, btnPrimary, Ch, cx, errText, Icon, Rich, select, TcBadge, Thumb } from '../ui.tsx';
 
@@ -62,8 +62,7 @@ export default function Search() {
     plot.current?.setAttribute('aria-valuetext', t('s.valuetext', { a: tc(x), b: tc(e.dur) }));
   }, []);
   const seek = useCallback((at: number, glide = false) => {
-    const v = vid.current;
-    if (v && v.readyState >= 1) v.currentTime = at / 1000; else pending.current = at;
+    pending.current = seekMedia(vid.current, entryRef.current?.url, at) ? null : at;
     setT(at, glide);
   }, [setT]);
 
@@ -83,7 +82,7 @@ export default function Search() {
     try { e = await load(m.video_id); } catch (err) { loaded.current.delete(m.video_id); return fail(err); }
     if (pickedRef.current !== i) return;
     entryRef.current = e; setEntry(e);
-    if (jump) requestAnimationFrame(() => seek(m.jump_ms, true));
+    if (jump) seek(m.jump_ms, true);
   }, [ms, load, seek, fail]);
 
   useEffect(() => { if (ms.length) choose(Math.min(Number(params.get('m')) || 0, ms.length - 1)); }, [ms, choose]);
@@ -150,7 +149,12 @@ export default function Search() {
     const at = d ? v.currentTime * 1000 + d : e.key === 'Home' ? 0 : e.key === 'End' ? en.dur : null;
     if (at != null) { e.preventDefault(); seek(Math.max(0, Math.min(en.dur, at))); }
   };
-  const follow = () => { const v = vid.current; if (!v) return; setT(v.currentTime * 1000); if (!v.paused) requestAnimationFrame(follow); };
+  const syncPlayback = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+    const video = e.currentTarget;
+    if (video.currentSrc !== entryRef.current?.url) return;
+    setT(video.currentTime * 1000);
+    setPlaying(!video.paused && !video.ended);
+  };
 
   const m = picked >= 0 ? ms[picked] : null;
   const mine = entry ? ms.filter((x) => x.video_id === entry.id) : [];
@@ -229,10 +233,13 @@ export default function Search() {
         <div className="grid grid-cols-12 items-start gap-6">
           <section aria-label={t('a.player')} className="col-span-7 min-w-0 overflow-hidden rounded-[10px] bg-ink-2 shadow-edge max-md:col-span-12">
             <div className="relative aspect-video bg-black">
-              <video ref={vid} src={entry?.url} playsInline preload="metadata" className="block size-full"
-                onError={(e) => fail(new Error(t('err.playback', { code: e.currentTarget.error?.code ?? 0 })))}
-                onLoadedMetadata={(e) => { if (pending.current != null) { e.currentTarget.currentTime = pending.current / 1000; pending.current = null; } }}
-                onPlay={() => { setPlaying(true); requestAnimationFrame(follow); }} onPause={() => setPlaying(false)} onSeeked={follow} />
+              <video ref={vid} src={entry?.url} controls playsInline preload="metadata" className="absolute inset-0 size-full object-contain"
+                onError={(e) => { setPlaying(false); fail(new Error(t('err.playback', { code: e.currentTarget.error?.code ?? 0 }))); }}
+                onLoadedMetadata={(e) => {
+                  if (pending.current != null && seekMedia(e.currentTarget, entryRef.current?.url, pending.current)) pending.current = null;
+                  syncPlayback(e);
+                }}
+                onPlay={syncPlayback} onTimeUpdate={syncPlayback} onSeeked={syncPlayback} onPause={syncPlayback} onEnded={syncPlayback} />
             </div>
             <div className="flex min-h-14 flex-wrap items-center gap-3.5 border-b border-ink-3 px-4 py-2">
               <button type="button" onClick={toggle} aria-pressed={playing} aria-label={playing ? t('pause') : t('play')} aria-keyshortcuts="Space"

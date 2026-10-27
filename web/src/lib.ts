@@ -3,6 +3,13 @@
 export type Channel = 'visual' | 'speech' | 'audio';
 export const CHANNELS: Channel[] = ['visual', 'speech', 'audio'];
 
+// A new result may be selected before the video element has loaded its source.
+export function seekMedia(media: Pick<HTMLMediaElement, 'readyState' | 'currentSrc' | 'currentTime'> | null, source: string | undefined, at: number): boolean {
+  if (!media || media.readyState < 1 || media.currentSrc !== source) return false;
+  media.currentTime = at / 1000;
+  return true;
+}
+
 export function modelName(spaceID: string): string {
   const [name, version] = spaceID.replace(/\.[a-f0-9]{64}$/i, '').split('@');
   const labels: Record<string, string> = {
