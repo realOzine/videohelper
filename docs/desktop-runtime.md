@@ -37,8 +37,9 @@
 | Python | [python-build-standalone 20261021](https://github.com/astral-sh/python-build-standalone/releases/tag/20261021) | 使用固定构建及校验和；保留发行包内的许可文件 |
 | yt-dlp | [yt-dlp 2026.10.26](https://github.com/yt-dlp/yt-dlp/releases/tag/2026.10.26) | 源码 Unlicense；此处选官方 PyInstaller 独立包，其整体含 GPLv3+ 代码，须遵守其第三方许可，不能只标 Unlicense |
 | Deno | [denoland/deno v2.9.8](https://github.com/denoland/deno/releases/tag/v2.9.8) | MIT 与其第三方 notices；作为 YouTube EJS 的私有 JS runtime |
-| FFmpeg / ffprobe | [eugeneware/ffmpeg-static b6.1.1](https://github.com/eugeneware/ffmpeg-static/releases/tag/b6.1.1) | 第三方构建，不是 FFmpeg 官方二进制；各平台实际 FFmpeg 版本和配置可能不同。按平台固定文件与哈希，同时下载该发行的 LICENSE、README |
+| FFmpeg / ffprobe（macOS） | [Martin Riedl 9.0.2 arm64 release](https://ffmpeg.martin-riedl.de/download/macos/arm64/1789931890_9.0.2/versions.txt)；amd64 同版固定构建 | 第三方静态构建、GPLv3+，固定 ZIP 和 SHA256；保存 GPLv3 文本及各库版本/配置，不使用 latest 地址 |
+| FFmpeg / ffprobe（Linux / Windows） | [eugeneware/ffmpeg-static b6.1.1](https://github.com/eugeneware/ffmpeg-static/releases/tag/b6.1.1) | 第三方 GPL 构建，实际 FFmpeg 版本可能因平台不同；保存该平台发行的 LICENSE、README |
 
-FFmpeg 不能统一标作 LGPL：此功能需要 `libx264`，对应启用 GPL 的构建；Windows 构建 README 明示 GPLv3，其他平台应以本体 `-version`、`-L` 与上游对应构建源码核对。若发行最终 App 包含这些组件，发行流程必须同时整理准确许可、第三方 notices 与适用的对应源码/构建材料；仅附项目主页或一条“开源”说明不足以完成分发义务。当前启动器直接下载上述上游独立组件，没有自行重新链接它们。
+FFmpeg 不能统一标作 LGPL：此功能需要 `libx264`，对应启用 GPL 的构建；macOS 选定构建配置为 `--enable-gpl --enable-version3`，无 `--enable-nonfree`；本机验证本体 `-L` 为 GPLv3+。Windows 构建 README 明示 GPLv3；所有平台在启动前执行 `-L`，拒绝自报不可再分发的二进制。若发行最终 App 包含这些组件，发行流程必须同时整理准确许可、第三方 notices 与适用的对应源码/构建材料；仅附项目主页或一条“开源”说明不足以完成分发义务。当前启动器直接下载上述上游独立组件，没有自行重新链接它们。
 
 yt-dlp 官方独立包已带 EJS，仍需 JS runtime。处理器须传私有 Deno 与 FFmpeg 的绝对路径，关闭用户配置与插件，不把 URL 拼接成 shell 命令；受控任务目录先保留完整下载原片，ASR/CLAP 读取保留原音频的输入。下载站点发生变化时要更新固定发行与校验和，再验证实际导入；运行时不执行隐式自更新。
