@@ -16,7 +16,7 @@
 
 ## 当前实施范围（2026-10-27）
 
-本地处理链路为「视频 → 标准化视频 → WeMM 画面编码 / CLAP 声音编码 / ASR → WeMM 转录文本编码 → 文字检索 → 时间片段与证据」。WeMM-Embedding-2B 统一支持视频、文字、图片编码；图片是编码输入，本轮搜索入口只接受文字。保留 `visual`、`speech` 与 `audio` 索引及供 ASR、CLAP 使用的音轨；当前默认查询权重为 `1:1:0`，每路召回 K=5，RRF=60、gap=1，实验依据与回退见 [Evaluation.md](Evaluation.md)。声音通道采用 edit-mind 同款 CLAP HTSAT unfused；查询文字原样传入，英文转换后续再做。LLM/Agent、AWS 部署与验收暂缓；前端（`web/`）已实现；导入、Agent 和云端相关章节明确标为后续设计。真实模型验证与显式 fake 的协议/流程测试分开。
+本地处理链路为「视频 → 标准化视频 → WeMM 画面编码 / CLAP 声音编码 / ASR → WeMM 转录文本编码 → 文字检索 → 时间片段与证据」。WeMM-Embedding-2B 统一支持视频、文字、图片编码；图片是编码输入，本轮搜索入口只接受文字。保留 `visual`、`speech` 与 `audio` 索引及供 ASR、CLAP 使用的音轨；当前默认查询权重为 `1:1:0`，每路召回 K=5，RRF=60、gap=1，实验依据与回退见 [Evaluation.md](Evaluation.md)。声音通道采用 edit-mind 同款 CLAP HTSAT unfused；查询文字原样传入，英文转换后续再做。LLM/Agent 暂缓；AWS 单用户 Demo 的部署代码已实现，真实云端与 CPU 推理验收另行核实；前端（`web/`）已实现；导入、Agent 和云端相关章节明确标为后续设计。真实模型验证与显式 fake 的协议/流程测试分开。
 
 本轮提供本地上传、阶段状态/重试、软删除/上传视频恢复、项目范围和文字搜索。进度由 Web 轮询视频详情读取。已就绪视频可自动补建新通道/空间缺失的编码阶段；URL 导入、上传分片续签、SSE 事件、到期 purge、配额计费仍是后续设计；软删除保留原片和处理文件。当前只记录索引时长。操作入口见 [README](../README.md)。
 
@@ -33,7 +33,7 @@
 7. [数据设计概览](#7-数据设计概览)
 8. [关键设计决策](#8-关键设计决策)
 9. [质量属性](#9-质量属性)
-10. [部署视图（云端暂缓）](#10-部署视图云端暂缓)
+10. [部署视图](#10-部署视图)
 11. [风险与验证计划](#11-风险与验证计划)
 12. [待确认问题](#12-待确认问题)
 
@@ -757,10 +757,10 @@ erDiagram
 | D17 | yt-dlp 在 Go worker 里作为子进程运行，和 ffmpeg 一样 | 提议 | 下载属于媒体处理，不属于模型推理；Python 服务保持只做推理 | 放进 Python 模型服务；单独做一个下载服务 |
 | D18 | ASR 用阿里 FunASR，Go 按 10 分钟分段调用 | 已定 | 中文识别效果好；分段后每次请求时长有上限，失败只重跑一段 | Whisper；整段一次调用 |
 | D19 | 删除视频采用软删除 | 已定 | 误删可以恢复；派生数据立即删除，搜索马上看不到 | 立即物理删除 |
-| D20 | 前端与 API 不同域部署 | 已定 | 前端可以独立部署和发布 | 同域部署 |
+| D20 | Demo 前端与 API 同源，经 SSM 访问 | 已定 | 单用户测试不需要公网入口；规模化再拆分 | 独立站点 + ALB |
 | D21 | Go 调用 Python 时带服务间共享令牌 | 已定 | 内网隔离之外再加一道防线 | 只靠内网隔离 |
-| D22 | Postgres 用 AWS RDS 托管，只装 pgvector；不做关键词检索 | 已定 | 不需要关键词检索，也就不需要 pg_search 和分词；备份、补丁、故障恢复交给 AWS | 自建 Postgres（ParadeDB 镜像）+ BM25 关键词检索 |
-| D23 | 私有 GitHub 仓库 + GitHub Actions 自动部署到 AWS | 已定 | 常见、成熟；合并即发布，可以回滚 | 手动部署 |
+| D22 | Demo 在同一 EC2 运行 Postgres / pgvector | 已定 | 随主机启停；加密磁盘持久化并备份至 S3，后续按可用性需求迁移 RDS | 第一阶段常驻 RDS |
+| D23 | 私有 GitHub + CodeConnections + CodeBuild | 已定 | 当前 AWS 项目的 SCP 禁止 IAM OIDC Provider；GitHub Actions 只验证，AWS 构建与发布使用服务角色 | 升级高级功能后重新评估 OIDC |
 
 ---
 
@@ -792,7 +792,7 @@ erDiagram
   - yt-dlp 自己发起网络请求，Go 的防护管不到它，所以 worker 所在网络还要在出口禁止访问内网和云服务器元数据地址（169.254.169.254），作为兜底。
   - 如果支持直链：只允许 http/https；拒绝内网、回环、链路本地地址；跟随重定向时每一跳都重新检查；限制大小和时长。
 - Python 服务只在内网可达，不暴露公网；Go 调用它时还要带服务间共享令牌（已定）。
-- 前端与 API 不同域部署（已定）。API 只允许配置里的前端来源跨域访问；令牌放在 Authorization 头里，不用 cookie。
+- Demo 通过同一 Nginx 入口访问前端和 API；其他部署可配置允许的前端来源。令牌放在 Authorization 头里，不用 cookie。
 - 密钥只放环境变量，不进配置文件和代码仓库。
 
 ### 9.5 可观测性
@@ -802,7 +802,7 @@ erDiagram
 
 ---
 
-## 10. 部署视图（云端暂缓）
+## 10. 部署视图
 
 ### 10.1 本地部署（当前支持的组合）
 
@@ -850,75 +850,63 @@ flowchart TB
 
 `models.local.yaml` 仍支持兼容插件共用环境的组合；显式 `ML_FAKE=1` 只用于协议和流程测试。`wemm-cuda` 提供 Linux amd64 的锁定配置与 Docker 构建入口，但未经过真实 CUDA 硬件验收，不能据此宣称与 MPS 索引兼容。
 
-### 10.2 AWS 部署（未来方案，暂缓）
+### 10.2 AWS 单用户 Demo
 
-私有 GitHub 仓库与 GitHub Actions 自动部署是已定方向；下图资源形态仍是提议，当前没有已验收的 AWS 部署。
+部署代码在 `deploy/aws/`；逐步操作、计费与恢复说明见 [部署手册](../deploy/aws/README.md)。当前目标是验证真实 CPU 模型，不代表已通过目标机器上的性能或完整检索验收。
 
 ```mermaid
 flowchart TB
-  U(["用户浏览器"])
-  WEB["Web 静态站点<br/>与 API 不同域"]
-  subgraph AWS["未来 AWS"]
-    ALB["ALB / HTTPS"]
-    subgraph ECS["Go 进程 / 容器"]
-      API2["api × N"]
-      WK2["worker × N + ffmpeg"]
-    end
-    subgraph GPU["Linux GPU 环境 / ML 进程"]
-      GM["videohelper-ml"] -->|"函数调用"| GW["WeMM 插件 / CUDA<br/>独立候选空间，先硬件验收"]
-    end
-    subgraph CPU["CPU 环境 / ML 进程"]
-      CM["videohelper-ml"] -->|"函数调用"| SW["FunASR + CLAP 插件"]
-    end
-    PGS[("RDS Postgres / pgvector")]
-    EC[("ElastiCache Redis")]
-    S32[("S3 媒体")]
-    CACHE[("挂载的权重 / 媒体缓存")]
+  GH["私有 GitHub / main"] -->|"GitHub App 事件与源码"| CC["CodeConnections"]
+  CC --> CB["CodeBuild：按次测试、构建四种镜像"]
+  CB -->|"推送 SHA 标签"| ECR["ECR"]
+  CB -->|"发布版本包"| REL["私有 S3：发布包 / DB 备份"]
+  CB -->|"仅主机运行时发送命令"| SSM["Systems Manager"]
+  OP["用户本地 AWS CLI"] -->|"显式启停 / SSM 加密隧道"| SSM
+  U["浏览器 localhost:8080"] -->|"本机端口转发"| SSM
+  subgraph HOST["一台可停止的 EC2 / Docker Compose"]
+    N["Nginx + Web"] -->|"HTTP"| API["Go API"]
+    W["Go Worker + FFmpeg"]
+    AUTH["单用户 JWKS 服务"]
+    PG[("Postgres / pgvector")]
+    R[("Redis / AOF")]
+    WM["Python WeMM CPU / float32"]
+    SA["Python ASR + CLAP / CPU"]
+    DISK[("60 GiB 加密 gp3：数据库、缓存、鉴权密钥")]
+    API -->|"HTTP JWKS"| AUTH
+    API -->|"SQL"| PG
+    W -->|"SQL"| PG
+    API -->|"任务入队"| R
+    W -->|"消费"| R
+    API -->|"HTTP query / 发现"| WM
+    API -->|"HTTP audio query / 发现"| SA
+    W -->|"HTTP embed"| WM
+    W -->|"HTTP transcribe / embed"| SA
+    PG -->|"文件 I/O"| DISK
+    R -->|"文件 I/O"| DISK
+    WM -->|"文件 I/O"| DISK
+    SA -->|"文件 I/O"| DISK
   end
-  U --> WEB
-  WEB -->|"HTTPS REST"| ALB
-  ALB --> API2
-  API2 -->|"SQL"| PGS
-  WK2 -->|"SQL"| PGS
-  API2 -->|"投递任务"| EC
-  WK2 -->|"消费任务"| EC
-  API2 -->|"HTTP：发现 / query"| GM
-  API2 -->|"HTTP：发现 / 可选 audio query"| CM
-  WK2 -->|"HTTP：embed"| GM
-  WK2 -->|"HTTP：transcribe / embed"| CM
-  API2 -->|"S3 API"| S32
-  WK2 -->|"S3 API"| S32
-  GM -->|"S3 只读"| S32
-  CM -->|"S3 只读"| S32
-  GM -->|"文件 I/O"| CACHE
-  CM -->|"文件 I/O"| CACHE
-  WEB -->|"预签名 HTTP"| S32
+  SSM -->|"隧道到 127.0.0.1:8080"| N
+  ECR -->|"镜像拉取"| HOST
+  HOST -->|"备份上传 / 版本下载"| REL
+  API -->|"S3 API"| MEDIA[("私有 S3：媒体")]
+  W -->|"S3 API"| MEDIA
+  WM -->|"S3 读取"| MEDIA
+  SA -->|"S3 读取"| MEDIA
+  U -->|"预签名 HTTPS：上传 / 播放"| MEDIA
 ```
 
-- api、worker 可使用同一 Go 镜像，以不同子命令启动；Python 镜像按 profile 安装公共服务与普通插件 wheel，权重挂载在外。
-- 候选模型可另开独立环境或容器；Go 使用 `ml.endpoints` 发现，需要时用 `ml.model_endpoints` 绑定。部署方控制同 GPU 上多个进程的总并发与显存。
-- Postgres 用 AWS RDS 是已定方向；Multi-AZ、预算与基础设施工具仍待确认。
+网络无入站规则；动态公网 IPv4 仅供主机主动访问 SSM、镜像和模型源。无需 ALB、NAT Gateway、ECS 集群、RDS 或 ElastiCache。EC2 默认 `r6a.large`（2 vCPU / 16 GiB），不是 GPU；16 GiB 是否足够、CPU 搜索耗时必须实测，不足时再评估 32 GiB。AWS 新体验项目目前限定 `us-east-2`，不能直接跨区域创建资源。
 
-### 10.3 发布流程（未来 AWS 方案，未实现）
+### 10.3 发布、停机与数据边界
 
-```mermaid
-flowchart LR
-  PR["提 PR"] --> CI["计划中的 CI<br/>lint / 测试 / 生成检查 / 契约检查"]
-  CI --> MG["合并到 main"]
-  MG --> BD["按 Go / ML profile 构建镜像<br/>commit SHA 标签推送 ECR；构建 Web"]
-  BD --> PREP["prepare 准备固定修订权重缓存<br/>不打入模型镜像"]
-  PREP --> MI["执行向后兼容的数据库迁移"]
-  MI --> MLD["serve 启动候选 ML 进程<br/>离线加载；校验 readyz / spaces / runtime"]
-  MLD --> RO["验证空间覆盖率与效果后<br/>按兼容配置发布 Go / Web"]
-  RO --> SM{"冒烟测试"}
-  SM -->|"通过"| OK["保留旧模型与索引至回滚窗口结束"]
-  SM -->|"失败"| RB["恢复旧代码与配置<br/>旧模型服务和索引须仍可用"]
-```
+1. `main` 代码变化触发 CodeBuild；GitHub Actions 只执行检查，不保存 AWS 长期密钥。
+2. 构建 Go、Web、WeMM CPU、ASR/CLAP CPU 四个镜像；固定 commit SHA，四个镜像齐全后才更新 S3 的期望版本。
+3. 主机停止时只发布；显式 `demo.py start` 才开机并应用期望版本。运行时通过 SSM 发布，不开放 SSH。构建角色没有 EC2 开机权限。
+4. 主机先拉镜像，再停止写入、备份数据库、保存旧配置；执行固定权重 `prepare`，随后 `HF_HUB_OFFLINE=1` 启动。迁移与 `space add` 完成后启动 API / Worker / Web。
+5. 每次开机两小时后自动停止；显式 Stop 尝试备份与优雅退出，即使备份失败也停止实例控制费用。备份失败必须处理，不能等同于备份成功。
 
-- 未来 GitHub 使用 OIDC 临时凭证连接 AWS；数据库由基础设施创建，发布只执行迁移。
-- 裸 `serve` 未启用离线模式时仍可下载权重；先 `prepare`，再设置 `HF_HUB_OFFLINE=1` 才是明确的离线启动步骤。
-- 数据库迁移采用先加后删；模型替换另按第 6.7 节完成候选回填和验证，不能只回滚镜像而丢掉旧模型或旧索引。
-- 细节见 [spec.md 第 14 章](spec.md#14-本地开发与部署)。
+数据库、Redis、鉴权密钥和权重缓存保存在加密 EBS；媒体在私有 S3。停止不删除数据，也不停止存储计费。S3 保留版本，数据库备份保留 30 天（旧版本另受 7 天规则约束）；本地备份需检查磁盘占用。ECR 每类仅保留最近三个推送版本；旧代码回滚需要镜像仍在或重新构建，数据库迁移不自动逆转。保留策略不等于恢复演练成功。
 
 ---
 

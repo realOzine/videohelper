@@ -2554,44 +2554,33 @@ flowchart TB
 | `cd ml && uv run pytest` | Python 协议与 fake 测试 |
 | `cd ml && uv run ruff check .` | Python 静态检查 |
 
-### 14.4 AWS 资源（暂缓）
+### 14.4 AWS Demo 资源
 
-| 组件 | AWS 资源 |
+`deploy/aws/stack.yaml` 定义可停止的单用户测试环境。实际验收以云端检查为准；模板和模拟测试不证明真实模型可用。
+
+| 资源 | 用途与边界 |
 |---|---|
-| api、worker | ECS，同一个镜像，不同子命令 |
-| ml | 带 GPU 的 EC2（加入 ECS 集群或单独部署） |
-| Postgres | AWS RDS 托管（已定），装 pgvector 扩展 |
-| 镜像仓库 | ECR |
-| Redis | ElastiCache |
-| 文件 | S3 |
-| 入口 | ALB + HTTPS |
+| EC2 `r6a.large` + 60 GiB 加密 gp3 | 同机运行 API、Worker、Web、Postgres/pgvector、Redis、鉴权和两个 CPU ML profile；每次启动两小时自动停止 |
+| VPC / 子网 / IGW / 安全组 | 无入站端口；用 SSM 端口转发；动态公网 IPv4 供出站访问 |
+| 两个私有 S3 桶 | 媒体；发布包和数据库备份。默认加密、版本控制、拒绝非 TLS；删除栈保留数据 |
+| ECR | 四类不可变 SHA 镜像，每类保留最近三个推送版本 |
+| CodeConnections + CodeBuild | 私有 GitHub App 连接；按 `main` push 构建；一项构建并发、最长 120 分钟 |
+| IAM 实例 / 构建服务角色 | 限制到本栈 S3 / ECR / EC2；构建角色无启动实例权限，无长期访问密钥 |
+| CloudWatch Logs | 构建日志保留七天 |
+| 可选 AWS Budget | 提供邮箱才创建 40 USD/月提醒，20 / 40 USD 通知；不是消费硬上限 |
 
-### 14.5 发布流程（GitHub Actions，暂缓）
+### 14.5 自动发布与操作
 
-以下是后续 AWS 发布设计，当前没有完成这些工作流与云资源的部署验收。发布按 Go 二进制和各 ML profile 分开，不将全部模型依赖合并进一个通用环境。
+操作手册见 [deploy/aws/README.md](../deploy/aws/README.md)，架构见 [design.md 10.2](design.md#102-aws-单用户-demo)。
 
-| 工作流 | 触发 | 做什么 |
-|---|---|---|
-| `ci.yml` | 提 PR | lint；Go 和 Python 测试；检查 sqlc 生成的代码是否最新；契约测试；构建镜像但不推送 |
-| `deploy.yml` | 合并到 main | 见下面的步骤 |
-| `infra.yml` | 修改 `infra/` | 先输出变更计划，确认后再执行（基础设施代码的工具待定，设计文档问题 22） |
-
-`deploy.yml` 的步骤：
-
-1. 构建 Go 镜像和 ml 镜像，用 commit SHA 打标签，推送到 ECR。
-2. 用新镜像跑一次性任务 `videohelper migrate`，执行数据库迁移。
-3. 滚动更新 api 和 worker 两个 ECS 服务。
-4. 更新 ml 服务（GPU 实例），和 api、worker 分开发布。
-5. 冒烟测试：调用健康检查，再做一次搜索。失败就回滚到上一个镜像标签。
-
-规则：
-
-- **连接 AWS**：GitHub 用 OIDC 换取临时凭证，对应一个只能部署本仓库的 IAM 角色。GitHub 里只存这个角色的 ARN，不存长期有效的密钥。
-- **迁移要向后兼容**：滚动发布时新旧代码同时在跑，所以表结构「先加后删」，不在同一次发布里删掉旧代码还在用的字段。回滚时只回滚代码，不回滚数据库。
-- **密钥**：数据库地址、DeepSeek key、ML 共享令牌放在 AWS Secrets Manager，ECS 启动任务时注入。
-- **数据库不归部署流程管**：RDS 实例由 `infra/` 创建一次，之后一直保留。`deploy.yml` 只执行迁移，不会重建数据库。
-- **ml 镜像**：按 profile 安装代码与锁定依赖，不打包权重。先用 `prepare` 将固定修订下载到挂载缓存，再离线启动（10.3 节）。MPS 使用 Mac 原生环境；CUDA 镜像需要目标 Linux GPU 环境验收。
-- **staging 与审批**：要不要 staging 环境、生产发布要不要人工审批，待定（设计文档问题 23）。
+- `.github/workflows/aws-demo.yml` 仅验证；当前 AWS 新体验的 SCP 不允许创建 IAM OIDC Provider，故 AWS 发布使用 CodeConnections 和 CodeBuild，不通过 GitHub 凭据调用 AWS。
+- `buildspec.yaml` 先验证，再构建四类镜像；`demo.py publish` 确认全部镜像存在，从对应 Git commit 读取发布文件，最后更新期望 SHA。
+- `demo.py deploy` 不启动已停止的主机；`start` 显式启动并通过 SSM 部署；`stop` 即使备份失败也停止计算；`connect` 只转发本机 8080；`shell` 进入管理会话。
+- `host.sh` 用锁串行部署 / 备份，严格验证归档，保留数据库密码和鉴权私钥；有旧 PG 数据但缺少原密码时拒绝初始化。
+- WeMM 使用独立 `wemm-2b-cpu@r1` 空间；ASR 为 `paraformer-zh@r1`，CLAP 为 `clap-htsat-unfused@r1`。权重不在镜像里，固定修订先下载到持久缓存，服务离线加载。
+- 发布先停止写入并备份，再启动 ML、执行迁移和注册空间，最后启动业务进程。单机发布有短暂停机；不能宣称滚动升级或高可用。
+- 前端和 API 同源通过 SSM 访问；八小时 Demo JWT 只能在主机本地 CLI 签发。仅适用于当前单用户测试，不是公开注册 / 多用户认证。
+- 恢复旧 SHA 前确认 ECR 镜像仍存在和数据库结构兼容；自动保存上一份配置不等于自动数据库回滚。删除 CloudFormation 栈不是停机方法；保留的实例和存储可能继续计费。
 
 ---
 
@@ -2607,7 +2596,8 @@ flowchart TB
 | Web | 纯函数、类型检查与构建 | `make test-web`、`npm --prefix web run build` |
 | 效果评估 | 真实上传 / 索引、覆盖率、固定快照召回与定位指标 | `Eval/tools/run.py`（第 11 章），没有 `videohelper eval` 子命令 |
 | 真实硬件 | CPU / MPS / CUDA 的可启动性、数值、速度与显存 | 按 profile 单独验收；CUDA 当前仍是候选 |
-| 规划功能 | URL 导入、Agent、AWS | 随实现补充，当前不声称已测试 |
+| 云端 Demo | 基础设施、启停、镜像与 SSM 发布 | 本地部署测试与真实云端 / CPU 推理验收分别记录 |
+| 规划功能 | URL 导入、Agent | 随实现补充，当前不声称已测试 |
 
 ---
 
@@ -2625,7 +2615,7 @@ flowchart TB
 
 实现要点：
 
-- **部署**：前端与 API 不同域部署（已定），请求要带 `Authorization` 头，API 已配置 CORS。
+- **部署**：AWS Demo 同源访问前端和 API；其他来源按 CORS 配置。请求须带 `Authorization`。
 - **上传**：按 `part_size` 切文件，并发上传各分片（4 路），收集每个分片响应头里的 ETag，最后调用 complete；对象存储的 CORS 必须暴露 `ETag`。`upload-parts` 续签尚未实现，分片 URL 过期或页面关闭后需重新上传。
 - **进度**：`/v1/videos/{id}/events` 尚未实现，视频详情处理中每 3 秒重新拉取 `/v1/videos/{id}`，资料库每 5 秒刷新第一页。以后接 SSE 时用 fetch 读取响应流，不用原生 EventSource，因为它不能带 `Authorization` 头，也不支持 POST。
 - **缩略图**：用 SVG `viewBox` 从雪碧图里裁出 `thumbnail` 指定的那一块并缩放到格子大小；`Moment` 和 `Video` 都带 `thumbnail`。
@@ -2660,7 +2650,7 @@ flowchart TB
 | 17 | 超时、并发等初始参数 | 实现时设定 |
 | 18 | 删除视频 | 软删除 |
 | 19 | JSON 里的 ID 格式 | 字符串 |
-| 20 | 前后端部署 | 不同域，配置 CORS |
+| 20 | 前后端部署 | Demo 同源；其他部署可配置 CORS |
 | 21 | 上传与存储上限 | 不设上限 |
 | 22 | channels 配置放哪 | 配置文件 |
 | 23 | 服务间鉴权 | 增加共享令牌 |
@@ -2669,7 +2659,7 @@ flowchart TB
 | 26 | yt-dlp 的升级节奏 | 暂时不管 |
 | 27 | 平台登录态 | 暂时不带登录态 |
 | 28 | 临时磁盘大小 | 暂时不管 |
-| 30 | pg_bigm 的替代 | 不需要关键词检索：去掉关键词通道，不用 pg_bigm、BM25，也不做分词；Postgres 用 AWS RDS |
+| 30 | pg_bigm 的替代 | 不需要关键词检索：去掉关键词通道，不用 pg_bigm、BM25，也不做分词；Demo Postgres 在同一 EC2，后续按需要迁移 RDS |
 
 ### 17.2 仍待确认
 

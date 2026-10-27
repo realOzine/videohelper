@@ -1,0 +1,26 @@
+let buckets = Resources.*[ Type == 'AWS::S3::Bucket' ]
+rule private_encrypted_retained_buckets {
+  %buckets {
+    DeletionPolicy == 'Retain'
+    UpdateReplacePolicy == 'Retain'
+    Properties.PublicAccessBlockConfiguration {
+      BlockPublicAcls == true
+      BlockPublicPolicy == true
+      IgnorePublicAcls == true
+      RestrictPublicBuckets == true
+    }
+    Properties.VersioningConfiguration.Status == 'Enabled'
+    Properties.BucketEncryption.ServerSideEncryptionConfiguration[*].ServerSideEncryptionByDefault.SSEAlgorithm == 'AES256'
+  }
+}
+rule private_retained_host {
+  Resources.Host {
+    DeletionPolicy == 'Retain'
+    Properties.DisableApiTermination == true
+    Properties.InstanceInitiatedShutdownBehavior == 'stop'
+    Properties.MetadataOptions.HttpTokens == 'required'
+    Properties.BlockDeviceMappings[*].Ebs.Encrypted == true
+    Properties.BlockDeviceMappings[*].Ebs.DeleteOnTermination == false
+  }
+  Resources.HostSecurityGroup.Properties.SecurityGroupIngress empty
+}
