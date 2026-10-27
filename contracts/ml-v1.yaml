@@ -715,7 +715,9 @@ components:
       properties:
         uri:
           type: string
-          pattern: ^s3://[a-z0-9][a-z0-9.-]*/[^?#]+$
+          not:
+            pattern: '[\r\n]'
+          pattern: ^(?:s3://[a-z0-9][a-z0-9.-]*/[^?#\r\n]+|local://media/[A-Za-z0-9_-][A-Za-z0-9._-]*(?:/[A-Za-z0-9_-][A-Za-z0-9._-]*)*)$
           title: Uri
         start_ms:
           type: integer
@@ -846,7 +848,9 @@ components:
       properties:
         uri:
           type: string
-          pattern: ^s3://[a-z0-9][a-z0-9.-]*/[^?#]+$
+          not:
+            pattern: '[\r\n]'
+          pattern: ^(?:s3://[a-z0-9][a-z0-9.-]*/[^?#\r\n]+|local://media/[A-Za-z0-9_-][A-Za-z0-9._-]*(?:/[A-Za-z0-9_-][A-Za-z0-9._-]*)*)$
           title: Uri
         start_ms:
           type: integer
@@ -994,7 +998,9 @@ components:
       properties:
         uri:
           type: string
-          pattern: ^s3://[a-z0-9][a-z0-9.-]*/[^?#]+$
+          not:
+            pattern: '[\r\n]'
+          pattern: ^(?:s3://[a-z0-9][a-z0-9.-]*/[^?#\r\n]+|local://media/[A-Za-z0-9_-][A-Za-z0-9._-]*(?:/[A-Za-z0-9_-][A-Za-z0-9._-]*)*)$
           title: Uri
       required:
       - uri

@@ -26,6 +26,7 @@ def create_app(settings: Settings | None = None, *, downloader=None) -> FastAPI:
             config.cache_dir,
             config.cache_max_bytes,
             downloader or S3Downloader(config.s3_endpoint),
+            local_root=config.local_media_root,
         )
         app.state.registry = await asyncio.to_thread(
             Registry,

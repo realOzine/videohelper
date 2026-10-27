@@ -10,6 +10,7 @@ var (
 	identifier  = regexp.MustCompile(`^[a-z0-9@._-]+$`)
 	fingerprint = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
 	s3URI       = regexp.MustCompile(`^s3://[a-z0-9][a-z0-9.-]*/[^?#\r\n]+$`)
+	localURI    = regexp.MustCompile(`^local://media/[A-Za-z0-9_-][A-Za-z0-9._-]*(/[A-Za-z0-9_-][A-Za-z0-9._-]*)*$`)
 )
 
 func validateSpaces(response SpacesResponse) error {
@@ -48,7 +49,11 @@ func validInputTypes(types []string) bool {
 }
 
 func validMedia(uri string, start, end int) bool {
-	return s3URI.MatchString(uri) && start >= 0 && end > start
+	return validURI(uri) && start >= 0 && end > start
+}
+
+func validURI(uri string) bool {
+	return s3URI.MatchString(uri) || localURI.MatchString(uri)
 }
 
 func validateEmbedRequest(req EmbedRequest, info SpaceInfo) error {
@@ -80,7 +85,7 @@ func validateEmbedRequest(req EmbedRequest, info SpaceInfo) error {
 		}
 		if input.Image != nil {
 			count, kind = count+1, "image"
-			if !s3URI.MatchString(input.Image.URI) {
+			if !validURI(input.Image.URI) {
 				return invalid("invalid image reference")
 			}
 		}
