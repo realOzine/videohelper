@@ -8,6 +8,7 @@ import { newProject, panel, PanelHead, Shell, TitleRow, useNotice, useLibrary } 
 import { btn, btnPrimary, Ch, cx, errText, Icon, Rich, select, TcBadge, Thumb } from '../ui.tsx';
 
 interface Entry { id: string; v: Video; url: string; dur: number }
+const emptyMoments: Moment[] = [];
 interface ChannelModels {
   channel: string; default_space_ids: string[]; default_weight: number;
   models: { space_id: string; status: string; eligible_videos: number; indexed_videos: number }[];
@@ -40,7 +41,7 @@ export default function Search() {
   const [meta, setMeta] = useState<Record<string, Video>>({});
   const vid = useRef<HTMLVideoElement>(null), plot = useRef<HTMLSpanElement>(null), ph = useRef<HTMLSpanElement>(null), time = useRef<HTMLSpanElement>(null);
   const loaded = useRef(new Map<string, Promise<Entry>>()), pickedRef = useRef(-1), entryRef = useRef<Entry | null>(null), pending = useRef<number | null>(null);
-  const ms = found?.ms ?? [];
+  const ms = found?.ms ?? emptyMoments;
 
   useEffect(() => {
     if (!q) return;
@@ -90,6 +91,7 @@ export default function Search() {
   useEffect(() => { if (found) setView((v) => v ?? defaultView(found.ms)); }, [found]);
   // the gallery's rows need each video's length to place the moment on it
   useEffect(() => {
+    if (!ms.length) return;
     const ids = [...new Set(ms.map((x) => x.video_id))];
     Promise.all(ids.map((id) => get<{ video: Video }>(`/v1/videos/${id}`).then((d) => [id, d.video] as const).catch(() => null)))
       .then((rows) => setMeta(Object.fromEntries(rows.filter((r) => r !== null))));
