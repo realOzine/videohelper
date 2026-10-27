@@ -32,6 +32,8 @@ macOS 裸二进制在打开数据库和启动模型前，将自身及内嵌的�
 
 HTTP 绑定 `127.0.0.1:0`，校验实际 Host、已知 MyGo Origin 和内存中的 `X-Desktop-Token`。这用于阻止其他网页驱动本地文件接口，不形成用户身份体系。媒体 URL 使用独立 capability，资源必须落在对应视频的受管目录中；`http.ServeContent` 提供 Range 和定位播放。
 
+搜索播放器保留原生媒体控件，时间、命中播放头与播放状态由 `timeupdate`、`seeked`、`pause`、`ended` 等原生事件同步；命中跳转等待对应媒体的 metadata，不依赖递归 `requestAnimationFrame`。
+
 ## 本地界面接口
 
 | 方法与路径 | 行为 |

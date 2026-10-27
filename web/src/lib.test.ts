@@ -1,6 +1,19 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { byVideo, channelState, defaultView, marks, modelName, modelPrefs, pipeline, searchFields, tc, ticks } from './lib.ts';
+import { byVideo, channelState, defaultView, marks, modelName, modelPrefs, pipeline, searchFields, seekMedia, tc, ticks } from './lib.ts';
+
+test('result seeking waits for metadata of the selected video instead of seeking the previous source', () => {
+  const video = { readyState: 4, currentSrc: 'http://localhost/media/old.mp4', currentTime: 5 };
+  const source = 'http://localhost/media/new.mp4';
+  assert.equal(seekMedia(video, source, 1109), false);
+  assert.equal(video.currentTime, 5);
+  video.currentSrc = source; video.readyState = 0;
+  assert.equal(seekMedia(video, source, 1109), false);
+  assert.equal(video.currentTime, 5);
+  video.readyState = 1;
+  assert.equal(seekMedia(video, source, 1109), true);
+  assert.equal(video.currentTime, 1.109);
+});
 
 test('model names keep the model revision and omit local fingerprints', () => {
   const fingerprint = 'a1'.repeat(32);
