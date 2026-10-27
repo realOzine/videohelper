@@ -193,11 +193,12 @@ func (s *Server) importFile(r *http.Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	p, err := s.engine()
-	if err != nil {
-		return nil, err
+	var v store.Video
+	if p, ready := s.engine(); ready == nil {
+		v, err = p.ImportFile(r.Context(), b.Path, project)
+	} else {
+		v, err = s.Store.ImportFile(r.Context(), b.Path, project)
 	}
-	v, err := p.ImportFile(r.Context(), b.Path, project)
 	return map[string]any{"video": s.public(v)}, err
 }
 
@@ -213,10 +214,11 @@ func (s *Server) importURL(r *http.Request) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	p, err := s.engine()
-	if err != nil {
-		return nil, err
+	var v store.Video
+	if p, ready := s.engine(); ready == nil {
+		v, err = p.ImportURL(r.Context(), b.URL, project)
+	} else {
+		v, err = s.Store.ImportURL(r.Context(), b.URL, project)
 	}
-	v, err := p.ImportURL(r.Context(), b.URL, project)
 	return map[string]any{"video": s.public(v)}, err
 }

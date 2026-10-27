@@ -114,34 +114,26 @@ func (s *Store) ListVideos(ctx context.Context, f VideoFilter) ([]Video, error) 
 	return videos, rows.Err()
 }
 
-func (s *Store) createVideo(ctx context.Context, kind, sourceURL, title, filename string, projectID *int64) (Video, error) {
+func insertVideo(ctx context.Context, tx *sql.Tx, kind, sourceURL, title, filename string, projectID *int64) (int64, error) {
 	if strings.TrimSpace(title) == "" {
-		return Video{}, ErrInvalid
+		return 0, ErrInvalid
 	}
-	var id int64
-	err := s.write(ctx, func(tx *sql.Tx) error {
-		now := timestamp()
-		status := "importing"
-		if kind == "upload" {
-			status = "uploading"
-		}
-		result, err := tx.ExecContext(ctx, `INSERT INTO video(title,source_kind,source_url,source_filename,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?)`, title, kind, sourceURL, filename, status, now, now)
-		if err != nil {
-			return err
-		}
-		id, err = result.LastInsertId()
-		if err != nil {
-			return err
-		}
-		if projectID != nil {
-			_, err = tx.ExecContext(ctx, "INSERT INTO project_video(project_id,video_id) VALUES(?,?)", *projectID, id)
-		}
-		return err
-	})
+	now, status := timestamp(), "importing"
+	if kind == "upload" {
+		status = "uploading"
+	}
+	result, err := tx.ExecContext(ctx, `INSERT INTO video(title,source_kind,source_url,source_filename,status,created_at,updated_at) VALUES(?,?,?,?,?,?,?)`, title, kind, sourceURL, filename, status, now, now)
 	if err != nil {
-		return Video{}, err
+		return 0, err
 	}
-	return s.Video(ctx, id)
+	id, err := result.LastInsertId()
+	if err != nil {
+		return 0, err
+	}
+	if projectID != nil {
+		_, err = tx.ExecContext(ctx, "INSERT INTO project_video(project_id,video_id) VALUES(?,?)", *projectID, id)
+	}
+	return id, err
 }
 
 func (s *Store) CreateImport(ctx context.Context, sourceURL, kind, title string, projectID *int64) (Video, error) {
@@ -152,42 +144,98 @@ func (s *Store) CreateImport(ctx context.Context, sourceURL, kind, title string,
 	if strings.TrimSpace(title) == "" {
 		title = sourceURL
 	}
-	return s.createVideo(ctx, kind, sourceURL, title, "", projectID)
+	var v Video
+	err = s.write(ctx, func(tx *sql.Tx) error {
+		id, err := insertVideo(ctx, tx, kind, sourceURL, title, "", projectID)
+		if err != nil {
+			return err
+		}
+		if _, err := createJob(ctx, tx, id); err != nil {
+			return err
+		}
+		v, err = scanVideo(tx.QueryRowContext(ctx, "SELECT "+videoColumns+" FROM video WHERE id=?", id))
+		return err
+	})
+	return v, err
+}
+
+func (s *Store) ImportURL(ctx context.Context, raw string, projectID *int64) (Video, error) {
+	u, err := url.Parse(raw)
+	if err != nil {
+		return Video{}, ErrInvalid
+	}
+	host, kind := strings.ToLower(u.Hostname()), "direct"
+	if host == "youtube.com" || strings.HasSuffix(host, ".youtube.com") || host == "youtu.be" {
+		kind = "youtube"
+	}
+	if host == "bilibili.com" || strings.HasSuffix(host, ".bilibili.com") || host == "b23.tv" {
+		kind = "bilibili"
+	}
+	return s.CreateImport(ctx, raw, kind, raw, projectID)
 }
 
 func (s *Store) ImportFile(ctx context.Context, path string, projectID *int64) (Video, error) {
 	name := filepath.Base(path)
-	v, err := s.createVideo(ctx, "upload", "", name, name, projectID)
+	var id int64
+	err := s.write(ctx, func(tx *sql.Tx) error {
+		var err error
+		id, err = insertVideo(ctx, tx, "upload", "", name, name, projectID)
+		return err
+	})
 	if err != nil {
 		return Video{}, err
 	}
-	key, err := s.CopyFile(ctx, v.ID, path)
+	key, err := s.CopyFile(ctx, id, path)
+	var v Video
 	if err == nil {
-		err = s.SetSource(ctx, v.ID, key)
+		v, err = s.commitFileImport(ctx, id, key)
 	}
 	if err != nil {
 		cleanup, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
 		defer cancel()
-		_, stateErr := s.db.ExecContext(cleanup, "UPDATE video SET status='failed',error=?,updated_at=? WHERE id=?", err.Error(), timestamp(), v.ID)
-		return Video{}, fmt.Errorf("copy import: %w", errors.Join(err, stateErr))
+		return Video{}, fmt.Errorf("copy import: %w", errors.Join(err, s.discardImport(cleanup, id)))
 	}
-	return s.Video(ctx, v.ID)
+	return v, nil
+}
+
+func (s *Store) commitFileImport(ctx context.Context, id int64, key string) (Video, error) {
+	// A complete managed copy must reach the durable queue even if its caller disconnects.
+	commit, cancel := context.WithTimeout(context.WithoutCancel(ctx), 5*time.Second)
+	defer cancel()
+	var v Video
+	err := s.write(commit, func(tx *sql.Tx) error {
+		if err := (&Tx{tx}).SetSource(commit, id, key); err != nil {
+			return err
+		}
+		if _, err := createJob(commit, tx, id); err != nil {
+			return err
+		}
+		var err error
+		v, err = scanVideo(tx.QueryRowContext(commit, "SELECT "+videoColumns+" FROM video WHERE id=?", id))
+		return err
+	})
+	return v, err
+}
+
+func (s *Store) discardImport(ctx context.Context, id int64) error {
+	return s.write(ctx, func(tx *sql.Tx) error {
+		var unstarted bool
+		if err := tx.QueryRowContext(ctx, `SELECT EXISTS(SELECT 1 FROM video v WHERE v.id=? AND v.source_kind='upload' AND v.source_key='' AND NOT EXISTS(SELECT 1 FROM job j WHERE j.video_id=v.id))`, id).Scan(&unstarted); err != nil {
+			return err
+		}
+		if !unstarted {
+			return nil
+		}
+		if err := s.root.RemoveAll("videos/" + strconv.FormatInt(id, 10)); err != nil {
+			return err
+		}
+		_, err := tx.ExecContext(ctx, "DELETE FROM video WHERE id=?", id)
+		return err
+	})
 }
 
 func validVideoKey(id int64, key string) bool {
 	return id > 0 && validKey(key) == nil && strings.HasPrefix(key, "videos/"+strconv.FormatInt(id, 10)+"/")
-}
-
-func (s *Store) SetSource(ctx context.Context, id int64, key string) error {
-	if !validVideoKey(id, key) {
-		return ErrInvalid
-	}
-	f, err := s.OpenFile(key)
-	if err != nil {
-		return err
-	}
-	f.Close()
-	return changed(s.db.ExecContext(ctx, "UPDATE video SET source_key=?,status='indexing',updated_at=? WHERE id=? AND deleted_at IS NULL AND status IN ('uploading','importing','failed')", key, timestamp(), id))
 }
 
 func (t *Tx) SetSource(ctx context.Context, id int64, key string) error {

@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"maps"
-	"net/url"
 	"slices"
 	"strings"
 	"sync"
@@ -114,30 +113,12 @@ func (p *Processor) ImportFile(ctx context.Context, path string, projectID *int6
 	if err != nil {
 		return v, err
 	}
-	if _, err := p.store.CreateJob(ctx, v.ID); err != nil {
-		return v, err
-	}
 	p.notify()
 	return v, nil
 }
 func (p *Processor) ImportURL(ctx context.Context, raw string, projectID *int64) (store.Video, error) {
-	u, err := url.Parse(raw)
+	v, err := p.store.ImportURL(ctx, raw, projectID)
 	if err != nil {
-		return store.Video{}, store.ErrInvalid
-	}
-	host := strings.ToLower(u.Hostname())
-	kind := "direct"
-	if host == "youtube.com" || strings.HasSuffix(host, ".youtube.com") || host == "youtu.be" {
-		kind = "youtube"
-	}
-	if host == "bilibili.com" || strings.HasSuffix(host, ".bilibili.com") || host == "b23.tv" {
-		kind = "bilibili"
-	}
-	v, err := p.store.CreateImport(ctx, raw, kind, raw, projectID)
-	if err != nil {
-		return v, err
-	}
-	if _, err := p.store.CreateJob(ctx, v.ID); err != nil {
 		return v, err
 	}
 	p.notify()

@@ -93,6 +93,10 @@ func TestJobRecoveryAndImportCrashGap(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	// Simulate the pre-transaction import/enqueue gap from an older database.
+	if _, err := s.db.ExecContext(ctx, "DELETE FROM job"); err != nil {
+		t.Fatal(err)
+	}
 	count, err := s.RecoverJobs(ctx)
 	if err != nil || count != 2 {
 		t.Fatalf("gap recovery %d %v", count, err)
