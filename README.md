@@ -56,6 +56,8 @@ make test-web
 make vet
 ```
 
+Apple Silicon Mac 已使用真实模型完成六秒视频的原生文件导入、yt-dlp 本地 HTTP 链接导入、三通道索引、中文搜索、视频播放、项目分组、删除恢复与重启保留验证。模型权重复用了缓存；这个短样本不代表冷安装、长视频性能或检索质量验收。
+
 真实工具与模型验证为显式 opt-in；命令和证据边界见 [桌面运行时](docs/desktop-runtime.md)。假模型测试只验证接线、事务、取消和恢复。旧 PostgreSQL 后端的检索指标不能作为 SQLite 后端质量证明；冻结语料与历史证据保留在 [Eval](Eval/README.md)。所有构建和测试排除 `model-test/`。
 
 产品边界见 [设计](docs/design.md)，模块与接口见 [实现说明](docs/spec.md)。此前服务端实现可在 Git 历史 `cc1fb38` 查看；桌面分支不再维护其部署入口。

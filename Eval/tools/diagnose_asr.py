@@ -24,4 +24,3 @@ def violations(result, start_ms, end_ms):
             })
         previous = end
     return invalid
-
