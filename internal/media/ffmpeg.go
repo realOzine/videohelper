@@ -36,9 +36,9 @@ type TranscodeOptions struct {
 	CRF        int
 }
 
-func Probe(ctx context.Context, src string) (ProbeInfo, error) {
+func (t Tools) Probe(ctx context.Context, src string) (ProbeInfo, error) {
 	var output bytes.Buffer
-	err := run(ctx, "ffprobe", src, &output, "-v", "error", "-show_entries",
+	err := t.run(ctx, "ffprobe", src, &output, "-v", "error", "-show_entries",
 		"format=duration:stream=codec_type,width,height,avg_frame_rate,r_frame_rate,duration", "-of", "json", "-i", src)
 	if err != nil {
 		return ProbeInfo{}, err
@@ -102,7 +102,7 @@ func frameRate(value string) float64 {
 	return n
 }
 
-func Transcode(ctx context.Context, src, dst string, o TranscodeOptions) error {
+func (t Tools) Transcode(ctx context.Context, src, dst string, o TranscodeOptions) error {
 	if o.MaxHeight == 0 {
 		o.MaxHeight = 720
 	}
@@ -115,7 +115,7 @@ func Transcode(ctx context.Context, src, dst string, o TranscodeOptions) error {
 	if o.MaxHeight < 2 || o.GOPSeconds < 1 || o.CRF < 0 || o.CRF > 51 {
 		return errors.New("invalid transcode options")
 	}
-	info, err := Probe(ctx, src)
+	info, err := t.Probe(ctx, src)
 	if err != nil {
 		return err
 	}
@@ -143,13 +143,13 @@ func Transcode(ctx context.Context, src, dst string, o TranscodeOptions) error {
 	if err := tmp.Close(); err != nil {
 		return err
 	}
-	if err := run(ctx, "ffmpeg", src, nil, append(args, tmp.Name())...); err != nil {
+	if err := t.run(ctx, "ffmpeg", src, nil, append(args, tmp.Name())...); err != nil {
 		return err
 	}
 	return os.Link(tmp.Name(), dst)
 }
 
-func Frames(ctx context.Context, src string, atMs []int, width int) ([][]byte, error) {
+func (t Tools) Frames(ctx context.Context, src string, atMs []int, width int) ([][]byte, error) {
 	if width <= 0 {
 		return nil, errors.New("frame width must be positive")
 	}
@@ -162,7 +162,7 @@ func Frames(ctx context.Context, src string, atMs []int, width int) ([][]byte, e
 	// shortcut: one ffmpeg process per frame; batch extraction when indexing throughput requires it.
 	for _, at := range atMs {
 		var output bytes.Buffer
-		err := run(ctx, "ffmpeg", src, &output, "-hide_banner", "-loglevel", "error", "-nostdin",
+		err := t.run(ctx, "ffmpeg", src, &output, "-hide_banner", "-loglevel", "error", "-nostdin",
 			"-ss", fmt.Sprintf("%d.%03d", at/1000, at%1000), "-i", src, "-map", "0:v:0", "-frames:v", "1",
 			"-vf", fmt.Sprintf("scale=%d:-1", width), "-f", "image2pipe", "-c:v", "mjpeg", "pipe:1")
 		if err != nil {
@@ -176,7 +176,7 @@ func Frames(ctx context.Context, src string, atMs []int, width int) ([][]byte, e
 	return frames, nil
 }
 
-func Sprites(ctx context.Context, src, outDir string, cells []timeline.Span, tileW, cols, rows int) (paths []string, layout timeline.SpriteLayout, err error) {
+func (t Tools) Sprites(ctx context.Context, src, outDir string, cells []timeline.Span, tileW, cols, rows int) (paths []string, layout timeline.SpriteLayout, err error) {
 	if tileW <= 0 || cols <= 0 || rows <= 0 || cols > math.MaxInt/rows {
 		return nil, layout, errors.New("invalid sprite dimensions")
 	}
@@ -206,7 +206,7 @@ func Sprites(ctx context.Context, src, outDir string, cells []timeline.Span, til
 		for i := range at {
 			at[i] = cells[start+i].StartMs
 		}
-		frames, err := Frames(ctx, src, at, tileW)
+		frames, err := t.Frames(ctx, src, at, tileW)
 		if err != nil {
 			return paths, layout, err
 		}
@@ -307,11 +307,24 @@ func (b *boundedStderr) message(src string) string {
 	return message
 }
 
-func run(ctx context.Context, name, src string, stdout io.Writer, args ...string) error {
-	cmd := exec.CommandContext(ctx, name, args...)
+func (t Tools) run(ctx context.Context, name, src string, stdout io.Writer, args ...string) error {
+	executable := name
+	if name == "ffmpeg" && t.FFmpeg != "" {
+		executable = t.FFmpeg
+	}
+	if name == "ffprobe" && t.FFprobe != "" {
+		executable = t.FFprobe
+	}
 	var stderr boundedStderr
-	cmd.Stdout, cmd.Stderr = stdout, &stderr
-	if err := cmd.Run(); err != nil {
+	execute := t.RunCommand
+	if execute == nil {
+		execute = func(ctx context.Context, path string, args []string, stdout, stderr io.Writer) error {
+			cmd := exec.CommandContext(ctx, path, args...)
+			cmd.Stdout, cmd.Stderr = stdout, stderr
+			return cmd.Run()
+		}
+	}
+	if err := execute(ctx, executable, args, stdout, &stderr); err != nil {
 		if ctx.Err() != nil {
 			return fmt.Errorf("%s: %w", name, ctx.Err())
 		}
