@@ -17,5 +17,6 @@
   "buildCommand": "npm --prefix web run build",
   "bindings": ".local/desktop-build/bindings.ts",
   "devUrl": "http://127.0.0.1:5173",
-  "devCommand": "npm --prefix web run dev"
+  "devCommand": "npm --prefix web run dev",
+  "icon": "Design/Icon/png/videohelper-app-icon-1024.png"
 }

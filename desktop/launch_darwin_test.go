@@ -3,6 +3,7 @@
 package desktop
 
 import (
+	"bytes"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -53,6 +54,19 @@ func TestBundleUpdateAndFailedCopyPreservesPrevious(t *testing.T) {
 	}
 	if _, err := prepareBundle(source, dataDir); err != nil {
 		t.Fatalf("same binary cannot be reused: %v", err)
+	}
+	icon := filepath.Join(bundle, "Contents", "Resources", "AppIcon.icns")
+	if b, err := os.ReadFile(icon); err != nil || !bytes.Equal(b, bundleIcon) {
+		t.Fatalf("brand icon not restored: %v", err)
+	}
+	if err := os.WriteFile(icon, []byte("damaged icon"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := prepareBundle(source, dataDir); err != nil {
+		t.Fatal(err)
+	}
+	if b, err := os.ReadFile(icon); err != nil || !bytes.Equal(b, bundleIcon) {
+		t.Fatalf("unchanged binary did not repair its icon: %v", err)
 	}
 }
 

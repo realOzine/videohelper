@@ -27,6 +27,9 @@ var bundleInfo []byte
 //go:embed CodeResources
 var bundleResources []byte
 
+//go:embed AppIcon.icns
+var bundleIcon []byte
+
 func inAppBundle(executable string) bool {
 	macOS := filepath.Dir(executable)
 	contents := filepath.Dir(macOS)
@@ -90,7 +93,8 @@ func prepareBundle(executable, dataDir string) (string, error) {
 	installedHash, hashErr := fileHash(filepath.Join(contents, "MacOS", "VideoHelper"))
 	info, _ := os.ReadFile(filepath.Join(contents, "Info.plist"))
 	resources, _ := os.ReadFile(filepath.Join(contents, "_CodeSignature", "CodeResources"))
-	if hashErr == nil && sourceHash == installedHash && bytes.Equal(info, bundleInfo) && bytes.Equal(resources, bundleResources) {
+	icon, _ := os.ReadFile(filepath.Join(contents, "Resources", "AppIcon.icns"))
+	if hashErr == nil && sourceHash == installedHash && bytes.Equal(info, bundleInfo) && bytes.Equal(resources, bundleResources) && bytes.Equal(icon, bundleIcon) {
 		return bundle, nil
 	}
 	stage, err := os.MkdirTemp(launcher, ".install-")
@@ -100,7 +104,7 @@ func prepareBundle(executable, dataDir string) (string, error) {
 	defer os.RemoveAll(stage)
 	stagedBundle := filepath.Join(stage, "VideoHelper.app")
 	stagedContents := filepath.Join(stagedBundle, "Contents")
-	for _, dir := range []string{"MacOS", "_CodeSignature"} {
+	for _, dir := range []string{"MacOS", "_CodeSignature", "Resources"} {
 		if err := os.MkdirAll(filepath.Join(stagedContents, dir), 0700); err != nil {
 			return "", err
 		}
@@ -108,7 +112,7 @@ func prepareBundle(executable, dataDir string) (string, error) {
 	if err := copyExecutable(executable, filepath.Join(stagedContents, "MacOS", "VideoHelper")); err != nil {
 		return "", err
 	}
-	for name, data := range map[string][]byte{"Info.plist": bundleInfo, filepath.Join("_CodeSignature", "CodeResources"): bundleResources} {
+	for name, data := range map[string][]byte{"Info.plist": bundleInfo, filepath.Join("_CodeSignature", "CodeResources"): bundleResources, filepath.Join("Resources", "AppIcon.icns"): bundleIcon} {
 		if err := os.WriteFile(filepath.Join(stagedContents, name), data, 0600); err != nil {
 			return "", err
 		}

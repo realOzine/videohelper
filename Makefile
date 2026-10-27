@@ -18,6 +18,7 @@ desktop-assets:
 desktop: desktop-app
 ifeq ($(DESKTOP_OS),darwin)
 	cmp desktop/Info.plist .local/desktop-build/darwin-$(DESKTOP_ARCH)/VideoHelper.app/Contents/Info.plist
+	cmp desktop/AppIcon.icns .local/desktop-build/darwin-$(DESKTOP_ARCH)/VideoHelper.app/Contents/Resources/AppIcon.icns
 	cmp desktop/CodeResources .local/desktop-build/darwin-$(DESKTOP_ARCH)/VideoHelper.app/Contents/_CodeSignature/CodeResources
 endif
 	mkdir -p bin

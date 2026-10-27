@@ -6,6 +6,8 @@
 	<string>VideoHelper</string>
 	<key>CFBundleExecutable</key>
 	<string>VideoHelper</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon.icns</string>
 	<key>CFBundleIdentifier</key>
 	<string>app.ozine.videohelper</string>
 	<key>CFBundleInfoDictionaryVersion</key>
