@@ -161,8 +161,7 @@ func (p *Processor) fetch(ctx context.Context, j store.Job, v store.Video) (stri
 		return "", err
 	}
 	defer os.RemoveAll(dir)
-	// shortcut: a 20 GiB per-video import ceiling bounds accidental disk use;
-	// add a personal storage preference when larger sources are needed.
+	// shortcut: temporary downloads can exceed the final-file limit, add a disk budget when needed.
 	const maxBytes = int64(20 << 30)
 	args := []string{"--ignore-config", "--no-plugin-dirs", "--no-playlist", "--no-progress", "--no-warnings", "--restrict-filenames", "--no-part", "--max-filesize", strconv.FormatInt(maxBytes, 10), "--ffmpeg-location", filepath.Dir(p.cfg.Tools.FFmpeg), "--paths", dir, "--output", "source.%(ext)s", "--print", "after_move:filepath"}
 	if p.cfg.Tools.Deno != "" {
@@ -266,7 +265,6 @@ func (p *Processor) transcribe(ctx context.Context, j store.Job, cp *checkpoint,
 		return err
 	}
 	var sentences = []store.Sentence{}
-	previousWord := 0
 	language := "zh"
 	if !slices.Contains(p.asr.Languages, language) {
 		language = p.asr.Languages[0]
@@ -309,17 +307,13 @@ func (p *Processor) transcribe(ctx context.Context, j store.Job, cp *checkpoint,
 			return err
 		}
 		for _, sentence := range response.Sentences {
-			// shortcut: a sentence belongs to the chunk containing its start;
-			// increase overlap if real samples contain longer boundary speech.
+			// shortcut: sentence-start ownership may repeat boundary speech, revisit after real long-video validation.
 			if sentence.StartMs < start || sentence.StartMs >= end {
 				continue
 			}
 			item := store.Sentence{StartMs: sentence.StartMs, EndMs: sentence.EndMs, Text: sentence.Text, Model: p.asr.ID + "." + strings.TrimPrefix(p.asr.Fingerprint, "sha256:")}
 			for _, w := range sentence.Words {
-				if w.S < previousWord {
-					return mlclient.ErrContract
-				}
-				previousWord = w.S
+				// ASR windows overlap; ValidateTranscript checks ordering within each response.
 				item.Words = append(item.Words, store.Word{W: w.W, S: w.S, E: w.E})
 			}
 			if len(sentences) > 0 && sentences[len(sentences)-1].StartMs == item.StartMs {
