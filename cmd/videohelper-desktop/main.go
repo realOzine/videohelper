@@ -29,6 +29,17 @@ func main() {
 		}
 		return
 	}
+	dataDir, err := applicationDataDir()
+	if err != nil {
+		log.Fatal(err)
+	}
+	launched, err := desktop.LaunchBundle(dataDir)
+	if err != nil {
+		log.Fatal(err)
+	}
+	if launched {
+		return
+	}
 	mygo.App.SetName("VideoHelper")
 	if !mygo.App.RequestSingleInstanceLock() {
 		return
@@ -40,7 +51,7 @@ func main() {
 			win.Focus()
 		}
 	})
-	if err := run(); err != nil && !errors.Is(err, context.Canceled) {
+	if err := run(dataDir); err != nil && !errors.Is(err, context.Canceled) {
 		log.Print(err)
 		if !mygo.App.IsReady() {
 			mygo.App.WhenReady(func() { mygo.Dialog.Error("VideoHelper", err.Error()); mygo.App.Quit() })
@@ -49,15 +60,19 @@ func main() {
 	}
 }
 
-func run() error {
+func applicationDataDir() (string, error) {
 	dataDir := os.Getenv("VIDEOHELPER_DATA_DIR")
 	if dataDir == "" {
 		base, err := os.UserConfigDir()
 		if err != nil {
-			return err
+			return "", err
 		}
 		dataDir = filepath.Join(base, "VideoHelper")
 	}
+	return filepath.Abs(dataDir)
+}
+
+func run(dataDir string) error {
 	mygo.App.SetPath(mygo.PathUserData, dataDir)
 	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
