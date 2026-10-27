@@ -69,21 +69,14 @@ services:
       start_period: 10m
     stop_grace_period: 90s
 
-  wemm-cuda:
-    image: ${ML_CUDA_IMAGE:?set ML_CUDA_IMAGE}
+  wemm:
+    image: ${WEMM_IMAGE:?set WEMM_IMAGE}
     platform: linux/amd64
     restart: unless-stopped
     init: true
     environment: *ml-environment
     volumes:
       - /var/lib/videohelper/wemm-cache:/cache
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
     healthcheck: *ml-healthcheck
     stop_grace_period: 90s
 
@@ -107,7 +100,7 @@ services:
       redis: {condition: service_healthy}
       auth: {condition: service_healthy}
       speech-audio: {condition: service_healthy}
-      wemm-cuda: {condition: service_healthy}
+      wemm: {condition: service_healthy}
     healthcheck:
       test: [CMD, curl, -fsS, --max-time, '3', http://127.0.0.1:8080/readyz]
       interval: 10s
@@ -128,7 +121,7 @@ services:
       postgres: {condition: service_healthy}
       redis: {condition: service_healthy}
       speech-audio: {condition: service_healthy}
-      wemm-cuda: {condition: service_healthy}
+      wemm: {condition: service_healthy}
     stop_grace_period: 90s
 
   web:
