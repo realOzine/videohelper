@@ -29,7 +29,13 @@ export function setLang(next: Lang) {
   lang = next;
   try { localStorage.setItem('vh-lang', lang); } catch { /* not remembered, still switched */ }
   document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
-  subs.forEach((fn) => fn());
+  // Notifications can synchronously unsubscribe and resubscribe during a React render.
+  for (const fn of [...subs]) fn();
 }
 
-export const useLang = () => useSyncExternalStore((fn) => { subs.add(fn); return () => subs.delete(fn); }, () => lang);
+export function subscribeLanguage(fn: () => void) {
+  subs.add(fn);
+  return () => { subs.delete(fn); };
+}
+
+export const useLang = () => useSyncExternalStore(subscribeLanguage, () => lang);
