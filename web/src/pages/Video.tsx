@@ -27,7 +27,6 @@ function Cell({ s }: { s: Stage }) {
         </span>
         {stageLabel(s)}
       </span>
-      <span className="truncate font-mono text-xs text-fg-soft">{s.stage}</span>
       <span className={cx('text-[13px]', st === 'failed' ? 'text-neg-ink' : st === 'running' ? 'text-fg' : 'text-fg-soft')}>{label}</span>
       {s.progress != null && s.status === 'running' && (
         <span className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-red-track"><i className="block h-full origin-left rounded-full bg-red transition-transform duration-[600ms] ease-out" style={{ transform: `scaleX(${s.progress})` }} /></span>
