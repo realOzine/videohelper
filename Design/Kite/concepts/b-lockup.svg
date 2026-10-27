@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 256">
+  <rect fill="#000" x="24" y="54" width="92" height="36" rx="18"/>
+  <rect fill="#000" x="164" y="54" width="36" height="36" rx="18"/>
+  <rect fill="#000" x="72" y="110" width="44" height="36" rx="18"/>
+  <rect fill="#000" x="164" y="110" width="68" height="36" rx="18"/>
+  <rect fill="#000" x="44" y="166" width="72" height="36" rx="18"/>
+  <rect fill="#000" x="164" y="166" width="48" height="36" rx="18"/>
+  <rect fill="#000" x="128" y="22" width="24" height="212" rx="12"/>
+  <text x="290" y="170" font-family="Instrument Sans, Helvetica Neue, Arial, sans-serif" font-weight="600" font-size="118" letter-spacing="-2" fill="#000">VideoHelper</text>
+</svg>

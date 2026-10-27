@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <title>VideoHelper logo</title>
+  <rect x="25" y="55" width="90" height="34" rx="17" fill="#f3ede2"/>
+  <rect x="165" y="55" width="34" height="34" rx="17" fill="#f3ede2"/>
+  <rect x="73" y="111" width="42" height="34" rx="17" fill="#f3ede2"/>
+  <rect x="165" y="111" width="66" height="34" rx="17" fill="#f3ede2"/>
+  <rect x="45" y="167" width="70" height="34" rx="17" fill="#f3ede2"/>
+  <rect x="165" y="167" width="46" height="34" rx="17" fill="#f3ede2"/>
+  <rect x="129" y="23" width="22" height="210" rx="11" fill="#f43d3f"/>
+</svg>
