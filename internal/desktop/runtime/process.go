@@ -8,6 +8,8 @@ import (
 	"os/exec"
 	"sync"
 	"time"
+
+	"github.com/ozine/videohelper/internal/desktop/filelock"
 )
 
 type tailBuffer struct {
@@ -96,5 +98,22 @@ func (p *ownedProcess) stop(ctx context.Context) error {
 		return nil
 	case <-ctx.Done():
 		return ctx.Err()
+	}
+}
+
+func lockRuntime(ctx context.Context, path string) (func(), error) {
+	for {
+		lock, err := filelock.Try(path)
+		if err == nil {
+			return func() { lock.Close() }, nil
+		}
+		if !errors.Is(err, filelock.ErrLocked) {
+			return nil, err
+		}
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-time.After(100 * time.Millisecond):
+		}
 	}
 }

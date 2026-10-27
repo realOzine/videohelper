@@ -3,13 +3,9 @@
 package runtime
 
 import (
-	"context"
-	"errors"
 	"fmt"
-	"os"
 	"os/exec"
 	"syscall"
-	"time"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
@@ -46,28 +42,4 @@ func setupProcess(cmd *exec.Cmd) (func() error, func(), error) {
 		return nil
 	}
 	return afterStart, func() { windows.CloseHandle(job) }, nil
-}
-
-func lockRuntime(ctx context.Context, path string) (func(), error) {
-	f, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0600)
-	if err != nil {
-		return nil, err
-	}
-	overlap := new(windows.Overlapped)
-	for {
-		err = windows.LockFileEx(windows.Handle(f.Fd()), windows.LOCKFILE_EXCLUSIVE_LOCK|windows.LOCKFILE_FAIL_IMMEDIATELY, 0, 1, 0, overlap)
-		if err == nil {
-			return func() { windows.UnlockFileEx(windows.Handle(f.Fd()), 0, 1, 0, overlap); f.Close() }, nil
-		}
-		if !errors.Is(err, windows.ERROR_LOCK_VIOLATION) {
-			f.Close()
-			return nil, err
-		}
-		select {
-		case <-ctx.Done():
-			f.Close()
-			return nil, ctx.Err()
-		case <-time.After(100 * time.Millisecond):
-		}
-	}
 }
