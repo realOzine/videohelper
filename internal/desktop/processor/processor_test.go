@@ -22,13 +22,14 @@ import (
 )
 
 type fakeML struct {
-	mu          sync.Mutex
-	inputs      []mlclient.EmbedRequest
-	transcripts []mlclient.TranscribeRequest
-	failEmbed   bool
-	block       chan struct{}
-	entered     chan struct{}
-	fingerprint string
+	mu               sync.Mutex
+	inputs           []mlclient.EmbedRequest
+	transcripts      []mlclient.TranscribeRequest
+	failEmbed        bool
+	block            chan struct{}
+	entered          chan struct{}
+	fingerprint      string
+	customTranscript func(mlclient.TranscribeRequest) mlclient.TranscribeResponse
 }
 
 func newFakeML(t *testing.T) (*fakeML, *httptest.Server) {
@@ -77,7 +78,7 @@ func (f *fakeML) serve(w http.ResponseWriter, r *http.Request) {
 		}
 		f.mu.Lock()
 		f.transcripts = append(f.transcripts, req)
-		block, entered := f.block, f.entered
+		block, entered, custom := f.block, f.entered, f.customTranscript
 		f.mu.Unlock()
 		if entered != nil {
 			select {
@@ -92,9 +93,80 @@ func (f *fakeML) serve(w http.ResponseWriter, r *http.Request) {
 			case <-block:
 			}
 		}
+		if custom != nil {
+			json.NewEncoder(w).Encode(custom(req))
+			return
+		}
 		json.NewEncoder(w).Encode(mlclient.TranscribeResponse{Model: req.Model, Fingerprint: fp, Language: "zh", DurationMs: 1000, Sentences: []mlclient.Sentence{{StartMs: 0, EndMs: 600, Text: "保留原始中文。", Words: []mlclient.Word{{W: "保留", S: 0, E: 500}}}}})
 	default:
 		http.NotFound(w, r)
+	}
+}
+
+func TestASRAdjacentWindowsPreserveOverlappingSentences(t *testing.T) {
+	ctx := context.Background()
+	s, err := store.Open(ctx, t.TempDir())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer s.Close()
+	f, server := newFakeML(t)
+	p, err := New(ctx, s, Config{Endpoints: []string{server.URL}, Token: "test", VisualSpace: "visual@r1", AudioSpace: "audio@r1", Transcriber: "asr@r1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.customTranscript = func(req mlclient.TranscribeRequest) mlclient.TranscribeResponse {
+		sentence := mlclient.Sentence{StartMs: 58000, EndMs: 64000, Text: "边界前半句原文。", Words: []mlclient.Word{{W: "前", S: 58000, E: 60000}, {W: "半句", S: 63200, E: 64000}}}
+		if req.StartMs > 0 {
+			sentence = mlclient.Sentence{StartMs: 62000, EndMs: 66000, Text: "边界后半句原文。", Words: []mlclient.Word{{W: "后", S: 62000, E: 64000}, {W: "半句", S: 65000, E: 66000}}}
+		}
+		return mlclient.TranscribeResponse{Model: req.Model, Fingerprint: f.fingerprint, Language: "zh", DurationMs: 120000, Sentences: []mlclient.Sentence{sentence}}
+	}
+	source := filepath.Join(t.TempDir(), "source.mp4")
+	if err := os.WriteFile(source, []byte("protocol regression fixture"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	v, err := p.ImportFile(ctx, source, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	j, err := s.ClaimJob(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	duration := 120000
+	v.DurationMs = &duration
+	cp := checkpoint{Identity: p.identity, Done: map[string]bool{}, Next: map[string]int{}, Stages: map[string]StageStatus{}}
+	if err := p.transcribe(ctx, j, &cp, v); err != nil {
+		t.Fatal(err)
+	}
+	sentences, err := s.Sentences(ctx, v.ID, nil)
+	if err != nil || len(sentences) != 2 || sentences[0].Text != "边界前半句原文。" || sentences[1].Text != "边界后半句原文。" {
+		t.Fatalf("window overlap lost original text: %+v %v", sentences, err)
+	}
+	if len(cp.RawKeys) != 2 || !cp.Done["asr"] {
+		t.Fatalf("missing replay evidence: %+v", cp)
+	}
+	f.mu.Lock()
+	f.customTranscript = func(req mlclient.TranscribeRequest) mlclient.TranscribeResponse {
+		return mlclient.TranscribeResponse{Model: req.Model, Fingerprint: f.fingerprint, Language: "zh", DurationMs: 120000, Sentences: []mlclient.Sentence{{StartMs: 58000, EndMs: 64000, Text: "单窗口乱序。", Words: []mlclient.Word{{W: "后", S: 63200, E: 64000}, {W: "前", S: 58000, E: 60000}}}}}
+	}
+	f.mu.Unlock()
+	invalid, err := p.ImportFile(ctx, source, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	invalid.DurationMs = &duration
+	invalidJob, err := s.ClaimJob(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	invalidCP := checkpoint{Identity: p.identity, Done: map[string]bool{}, Next: map[string]int{}, Stages: map[string]StageStatus{}}
+	if err := p.transcribe(ctx, invalidJob, &invalidCP, invalid); !errors.Is(err, mlclient.ErrContract) {
+		t.Fatalf("single-response disorder was accepted: %v", err)
+	}
+	if rows, err := s.Sentences(ctx, invalid.ID, nil); err != nil || len(rows) != 0 {
+		t.Fatalf("invalid transcript was published: %+v %v", rows, err)
 	}
 }
 
