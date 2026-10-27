@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 256">
+  <path fill="#000" d="M34 38H92V64H62V192H92V218H34Z"/>
+  <path fill="#000" d="M178.53 39.18A117.67 117.67 0 0 1 178.53 216.82L161.47 197.19A91.67 91.67 0 0 0 161.47 58.81Z"/>
+  <circle fill="#000" cx="127" cy="128" r="26"/>
+  <text x="290" y="170" font-family="Instrument Sans, Helvetica Neue, Arial, sans-serif" font-weight="600" font-size="118" letter-spacing="-2" fill="#000">VideoHelper</text>
+</svg>

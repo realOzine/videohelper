@@ -1,0 +1,35 @@
+{
+  "brand": "VideoHelper",
+  "tagline": "找到片段里的那一刻",
+  "brief": "本地视频处理与文字搜索：用一句话在视频库里找到画面、台词或声音出现的那一刻。面向自己管理视频素材的创作者和工程师。",
+  "adjectives": ["精确", "安静", "有电影感", "可信"],
+  "criteria": "避开播放三角、胶片、放大镜等品类套路；16 px 可读；单色可用；与站点墨黑 / 米纸 / 红配色一致。",
+  "industry": "software",
+  "mockups": ["website", "favicon-tab", "app-icon", "readme", "terminal", "social"],
+  "nav": ["搜索", "资料库", "演示"],
+  "brand_color": "#f43d3f",
+  "tile_color": "#0f0e15",
+  "greyscale": false,
+  "final": true,
+  "concepts": [
+    {
+      "name": "三路轨道",
+      "symbol": "symbol-color.svg",
+      "lockup": "horizontal-color.svg",
+      "stacked": "stacked-color.svg",
+      "avatar": "symbol-small-tile.svg",
+      "symbol_on_tile": "symbol-reversed.svg",
+      "stacked_on_tile": "stacked-reversed.svg",
+      "symbol_on_dark": "symbol-reversed.svg",
+      "lockup_on_dark": "horizontal-reversed.svg",
+      "stacked_on_dark": "stacked-reversed.svg",
+      "idea": "画面、台词、声音三条轨道，红色播放头落在三路同时命中的那一刻。",
+      "rationale": [
+        "对应产品的三路索引和搜索页的「命中位置」泳道",
+        "不画播放键、胶片或放大镜，避开品类套路",
+        "全部由一种圆角胶囊构成，可延展为图案、加载动画和图标"
+      ]
+    }
+  ],
+  "recommendation": "红色只给播放头；轨道在浅底用墨黑、深底用米纸。24 px 以下改用小尺寸版。"
+}
