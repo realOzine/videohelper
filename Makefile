@@ -16,6 +16,10 @@ desktop-assets:
 	npm --prefix web run build
 
 desktop: desktop-app
+ifeq ($(DESKTOP_OS),darwin)
+	cmp desktop/Info.plist .local/desktop-build/darwin-$(DESKTOP_ARCH)/VideoHelper.app/Contents/Info.plist
+	cmp desktop/CodeResources .local/desktop-build/darwin-$(DESKTOP_ARCH)/VideoHelper.app/Contents/_CodeSignature/CodeResources
+endif
 	mkdir -p bin
 	cp $(DESKTOP_BINARY) bin/VideoHelper$(if $(filter windows,$(DESKTOP_OS)),.exe,)
 
