@@ -15,16 +15,13 @@ class Settings:
     token: str
     fake: bool = False
     models_file: Path = _DEFAULT_MODELS
-    cache_dir: Path = Path("/var/cache/videohelper-ml")
-    cache_max_bytes: int = 50_000_000_000
-    s3_endpoint: str | None = None
     local_media_root: Path | None = None
 
     def __post_init__(self):
         if not self.token:
             raise ValueError("ML_INTERNAL_TOKEN must be set")
-        if self.cache_max_bytes <= 0:
-            raise ValueError("ML_CACHE_MAX_BYTES must be positive")
+        if self.local_media_root is None or not self.local_media_root.is_absolute():
+            raise ValueError("ML_LOCAL_MEDIA_ROOT must be an absolute managed directory")
 
     @classmethod
     def from_env(cls):
@@ -35,9 +32,6 @@ class Settings:
             token=os.getenv("ML_INTERNAL_TOKEN", ""),
             fake=fake == "1",
             models_file=Path(os.getenv("ML_MODELS_FILE", cls.models_file)),
-            cache_dir=Path(os.getenv("ML_CACHE_DIR", cls.cache_dir)),
-            cache_max_bytes=int(os.getenv("ML_CACHE_MAX_BYTES", cls.cache_max_bytes)),
-            s3_endpoint=os.getenv("ML_S3_ENDPOINT"),
             local_media_root=(
                 Path(os.environ["ML_LOCAL_MEDIA_ROOT"])
                 if os.getenv("ML_LOCAL_MEDIA_ROOT")

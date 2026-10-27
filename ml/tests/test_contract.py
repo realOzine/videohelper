@@ -52,6 +52,6 @@ def test_error_and_exactly_one_input_contract(client, contract):
 
 def test_image_contract_has_uri_only(contract):
     schema = {"$ref": "#/components/schemas/EmbedInput"}
-    validate(contract, schema, {"image": {"uri": "s3://bucket/image.png"}})
+    validate(contract, schema, {"image": {"uri": "local://media/image.png"}})
     with pytest.raises(jsonschema.ValidationError):
-        validate(contract, schema, {"image": {"uri": "s3://bucket/image.png", "start_ms": 0}})
+        validate(contract, schema, {"image": {"uri": "local://media/image.png", "start_ms": 0}})

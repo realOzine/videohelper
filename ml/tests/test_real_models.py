@@ -1,33 +1,30 @@
-"""Opt in: VH_TEST_REAL_MODELS=1 VH_TEST_S3_ENDPOINT=http://127.0.0.1:59000
+"""Opt in: VH_TEST_REAL_MODELS=1 VH_TEST_SPEECH_FILE=/absolute/speech.mp4
 uv run --extra wemm --extra asr --extra clap pytest tests/test_real_models.py -q
-Uses cached pinned weights, a temporary loopback service, and a self-cleaned MinIO bucket.
+Uses cached pinned weights, a temporary loopback service, and managed temporary media.
 VH_TEST_SPEECH_FILE may point to the authorized synthetic TEXT clip with 3s leading silence.
 """
 
 import os
+import shutil
 import socket
 import subprocess
 import sys
 import time
-import uuid
 from pathlib import Path
-from urllib.parse import urlsplit
 
 import av
-import boto3
 import httpx
 import numpy as np
 import pytest
 import yaml
-from botocore.config import Config
 from PIL import Image
 
 from app.core.fingerprint import fingerprint
 from app.core.registry import ModelConfig
 
 pytestmark = pytest.mark.skipif(
-    os.getenv("VH_TEST_REAL_MODELS") != "1" or not os.getenv("VH_TEST_S3_ENDPOINT"),
-    reason="Requires explicit real-model opt-in and VH_TEST_S3_ENDPOINT (local MinIO)",
+    os.getenv("VH_TEST_REAL_MODELS") != "1",
+    reason="Requires explicit real-model opt-in",
 )
 ML_ROOT = Path(__file__).parents[1]
 TEXT = "欢迎使用视频助手。今天我们学习如何搜索视频内容。"
@@ -35,9 +32,7 @@ TEXT = "欢迎使用视频助手。今天我们学习如何搜索视频内容。
 
 @pytest.fixture
 def real_service(tmp_path):
-    endpoint = os.environ["VH_TEST_S3_ENDPOINT"]
-    assert urlsplit(endpoint).hostname in {"127.0.0.1", "localhost", "::1"}, "Use local MinIO"
-    speech = Path(os.getenv("VH_TEST_SPEECH_FILE", "/tmp/videohelper-asr-probe/speech.mp4"))
+    speech = Path(os.getenv("VH_TEST_SPEECH_FILE", ""))
     if not speech.is_file():
         pytest.skip("VH_TEST_SPEECH_FILE must contain TEXT after 3s leading silence")
     image = Image.new("RGB", (320, 240), "red")
@@ -55,34 +50,16 @@ def real_service(tmp_path):
             container.mux(packet)
     environment = {
         **os.environ,
-        "AWS_ACCESS_KEY_ID": os.getenv("VH_TEST_S3_ACCESS_KEY", "videohelper-local"),
-        "AWS_SECRET_ACCESS_KEY": os.getenv("VH_TEST_S3_SECRET_KEY", "videohelper-local-secret"),
-        "AWS_REGION": "us-east-1",
-        "AWS_DEFAULT_REGION": "us-east-1",
         "HF_HUB_OFFLINE": "1",
         "HF_HUB_DISABLE_PROGRESS_BARS": "1",
         "ML_FAKE": "0",
         "ML_INTERNAL_TOKEN": "real-ml-test",
         "ML_MODELS_FILE": str(ML_ROOT / "models.local.yaml"),
-        "ML_CACHE_DIR": str(tmp_path / "cache"),
-        "ML_S3_ENDPOINT": endpoint,
+        "ML_LOCAL_MEDIA_ROOT": str(tmp_path),
     }
-    environment.pop("AWS_SESSION_TOKEN", None)
-    s3 = boto3.client(
-        "s3",
-        endpoint_url=endpoint,
-        aws_access_key_id=environment["AWS_ACCESS_KEY_ID"],
-        aws_secret_access_key=environment["AWS_SECRET_ACCESS_KEY"],
-        region_name="us-east-1",
-        config=Config(s3={"addressing_style": "path"}),
-    )
-    bucket = "vh-real-ml-" + uuid.uuid4().hex
-    objects = {"image.png": image_path, "video.mp4": video_path, "speech.mp4": speech}
-    s3.create_bucket(Bucket=bucket)
+    shutil.copyfile(speech, tmp_path / "speech.mp4")
     process = None
     try:
-        for key, path in objects.items():
-            s3.put_object(Bucket=bucket, Key=key, Body=path.read_bytes())
         with socket.socket() as listener:
             listener.bind(("127.0.0.1", 0))
             port = listener.getsockname()[1]
@@ -111,7 +88,7 @@ def real_service(tmp_path):
             timeout=60,
             headers={
                 "X-Internal-Token": "real-ml-test",
-                "X-Request-ID": "real-s3-test",
+                "X-Request-ID": "real-local-test",
                 "X-Timeout-Ms": "60000",
             },
         ) as client:
@@ -125,7 +102,7 @@ def real_service(tmp_path):
                     pass
                 assert time.monotonic() < deadline, log.read_text()[-4000:]
                 time.sleep(0.1)
-            yield client, bucket
+            yield client
     finally:
         if process is not None:
             process.terminate()
@@ -134,16 +111,10 @@ def real_service(tmp_path):
             except subprocess.TimeoutExpired:
                 process.kill()
                 process.wait(timeout=5)
-        deleted = s3.delete_objects(
-            Bucket=bucket, Delete={"Objects": [{"Key": key} for key in objects]}
-        )
-        assert not deleted.get("Errors"), deleted
-        s3.delete_bucket(Bucket=bucket)
-        s3.close()
 
 
-def test_real_models_over_http_and_s3(real_service):
-    client, bucket = real_service
+def test_real_models_over_http_and_managed_files(real_service):
+    client = real_service
     manifest = yaml.safe_load((ML_ROOT / "models.local.yaml").read_text())
     configs = {
         item["id"]: ModelConfig.model_validate(item).model_dump() for item in manifest["models"]
@@ -155,8 +126,8 @@ def test_real_models_over_http_and_s3(real_service):
         assert info["fingerprint"] != fingerprint(configs[info["id"]], fake=True)
     for role, item in [
         ("query", {"text": "红色画面"}),
-        ("document", {"image": {"uri": f"s3://{bucket}/image.png"}}),
-        ("document", {"video": {"uri": f"s3://{bucket}/video.mp4", "start_ms": 0, "end_ms": 2000}}),
+        ("document", {"image": {"uri": "local://media/image.png"}}),
+        ("document", {"video": {"uri": "local://media/video.mp4", "start_ms": 0, "end_ms": 2000}}),
     ]:
         response = client.post(
             "/v1/embed", json={"space": "wemm-2b@r1", "role": role, "inputs": [item]}
@@ -168,20 +139,20 @@ def test_real_models_over_http_and_s3(real_service):
         assert vectors.shape == (1, body["dim"]) == (1, 1024)
         assert np.isfinite(vectors).all()
         assert np.allclose(np.linalg.norm(vectors, axis=1), 1, atol=1e-4)
-        assert response.headers["X-Request-ID"] == "real-s3-test"
+        assert response.headers["X-Request-ID"] == "real-local-test"
     response = client.post(
         "/v1/embed",
         json={
             "space": "wemm-2b@r1",
             "role": "query",
-            "inputs": [{"image": {"uri": f"s3://{bucket}/image.png"}}],
+            "inputs": [{"image": {"uri": "local://media/image.png"}}],
         },
     )
     assert response.status_code == 400
     assert response.json()["error"]["code"] == "invalid_input"
     body = {
         "model": "paraformer-zh@r1",
-        "uri": f"s3://{bucket}/speech.mp4",
+        "uri": "local://media/speech.mp4",
         "language": "zh",
         "start_ms": 2500,
         "end_ms": 9000,

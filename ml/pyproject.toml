@@ -8,7 +8,7 @@ version = "0.1.0"
 requires-python = ">=3.12,<3.14"
 dependencies = [
   "fastapi>=0.115,<1", "uvicorn>=0.34,<1", "pydantic>=2.10,<3",
-  "pillow>=11,<13", "numpy>=2.2,<3", "av>=14,<17", "boto3>=1.36,<2", "pyyaml>=6,<7",
+  "pillow>=11,<13", "numpy>=2.2,<3", "av>=14,<17", "pyyaml>=6,<7",
 ]
 
 [project.scripts]

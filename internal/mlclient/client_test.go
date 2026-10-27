@@ -54,7 +54,7 @@ func transcript() TranscribeResponse {
 }
 
 func transcription() TranscribeRequest {
-	return TranscribeRequest{Model: testModel, URI: "s3://test-bucket/video.mp4", Language: "zh", StartMs: 1000, EndMs: 3000}
+	return TranscribeRequest{Model: testModel, URI: "local://media/video.mp4", Language: "zh", StartMs: 1000, EndMs: 3000}
 }
 
 func writeJSON(w http.ResponseWriter, value any) {
@@ -85,7 +85,7 @@ func TestEmbedWireContractAndHeaders(t *testing.T) {
 			}
 			var image map[string]any
 			json.Unmarshal(body.Inputs[2]["image"], &image)
-			if len(image) != 1 || image["uri"] != "s3://test-bucket/image.jpg" {
+			if len(image) != 1 || image["uri"] != "local://media/image.jpg" {
 				t.Errorf("image reference acquired timestamp fields: %v", image)
 			}
 			response := embedding()
@@ -98,7 +98,7 @@ func TestEmbedWireContractAndHeaders(t *testing.T) {
 	defer server.Close()
 	ctx, cancel := context.WithTimeout(WithTraceparent(WithRequestID(context.Background(), "request-123"), "test-trace"), 500*time.Millisecond)
 	defer cancel()
-	req := EmbedRequest{Space: testSpace, Role: "document", Inputs: []EmbedInput{{Text: "转录原文"}, {Video: &MediaRef{URI: "s3://test-bucket/video.mp4", StartMs: 0, EndMs: 2500}}, {Image: &ImageRef{URI: "s3://test-bucket/image.jpg"}}}}
+	req := EmbedRequest{Space: testSpace, Role: "document", Inputs: []EmbedInput{{Text: "转录原文"}, {Video: &MediaRef{URI: "local://media/video.mp4", StartMs: 0, EndMs: 2500}}, {Image: &ImageRef{URI: "local://media/image.jpg"}}}}
 	response, err := testClient(server.URL).Embed(ctx, req)
 	if err != nil || len(response.Vectors) != 3 || requests.Load() != 2 {
 		t.Fatalf("Embed: %+v, %v, requests=%d", response, err, requests.Load())
@@ -224,10 +224,10 @@ func TestEmbedInputLimitsAndTextOnlyQuery(t *testing.T) {
 	for _, req := range []EmbedRequest{
 		{Space: testSpace, Role: "query"},
 		{Space: testSpace, Role: "bad", Inputs: query().Inputs},
-		{Space: testSpace, Role: "query", Inputs: []EmbedInput{{Image: &ImageRef{URI: "s3://test-bucket/image.jpg"}}}},
-		{Space: testSpace, Role: "document", Inputs: []EmbedInput{{Text: "text", Image: &ImageRef{URI: "s3://test-bucket/image.jpg"}}}},
-		{Space: testSpace, Role: "document", Inputs: []EmbedInput{{Video: &MediaRef{URI: "s3://test-bucket/video.mp4", EndMs: 2501}}}},
-		{Space: testSpace, Role: "document", Inputs: []EmbedInput{{Video: &MediaRef{URI: "s3://test-bucket/video.mp4", StartMs: 1, EndMs: 1}}}},
+		{Space: testSpace, Role: "query", Inputs: []EmbedInput{{Image: &ImageRef{URI: "local://media/image.jpg"}}}},
+		{Space: testSpace, Role: "document", Inputs: []EmbedInput{{Text: "text", Image: &ImageRef{URI: "local://media/image.jpg"}}}},
+		{Space: testSpace, Role: "document", Inputs: []EmbedInput{{Video: &MediaRef{URI: "local://media/video.mp4", EndMs: 2501}}}},
+		{Space: testSpace, Role: "document", Inputs: []EmbedInput{{Video: &MediaRef{URI: "local://media/video.mp4", StartMs: 1, EndMs: 1}}}},
 		{Space: testSpace, Role: "document", Inputs: []EmbedInput{{Image: &ImageRef{URI: "https://example.com/image.jpg?token=secret"}}}},
 		{Space: testSpace, Role: "query", Inputs: slices.Repeat(query().Inputs, 4)},
 	} {

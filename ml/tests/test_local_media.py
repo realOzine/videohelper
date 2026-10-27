@@ -7,8 +7,22 @@ from pydantic import ValidationError
 from app.api.errors import MLError
 from app.api.schemas import ImageRef
 from app.main import create_app
-from app.media.cache import MediaCache, local_media_path
+from app.media.local import local_media_path
 from app.settings import Settings
+
+
+def test_settings_require_absolute_managed_root(tmp_path, monkeypatch):
+    from pathlib import Path
+
+    for root in (None, Path("relative")):
+        with pytest.raises(ValueError, match="ML_LOCAL_MEDIA_ROOT"):
+            Settings(token="private-token", local_media_root=root)
+    monkeypatch.setenv("ML_INTERNAL_TOKEN", "private-token")
+    monkeypatch.delenv("ML_LOCAL_MEDIA_ROOT", raising=False)
+    with pytest.raises(ValueError, match="ML_LOCAL_MEDIA_ROOT"):
+        Settings.from_env()
+    monkeypatch.setenv("ML_LOCAL_MEDIA_ROOT", str(tmp_path))
+    assert Settings.from_env().local_media_root == tmp_path
 
 
 @pytest.mark.parametrize(
@@ -34,11 +48,9 @@ def test_local_media_is_opt_in_regular_and_never_downloaded(tmp_path):
     uri = "local://media/source.mp4"
     with pytest.raises(MLError):
         local_media_path(uri, None)
-    cache = MediaCache(tmp_path / "cache", 1, None, local_root=root)
-    with cache.acquire(uri) as acquired:
-        assert acquired == path
-        assert acquired.read_bytes() == b"original"
-    assert not list(cache.directory.iterdir())
+    assert local_media_path(uri, root) == path
+    assert path.read_bytes() == b"original"
+    assert list(root.iterdir()) == [path]
     for name in ("empty", "directory", "missing"):
         if name == "empty":
             (root / name).touch()
@@ -67,7 +79,6 @@ def test_local_media_runs_through_authenticated_ml_routes(tmp_path, media_file):
     settings = Settings(
         token="test-secret",
         fake=True,
-        cache_dir=tmp_path / "cache",
         local_media_root=media_file.parent,
     )
     uri = "local://media/" + media_file.name
@@ -81,6 +92,7 @@ def test_local_media_runs_through_authenticated_ml_routes(tmp_path, media_file):
             },
         )
         assert response.status_code == 200, response.text
+
         response = client.post(
             "/v1/transcribe",
             json={
@@ -92,3 +104,16 @@ def test_local_media_runs_through_authenticated_ml_routes(tmp_path, media_file):
             },
         )
         assert response.status_code == 200, response.text
+
+
+@pytest.mark.parametrize(
+    "uri", ["s3://bucket/key", "https://example.org/video", "file:///etc/passwd"]
+)
+def test_external_media_protocols_are_rejected(uri, tmp_path, contract):
+    with pytest.raises(ValidationError):
+        ImageRef(uri=uri)
+    with pytest.raises(MLError):
+        local_media_path(uri, tmp_path)
+    schema = {"$ref": "#/components/schemas/ImageRef", "components": contract["components"]}
+    with pytest.raises(jsonschema.ValidationError):
+        jsonschema.Draft202012Validator(schema).validate({"uri": uri})

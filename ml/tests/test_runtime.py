@@ -14,10 +14,8 @@ def test_runtime_is_authenticated_and_matches_loaded_snapshot(tmp_path, contract
     source = Settings.models_file
     manifest = tmp_path / "models.yaml"
     manifest.write_bytes(source.read_bytes())
-    settings = Settings(
-        token="secret", fake=True, models_file=manifest, cache_dir=tmp_path / "cache"
-    )
-    with TestClient(create_app(settings, downloader=lambda *_: None)) as client:
+    settings = Settings(token="secret", fake=True, models_file=manifest, local_media_root=tmp_path)
+    with TestClient(create_app(settings)) as client:
         assert client.get("/v1/runtime", headers={"X-Request-ID": "x"}).status_code == 401
         headers = {**HEADERS, "X-Internal-Token": "secret"}
         response = client.get("/v1/runtime", headers=headers)
