@@ -233,13 +233,13 @@ export default function Search() {
         <div className="grid grid-cols-12 items-start gap-6">
           <section aria-label={t('a.player')} className="col-span-7 min-w-0 overflow-hidden rounded-[10px] bg-ink-2 shadow-edge max-md:col-span-12">
             <div className="relative aspect-video bg-black">
-              <video ref={vid} src={entry?.url} controls playsInline preload="metadata" className="absolute inset-0 size-full object-contain"
+              {entry && <video key={entry.url} ref={vid} src={entry.url} controls playsInline preload="metadata" className="block size-full"
                 onError={(e) => { setPlaying(false); fail(new Error(t('err.playback', { code: e.currentTarget.error?.code ?? 0 }))); }}
                 onLoadedMetadata={(e) => {
                   if (pending.current != null && seekMedia(e.currentTarget, entryRef.current?.url, pending.current)) pending.current = null;
                   syncPlayback(e);
                 }}
-                onPlay={syncPlayback} onTimeUpdate={syncPlayback} onSeeked={syncPlayback} onPause={syncPlayback} onEnded={syncPlayback} />
+                onPlay={syncPlayback} onTimeUpdate={syncPlayback} onSeeked={syncPlayback} onPause={syncPlayback} onEnded={syncPlayback} />}
             </div>
             <div className="flex min-h-14 flex-wrap items-center gap-3.5 border-b border-ink-3 px-4 py-2">
               <button type="button" onClick={toggle} aria-pressed={playing} aria-label={playing ? t('pause') : t('play')} aria-keyshortcuts="Space"
