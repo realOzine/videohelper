@@ -155,7 +155,7 @@ export default function Library() {
           <tbody>
             {rows && !rows.length && <tr><td colSpan={4} className="py-3"><Empty>{t('l.empty')}</Empty></td></tr>}
             {rows?.map((v) => (
-              <tr key={v.id} className="animate-enter border-b border-ink-3 transition-colors duration-150 last:border-b-0 hover:bg-ink-2/60 max-md:grid max-md:grid-cols-[minmax(0,1fr)_auto] max-md:items-center max-md:gap-x-3 max-md:gap-y-1.5 max-md:py-3 [&>td]:px-3 [&>td]:py-[12.5px] [&>td]:align-middle max-md:[&>td]:p-0">
+              <tr key={v.id} className="border-b border-ink-3 transition-colors duration-150 last:border-b-0 hover:bg-ink-2/60 max-md:grid max-md:grid-cols-[minmax(0,1fr)_auto] max-md:items-center max-md:gap-x-3 max-md:gap-y-1.5 max-md:py-3 [&>td]:px-3 [&>td]:py-[12.5px] [&>td]:align-middle max-md:[&>td]:p-0">
                 <td><a className="group flex min-w-0 items-center gap-3" href={`video.html?id=${v.id}`}>
                   <Thumb thumb={v.thumbnail} label={t('frame.of', { t: v.title })} className="w-20" />
                   <span className="min-w-0"><span className="block truncate font-semibold">{v.title}</span><span className="block text-xs text-fg-soft">{tracks(v)}</span></span>
