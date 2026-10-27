@@ -8,6 +8,14 @@ import (
 	desktopruntime "github.com/ozine/videohelper/internal/desktop/runtime"
 )
 
+func quitWhenCanceled(ctx context.Context, uiStopped <-chan struct{}, quit func()) {
+	select {
+	case <-ctx.Done():
+		quit()
+	case <-uiStopped:
+	}
+}
+
 // A model process can die while the processor is idle between durable jobs.
 func superviseProcessor(ctx context.Context, run func(context.Context) error, state func() desktopruntime.State) error {
 	workerCtx, cancel := context.WithCancel(ctx)

@@ -7,8 +7,10 @@ import (
 	"log"
 	"log/slog"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/egoist/mygo"
@@ -38,7 +40,7 @@ func main() {
 			win.Focus()
 		}
 	})
-	if err := run(); err != nil {
+	if err := run(); err != nil && !errors.Is(err, context.Canceled) {
 		log.Print(err)
 		if !mygo.App.IsReady() {
 			mygo.App.WhenReady(func() { mygo.Dialog.Error("VideoHelper", err.Error()); mygo.App.Quit() })
@@ -57,7 +59,7 @@ func run() error {
 		dataDir = filepath.Join(base, "VideoHelper")
 	}
 	mygo.App.SetPath(mygo.PathUserData, dataDir)
-	ctx, cancel := context.WithCancel(context.Background())
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 	db, err := store.Open(ctx, dataDir)
 	if err != nil {
@@ -149,7 +151,10 @@ func run() error {
 			}
 		}
 	}()
+	uiStopped := make(chan struct{})
+	go quitWhenCanceled(ctx, uiStopped, mygo.App.Quit)
 	err = desktop.Run(desktop.Connection{Base: api.Base, Token: api.Token})
+	close(uiStopped)
 	cancel()
 	shutdown, stop := context.WithTimeout(context.Background(), 30*time.Second)
 	defer stop()
