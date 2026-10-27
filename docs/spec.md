@@ -7,7 +7,7 @@
 | 位置 | 职责 |
 | --- | --- |
 | `cmd/videohelper-desktop/` | 数据目录、单实例、窗口、后台准备、任务生命周期与退出回收 |
-| `desktop/` | MyGo 窗口、系统文件选择器、内存 Bootstrap |
+| `desktop/` | MyGo 窗口、系统文件选择器、内存 Bootstrap、macOS 单文件启动包装 |
 | `web/src/` | 搜索、资料库、视频详情；共享主题和离线字体 |
 | `assets.go` | 白名单内嵌模型服务、三个插件和四个固定 profile |
 | `internal/desktop/server/` | 本机 UI DTO、文件/链接导入、媒体 Range |
@@ -27,6 +27,8 @@
 JSON 字段使用 snake_case，ID 在传输时为字符串；时间戳使用 UTC RFC3339，时间区间为左闭右开的整数毫秒。文本查询和转录原文不经自动翻译或改写。
 
 前端只通过 `Desktop.Bootstrap` 获取本进程的 loopback 地址与短期连接凭据，凭据不写 localStorage。`Desktop.PickFiles` 使用系统选择器。没有 `/me`、登录、注册或工作区接口。
+
+macOS 裸二进制在打开数据库和启动模型前，将自身及内嵌的签名元数据恢复到 `Launcher/VideoHelper.app`，校验已有内容并原子更新，通过系统 `open` 启动后退出启动器。应用包装、开发模式与生成绑定不重复走此流程；实际 GUI 进程负责模型生命周期和退出清理。
 
 HTTP 绑定 `127.0.0.1:0`，校验实际 Host、已知 MyGo Origin 和内存中的 `X-Desktop-Token`。这用于阻止其他网页驱动本地文件接口，不形成用户身份体系。媒体 URL 使用独立 capability，资源必须落在对应视频的受管目录中；`http.ServeContent` 提供 Range 和定位播放。
 

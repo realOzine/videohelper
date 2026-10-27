@@ -2,6 +2,8 @@
 
 桌面入口由一个 Go 二进制提供，首次联网下载组件、依赖与模型，并在用户数据目录中释放文件和启动私有子进程。它不是“永不释放文件的单进程”，也不是“首次启动即可完全离线”。前端资源和 ML 公共服务、插件、profile 清单与锁文件嵌入交付物；用户无需安装 Python、uv、FFmpeg、yt-dlp 或 Deno。
 
+macOS 单文件会先恢复数据目录内的 `Launcher/VideoHelper.app` 并交给系统启动，保留原构建签名，不在用户机器执行 codesign。终端启动器随后退出，窗口关闭、`⌘Q` 或向实际 GUI 进程发送 SIGTERM 才触发模型回收。本地签名完整性检查不替代 Developer ID 公证。
+
 `internal/desktop/runtime.Manager` 接收数据目录与打包的 `fs.FS`。UI 可先显示 `State()`；后台依次调用 `Ensure(ctx, progress)`、`Start(ctx)`，完成后使用 `Services` 的内部端点、随机令牌与实际空间 ID。准备失败、进程退出或未完成加载时不得显示模型已就绪；`Close(ctx)` 只终止本次创建的进程树。客户端终止 HTTP 请求不能中断已执行的 Torch 推理线程；桌面退出时通过终止自己托管的 ML 进程结束推理。
 
 ## 首次启动与重复启动
