@@ -5,7 +5,7 @@ COPY --from=uv /uv /uvx /bin/
 ARG ML_PROFILE=speech-audio-cpu
 COPY ml /srv/ml
 WORKDIR /srv/ml/profiles/${ML_PROFILE}
-RUN uv sync --locked --no-dev --no-editable
+RUN --mount=type=cache,target=/root/.cache/uv uv sync --locked --no-dev --no-editable
 ENV PATH="/srv/ml/profiles/${ML_PROFILE}/.venv/bin:$PATH" \
     ML_FAKE=0 ML_CACHE_DIR=/cache/media HF_HOME=/cache/huggingface
 EXPOSE 8000

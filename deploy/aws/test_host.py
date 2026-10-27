@@ -49,6 +49,7 @@ elif tool == 'timeout':
 '''
 
 
+@unittest.skipUnless(sys.platform == 'linux', 'Run this file directly to test the Linux host in Docker')
 class HostTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory(prefix='videohelper-host-test-')
