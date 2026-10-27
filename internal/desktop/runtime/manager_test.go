@@ -102,3 +102,45 @@ func TestCloseCancelsBootstrapWaitingForAnotherInstaller(t *testing.T) {
 		t.Fatal("closed manager is ready")
 	}
 }
+
+func TestCloseWaitsForActiveBootstrapProcessTree(t *testing.T) {
+	executable, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
+	}
+	dir := t.TempDir()
+	marker := filepath.Join(dir, "child")
+	m := New(dir, nil)
+	m.root = dir
+	done := make(chan error, 1)
+	go func() {
+		_, err := m.run(context.Background(), executable, []string{"-test.run=^TestRuntimeProcessHelper$", "--", "parent", marker}, nil)
+		done <- err
+	}()
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		if _, err := os.Stat(marker); err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("bootstrap child did not start")
+		}
+		time.Sleep(time.Millisecond)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	if err := m.Close(ctx); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case <-done:
+	case <-ctx.Done():
+		t.Fatal("bootstrap not reaped by Close")
+	}
+	before, _ := os.Stat(marker)
+	time.Sleep(200 * time.Millisecond)
+	after, _ := os.Stat(marker)
+	if before.ModTime() != after.ModTime() {
+		t.Fatal("bootstrap descendant survived Close")
+	}
+}
