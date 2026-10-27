@@ -8,9 +8,13 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 )
+
+var keySegment = regexp.MustCompile(`^[A-Za-z0-9_-][A-Za-z0-9._-]*$`)
+var sourceExt = regexp.MustCompile(`^\.[a-z0-9]+$`)
 
 func validKey(key string) error {
 	parts := strings.Split(key, "/")
@@ -20,6 +24,11 @@ func validKey(key string) error {
 	id, err := strconv.ParseInt(parts[1], 10, 64)
 	if err != nil || id <= 0 || strconv.FormatInt(id, 10) != parts[1] {
 		return ErrInvalid
+	}
+	for _, part := range parts {
+		if !keySegment.MatchString(part) {
+			return ErrInvalid
+		}
 	}
 	return nil
 }
@@ -31,6 +40,16 @@ func VideoKey(id int64, name string) string {
 func (s *Store) OpenFile(key string) (*os.File, error) {
 	if err := validKey(key); err != nil {
 		return nil, err
+	}
+	parts := strings.Split(key, "/")
+	for i := range parts {
+		info, err := s.root.Lstat(strings.Join(parts[:i+1], "/"))
+		if err != nil {
+			return nil, err
+		}
+		if info.Mode()&os.ModeSymlink != 0 {
+			return nil, ErrInvalid
+		}
 	}
 	f, err := s.root.Open(key)
 	if err != nil {
@@ -69,6 +88,12 @@ func (r contextReader) Read(p []byte) (int, error) {
 }
 
 func (s *Store) WriteFile(ctx context.Context, key string, r io.Reader) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if r == nil {
+		return ErrInvalid
+	}
 	if err := validKey(key); err != nil {
 		return err
 	}
@@ -113,7 +138,7 @@ func (s *Store) CopyFile(ctx context.Context, videoID int64, sourcePath string) 
 		return "", ErrInvalid
 	}
 	ext := strings.ToLower(filepath.Ext(sourcePath))
-	if len(ext) > 12 || strings.ContainsAny(ext, "/\\:\x00") {
+	if len(ext) < 2 || len(ext) > 12 || !sourceExt.MatchString(ext) {
 		ext = ".bin"
 	}
 	key := VideoKey(videoID, "source"+ext)

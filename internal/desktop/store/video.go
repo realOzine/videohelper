@@ -75,6 +75,10 @@ func (s *Store) ListVideos(ctx context.Context, f VideoFilter) ([]Video, error) 
 		query = "SELECT " + videoColumns + " FROM video WHERE deleted_at IS NOT NULL"
 	}
 	args := []any{}
+	if f.BeforeID != nil {
+		query += " AND id<?"
+		args = append(args, *f.BeforeID)
+	}
 	if f.Status != "" {
 		query += " AND status=?"
 		args = append(args, f.Status)
