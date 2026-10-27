@@ -102,6 +102,7 @@ func installComponent(ctx context.Context, client *http.Client, root string, c c
 	if err != nil {
 		return "", err
 	}
+	request.Header.Set("User-Agent", "VideoHelper/0.1")
 	response, err := client.Do(request)
 	if err != nil {
 		return "", fmt.Errorf("download %s: %w", c.Name, err)

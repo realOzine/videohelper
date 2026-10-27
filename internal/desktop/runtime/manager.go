@@ -154,6 +154,13 @@ func (m *Manager) Ensure(ctx context.Context, notify func(Progress)) (err error)
 	m.tools = Tools{FFmpeg: paths["ffmpeg"], FFprobe: paths["ffprobe"], YTDLP: paths["yt-dlp"], Deno: paths["deno"]}
 	m.mu.Unlock()
 	m.uv = paths["uv"]
+	license, err := m.run(ctx, paths["ffmpeg"], []string{"-L"}, nil)
+	if err != nil {
+		return err
+	}
+	if strings.Contains(license, "not legally redistributable") {
+		return errors.New("the selected FFmpeg build is not redistributable")
+	}
 	metadata := filepath.Join(m.root, "python-downloads.json")
 	if err = os.WriteFile(metadata, pythonDownloads, 0600); err != nil {
 		return err
