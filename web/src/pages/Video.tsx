@@ -143,7 +143,7 @@ export default function Video() {
           </section>
 
           <div className="grid grid-cols-12 items-start gap-6">
-            <section aria-label={t('a.player')} className="col-span-8 min-w-0 overflow-hidden rounded-[10px] bg-ink-2 shadow-edge max-md:col-span-12">
+            <section aria-label={t('a.player')} className="col-span-8 min-w-0 overflow-hidden rounded-2xl border border-ink-3 bg-ink-2 max-md:col-span-12">
               <div className="relative aspect-video bg-black">
                 {url ? <video ref={vid} src={url} controls playsInline preload="metadata" className="block size-full"
                   onError={(e) => fail(new Error(t('err.playback', { code: e.currentTarget.error?.code ?? 0 })))}

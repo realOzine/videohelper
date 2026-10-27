@@ -2,7 +2,7 @@
 
 个人使用的视频检索桌面 App：导入本地视频或链接，用文字找到画面、转录和声音，再跳转播放。使用 MyGo、Go、React、SQLite + sqlite-vec，优先支持 Apple Silicon Mac。
 
-打开即用，没有账号、租户、JWT、套餐、PostgreSQL、Redis、S3 或 Docker。项目只是本地视频分组。界面沿用原 Web 的深色主题，字体随程序携带。
+打开即用，没有账号、租户、JWT、套餐、PostgreSQL、Redis、S3 或 Docker。项目只是本地视频分组。界面采用 `Design/Icon/` 的墨黑、米纸色与红色播放头，图标和字体随程序携带。
 
 ## 构建与运行
 

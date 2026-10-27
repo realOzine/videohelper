@@ -79,18 +79,18 @@ export default function Library() {
   return (
     <Shell page="library" ws={ws} notice={notice} onNewProject={() => newProject(reload, fail)}>
       <TitleRow title={t('nav.library')} sub={attention ? t('l.sub2', { i: more2(attention.indexing), f: more2(attention.failed) }) : ' '}>
-        <button type="button" className={btn} onClick={() => newProject(reload, fail)}>{t('b.newproject')}</button>
-        <button type="button" className={btnPrimary.replace('h-8', 'h-9')} onClick={chooseFiles}>{t('b.upload')}</button>
+        <button type="button" className={btn.replace('h-8', 'h-10')} onClick={() => newProject(reload, fail)}><Icon.folder plus />{t('b.newproject')}</button>
+        <button type="button" className={btnPrimary.replace('h-8', 'h-10')} onClick={chooseFiles}><Icon.import />{t('b.upload')}</button>
 
       </TitleRow>
 
-      <form className="mb-6 flex flex-wrap items-end gap-3" onSubmit={importURL}>
+      <form className={cx(panel, 'mb-5 flex flex-wrap items-end gap-3')} onSubmit={importURL}>
         <label className="grid min-w-56 flex-1 gap-2"><span className="text-xs text-fg-soft">{t('desktop.url')}</span>
           <input className={input} type="url" required value={sourceURL} onChange={(e) => setSourceURL(e.target.value)} placeholder="https://…" />
         </label>
-        <button className={btn} type="submit" disabled={addingURL}>{addingURL ? t('desktop.adding') : t('desktop.importURL')}</button>
+        <button className={btn.replace('h-8', 'h-[38px]')} type="submit" disabled={addingURL}><Icon.arrow />{addingURL ? t('desktop.adding') : t('desktop.importURL')}</button>
       </form>
-      <div className="mb-6 grid grid-cols-12 gap-6">
+      <div className="mb-7 grid grid-cols-12 gap-5">
         <section aria-labelledby="uh" className={cx(panel, 'col-span-7 max-md:col-span-12')}>
           <PanelHead id="uh" title={t('h.uploading')}><span className="text-xs text-faint">{t('meta.direct')}</span></PanelHead>
           {ups.current.length ? ups.current.map((u) => {
@@ -117,7 +117,7 @@ export default function Library() {
           </PanelHead>
           <div className="grid">
             {!attention ? null : att.length ? att.map((v) => (
-              <div key={v.id} className={cx('flex min-h-11 items-center gap-3 py-2.5', rule)}>
+              <div key={v.id} className={cx('flex min-h-11 min-w-0 items-center gap-3 py-2.5', rule)}>
                 <a className="group flex min-w-0 flex-1 items-center gap-3" href={`video.html?id=${v.id}`}>
                   <Thumb thumb={v.thumbnail} label={t('frame.of', { t: v.title })} className="w-20" />
                   <span className="min-w-0"><span className="block truncate font-semibold">{v.title}</span><span className="text-[13px] text-fg-soft">{v.status === 'failed' ? v.error || t('st.failed') : tracks(v)}</span></span>
@@ -129,13 +129,13 @@ export default function Library() {
         </section>
       </div>
 
-      <div role="tablist" className="mb-6 flex gap-6 overflow-x-auto border-b border-ink-3 whitespace-nowrap">
+      <div role="tablist" className="mb-5 flex w-fit max-w-full gap-1 overflow-x-auto rounded-full border border-ink-3 bg-ink-2 p-1 whitespace-nowrap">
         {[['', t('tab.all')], ...['importing', 'indexing', 'ready', 'failed', 'cancelled', 'deleted'].map((s) => [s, t(`st.${s}`)])].map(([s, label]) => (
           <a key={s} role="tab" href={filter(s ? { status: s } : {})} aria-selected={s === status}
-            className="relative py-2.5 text-fg-soft transition-colors duration-150 hover:text-fg aria-selected:text-fg aria-selected:after:absolute aria-selected:after:inset-x-0 aria-selected:after:-bottom-px aria-selected:after:h-0.5 aria-selected:after:bg-fg aria-selected:after:content-['']">{label}</a>
+            className="library-tab">{label}</a>
         ))}
       </div>
-      <div className="mb-2 flex items-center gap-3">
+      <div className="mb-4 flex items-center gap-3">
         <label htmlFor="proj" className="sr-only">{t('h.projfilter')}</label>
         <select id="proj" className={select} value={project} onChange={(e) => { location.search = String(new URLSearchParams({ ...(status && { status }), ...(e.target.value && { project: e.target.value }) })); }}>
           <option value="">{t('opt.allproj')}</option>
@@ -145,7 +145,7 @@ export default function Library() {
         <span className="text-fg-soft">{rows ? t('l.total', { n: rows.length + (cursor ? '+' : '') }) : ''}</span>
         <span className="text-xs text-faint max-xs:hidden">{t('meta.sort')}</span>
       </div>
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto rounded-2xl border border-ink-3 bg-ink-2/40 px-4">
         <table className="w-full border-collapse">
           <thead className="max-md:hidden">
             <tr className="[&>th]:h-9 [&>th]:border-b [&>th]:border-ink-3 [&>th]:px-3 [&>th]:text-left [&>th]:text-xs [&>th]:font-normal [&>th]:whitespace-nowrap [&>th]:text-fg-soft">
@@ -155,7 +155,7 @@ export default function Library() {
           <tbody>
             {rows && !rows.length && <tr><td colSpan={4} className="py-3"><Empty>{t('l.empty')}</Empty></td></tr>}
             {rows?.map((v) => (
-              <tr key={v.id} className="border-b border-ink-3 transition-colors duration-150 last:border-b-0 hover:bg-ink-2/60 max-md:grid max-md:grid-cols-[minmax(0,1fr)_auto] max-md:items-center max-md:gap-x-3 max-md:gap-y-1.5 max-md:py-3 [&>td]:px-3 [&>td]:py-[12.5px] [&>td]:align-middle max-md:[&>td]:p-0">
+              <tr key={v.id} className="border-b border-ink-3 transition-colors duration-150 last:border-b-0 hover:bg-ink-3/50 max-md:grid max-md:grid-cols-[minmax(0,1fr)_auto] max-md:items-center max-md:gap-x-3 max-md:gap-y-1.5 max-md:py-3 [&>td]:px-3 [&>td]:py-[12.5px] [&>td]:align-middle max-md:[&>td]:p-0">
                 <td><a className="group flex min-w-0 items-center gap-3" href={`video.html?id=${v.id}`}>
                   <Thumb thumb={v.thumbnail} label={t('frame.of', { t: v.title })} className="w-20" />
                   <span className="min-w-0"><span className="block truncate font-semibold">{v.title}</span><span className="block text-xs text-fg-soft">{tracks(v)}</span></span>

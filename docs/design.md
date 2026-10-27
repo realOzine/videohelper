@@ -13,7 +13,9 @@ VideoHelper 是个人使用的跨平台视频检索 App，优先交付 macOS。�
 
 ## 桌面体验
 
-MyGo 承载现有 React / TypeScript / Tailwind 界面，保留 `web/src/index.css` 的色彩、排版和组件样式。主窗口直接进入搜索或资料库，不展示营销页和登录页。
+MyGo 承载 React / TypeScript / Tailwind 界面，主题集中在 `web/src/index.css`。主窗口直接进入搜索或资料库，不展示营销页和登录页。
+
+品牌资产以 `Design/Icon/` 与 `Design/Kite/` 为准：墨黑 `#0f0e15`、米纸色 `#f3ede2`、播放头红 `#f43d3f`。应用图标使用原始 PNG，界面标志与字标直接使用反白 SVG，不重绘轨道或用实时文字替代字标。正文与标题使用随应用携带的 Instrument Sans，中文回退系统黑体；胶囊按钮、圆角轨道与面板呼应图标。功能图标保留搜索、资料库、导入等语义，统一圆头描边；错误与成功保留可辨认的语义色。运行环境状态、错误与重试在窄窗口下仍可见。
 
 macOS 单文件先在应用数据目录恢复 `.app` 包装，再由 LaunchServices 启动同一主程序，让 Dock、窗口和系统选择器具有完整应用身份。它属于允许释放的组件，不增加分发文件；已经从 `.app` 启动时不重复包装。
 

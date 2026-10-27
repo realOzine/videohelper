@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { get, post, type Project, type Video, type RuntimeState } from './api.ts';
 import { t, useLang } from './i18n.ts';
 import './strings.ts';
-import { cx, errText, Icon, LangSwitch, Mark } from './ui.tsx';
+import { cx, errText, Icon, LangSwitch, Logo } from './ui.tsx';
 
 export interface LibraryState { projects: Project[]; failed: number }
 
@@ -27,7 +27,7 @@ export function useNotice() {
   return { notice, fail };
 }
 
-const navItem = 'flex h-9 items-center gap-2.5 rounded-lg px-2 text-fg-soft transition-colors duration-150 hover:bg-ink-2 hover:text-fg aria-[current=page]:bg-ink-2 aria-[current=page]:font-semibold aria-[current=page]:text-fg aria-[current=page]:shadow-edge [&>svg]:size-4';
+const navItem = 'desktop-nav';
 
 export function Shell({ page, query = '', ws, onNewProject, notice, children }: {
   page: 'search' | 'library' | 'video'; query?: string; ws: LibraryState | null; onNewProject: () => void; notice: string; children: ReactNode;
@@ -49,40 +49,40 @@ export function Shell({ page, query = '', ws, onNewProject, notice, children }: 
   const here = page === 'video' ? 'library' : page;
 
   return (
-    <div className="grid min-h-svh grid-cols-[230px_minmax(0,1fr)] grid-rows-[64px_minmax(0,1fr)] text-sm leading-5 max-md:grid-cols-[minmax(0,1fr)] max-md:grid-rows-[56px_auto]">
-      <nav aria-label={t('a.nav')} className={cx('sticky top-0 row-span-2 flex h-svh flex-col gap-1 overflow-auto border-r border-ink-3 px-3 pb-4',
-        'max-md:fixed max-md:inset-0 max-md:z-20 max-md:h-full max-md:w-full max-md:bg-ink max-md:transition-transform max-md:duration-200 max-md:ease-out', !open && 'max-md:-translate-x-full')}>
-        <div className="-mx-3 mb-3 flex h-16 flex-none items-center justify-between border-b border-ink-3 px-5">
-          <a className="flex items-center gap-2.5 text-[17px] font-bold tracking-[-0.01em]" href="search.html"><Mark />VideoHelper</a>
+    <div className="grid min-h-svh grid-cols-[240px_minmax(0,1fr)] grid-rows-[76px_minmax(0,1fr)] text-sm leading-5 max-md:grid-cols-[minmax(0,1fr)] max-md:grid-rows-[68px_auto]">
+      <nav aria-label={t('a.nav')} className={cx('sticky top-0 row-span-2 flex h-svh flex-col gap-1.5 overflow-auto border-r border-ink-3 bg-ink-2/45 px-4 pb-5',
+        'max-md:fixed max-md:inset-0 max-md:z-20 max-md:h-full max-md:w-full max-md:bg-ink max-md:transition-transform max-md:duration-200 max-md:ease-out', !open && 'max-md:invisible max-md:-translate-x-full')}>
+        <div className="mb-5 flex h-[92px] flex-none items-center justify-between px-2">
+          <a href="search.html"><Logo /></a>
           <button type="button" className="hidden size-8 place-items-center text-fg-soft max-md:grid" aria-label={t('a.closenav')} onClick={() => setOpen(false)}><Icon.x className="size-4" /></button>
         </div>
         <a className={navItem} href="search.html" aria-current={here === 'search' ? 'page' : undefined}><Icon.search />{t('nav.search')}</a>
         <a className={navItem} href="library.html" aria-current={here === 'library' && !project ? 'page' : undefined}>
           <Icon.library />{t('nav.library')}
-          {!!ws?.failed && <span className="ml-auto text-xs font-medium text-red-text" aria-label={t('nav.failed.aria', { n: ws.failed })}>{t('nav.failed', { n: ws.failed })}</span>}
+          {!!ws?.failed && <span className="nav-failed ml-auto text-xs font-medium" aria-label={t('nav.failed.aria', { n: ws.failed })}>{t('nav.failed', { n: ws.failed })}</span>}
         </a>
-        <div className="mx-2 mt-5 mb-1.5 text-xs text-faint">{t('nav.projects')}</div>
+        <div className="mx-3 mt-7 mb-1.5 text-[11px] font-medium tracking-[0.12em] text-faint uppercase">{t('nav.projects')}</div>
         {ws?.projects.map((p) => (
           <a key={p.id} className={navItem} href={`library.html?project=${p.id}`} aria-current={project === p.id ? 'page' : undefined}>
-            <Icon.folder /><span className="truncate">{p.name}</span><span className="ml-auto text-xs text-faint">{p.video_count}</span>
+            <Icon.folder /><span className="truncate">{p.name}</span><span className="nav-count ml-auto text-xs">{p.video_count}</span>
           </a>
         ))}
         <button type="button" className={cx(navItem, 'text-left')} onClick={onNewProject}><Icon.folder plus />{t('nav.newproject')}</button>
       </nav>
 
-      <header className="col-start-2 flex min-w-0 items-center gap-4 border-b border-ink-3 pl-[29px] max-md:col-start-1 max-md:pl-3">
+      <header className="col-start-2 flex min-w-0 items-center gap-4 border-b border-ink-3 px-8 max-md:col-start-1 max-md:px-4">
         <button type="button" className="hidden size-8 flex-none place-items-center text-fg max-md:grid" aria-label={t('top.menu')} onClick={() => setOpen(true)}><Icon.menu className="size-[18px]" /></button>
-        <form role="search" action="search.html" className="flex h-9 w-[min(560px,100%)] items-center gap-2 rounded-md bg-ink-2 pr-2.5 pl-3 ring-1 ring-transparent transition-shadow duration-150 focus-within:ring-line max-xs:w-auto max-xs:min-w-0 max-xs:flex-1">
+        <form role="search" action="search.html" className="flex h-11 w-[min(640px,100%)] items-center gap-3 rounded-full border border-line bg-ink-2 pr-3.5 pl-4 transition-colors duration-150 focus-within:border-fg-soft max-xs:w-auto max-xs:min-w-0 max-xs:flex-1">
           <Icon.search className="size-4 flex-none text-fg-soft" />
           <label htmlFor="q" className="sr-only">{t('top.searchlabel')}</label>
           <input id="q" name="q" type="search" defaultValue={query} placeholder={t('top.placeholder')} className="h-full min-w-0 flex-1 bg-transparent outline-0 placeholder:text-faint" />
           <kbd className="rounded bg-ink-3 px-1.5 font-sans text-xs text-fg-soft max-xs:hidden">/</kbd>
         </form>
-        <LangSwitch className="ml-auto flex gap-0.5 rounded-lg bg-ink-2 p-[3px]" button="h-[30px] min-w-10 whitespace-nowrap rounded-md px-2.5 font-medium text-fg-soft transition-colors aria-pressed:bg-ink-3 aria-pressed:text-fg" />
+        <LangSwitch className="ml-auto flex flex-none gap-0.5 rounded-full border border-ink-3 p-[3px]" button="h-[30px] min-w-10 whitespace-nowrap rounded-full px-2.5 font-medium text-fg-soft transition-colors aria-pressed:bg-ink-3 aria-pressed:text-fg" />
 
       </header>
 
-      <main className="col-start-2 min-w-0 px-[29px] pt-7 pb-12 max-md:col-start-1 max-md:px-4 max-md:pt-5 max-md:pb-10">
+      <main className="col-start-2 min-w-0 px-8 pt-9 pb-12 max-md:col-start-1 max-md:px-4 max-md:pt-5 max-md:pb-10">
         <RuntimeStatus />
         {notice && <p role="alert" className="mb-6 flex items-center gap-3 rounded-[10px] bg-red-soft px-4 py-3 text-neg-ink"><span className="flex-1">{notice}</span><button type="button" className="font-medium text-fg underline underline-offset-[3px]" onClick={() => location.reload()}>{t('retry')}</button></p>}
         {children}
@@ -93,17 +93,17 @@ export function Shell({ page, query = '', ws, onNewProject, notice, children }: 
 
 export function TitleRow({ title, sub, children }: { title: ReactNode; sub?: ReactNode; children?: ReactNode }) {
   return (
-    <div className="mb-5 flex items-end justify-between gap-4 max-md:flex-wrap max-md:items-start">
+    <div className="mb-7 flex items-end justify-between gap-5 max-lg:flex-wrap max-lg:items-start">
       <div className="min-w-0">
-        <h1 className="disp text-[32px] leading-[1.2] max-md:text-2xl">{title}</h1>
-        {sub && <p className="mt-1 text-[15px] text-fg-soft">{sub}</p>}
+        <h1 className="disp text-[30px] leading-[1.3] max-md:text-2xl">{title}</h1>
+        {sub && <p className="mt-2 max-w-[72ch] text-sm leading-relaxed text-fg-soft">{sub}</p>}
       </div>
       {children && <div className="flex flex-none gap-2 max-xs:w-full max-xs:[&>*]:flex-1">{children}</div>}
     </div>
   );
 }
 
-export const panelBase = 'min-w-0 rounded-[10px] bg-ink-2 shadow-edge';
+export const panelBase = 'min-w-0 rounded-2xl border border-ink-3 bg-ink-2';
 export const panel = `${panelBase} p-5`;
 export function PanelHead({ title, id, children }: { title: ReactNode; id?: string; children?: ReactNode }) {
   return (
@@ -115,7 +115,7 @@ export function PanelHead({ title, id, children }: { title: ReactNode; id?: stri
 }
 export const Meta = ({ children }: { children: ReactNode }) => <span className="text-xs text-faint">{children}</span>;
 export const Empty = ({ children }: { children: ReactNode }) => (
-  <div className="grid min-h-24 w-full place-items-center rounded-lg bg-ink-3/45 p-4 text-center text-fg-soft">{children}</div>
+  <div className="grid min-h-28 w-full place-items-center rounded-xl border border-dashed border-line bg-ink/40 p-5 text-center text-[13px] leading-relaxed text-fg-soft">{children}</div>
 );
 
 // New project by name; the sidebar refreshes in place.
@@ -137,12 +137,12 @@ function RuntimeStatus() {
     poll(); const timer = window.setInterval(poll, 2000);
     return () => { stopped = true; clearInterval(timer); };
   }, []);
-  return <section aria-live="polite" className="mb-6 rounded-[10px] bg-ink-2 px-4 py-3 shadow-edge">
+  return <section aria-live="polite" className="mb-6 rounded-xl border border-ink-3 bg-ink-2/60 px-4 py-3">
     <div className="flex flex-wrap items-center gap-2 text-[13px]">
-      <span className={cx('size-1.5 rounded-full', state?.ready ? 'bg-pos' : state?.error || error ? 'bg-red' : 'animate-beat bg-red')} />
+      <span className={cx('size-1.5 flex-none rounded-full', state?.ready ? 'bg-pos' : state?.error || error ? 'bg-red' : 'animate-beat bg-fg-soft')} />
       <span className="font-medium">{state?.ready ? t('desktop.ready') : t('desktop.preparing')}</span>
       {state?.device && <span title={state.reason} className="rounded bg-ink-3 px-1.5 font-mono text-xs text-fg-soft">{state.device.toUpperCase()}</span>}
-      <span className="min-w-0 text-fg-soft">{state?.error || error || (!state?.ready && state?.message)}</span>
+      {(state?.error || error || (!state?.ready && state?.message)) && <span className="min-w-0 text-xs leading-relaxed break-words text-fg-soft">{state?.error || error || state?.message}</span>}
       {state?.error && <button type="button" className="ml-auto text-fg underline underline-offset-[3px]" onClick={() => post('/v1/desktop/runtime/retry').catch((err) => setError(errText(err)))}>{t('retry')}</button>}
     </div>
     {state?.fraction != null && !state.ready && <progress aria-label={t('desktop.preparing')} className="mt-2 h-1 w-full accent-red" value={state.fraction} max={1} />}

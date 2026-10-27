@@ -5,7 +5,7 @@ import { get, post, type Moment, type Video } from '../api.ts';
 import { t, useLang } from '../i18n.ts';
 import { byVideo, CHANNELS, defaultView, modelName, modelPrefs, searchFields, seekMedia, tc, ticks, type ModelPrefs } from '../lib.ts';
 import { newProject, panel, PanelHead, Shell, TitleRow, useNotice, useLibrary } from '../Shell.tsx';
-import { btn, btnPrimary, Ch, cx, errText, Icon, Rich, select, TcBadge, Thumb } from '../ui.tsx';
+import { btn, btnPrimary, Ch, cx, errText, Icon, Mark, Rich, select, TcBadge, Thumb } from '../ui.tsx';
 
 interface Entry { id: string; v: Video; url: string; dur: number }
 const emptyMoments: Moment[] = [];
@@ -166,15 +166,15 @@ export default function Search() {
 
   return (
     <Shell page="search" query={q} ws={ws} notice={notice} onNewProject={() => newProject(reload, fail)}>
-      <TitleRow title={q ? `“${q}”` : t('s.title')} sub={!q ? t('s.empty') : !found ? ' ' : !ms.length ? t('s.none') + note : (
+      <TitleRow title={q ? `“${q}”` : t('s.title')} sub={!q ? undefined : !found ? ' ' : !ms.length ? t('s.none') + note : (
         <><Rich k="s.sub" vars={{ n: ms.length, v: new Set(ms.map((x) => x.video_id)).size, title: best.video_title, tc: tc(best.start_ms), chs: best.channels.map((h) => CH[h.channel]).join(t('and')) }} />{note}</>
       )}>
         {q && <Models />}
         {ms.length > 0 && (
-          <div role="group" aria-label={t('a.views')} className="flex gap-0.5 rounded-lg bg-ink-2 p-[3px]">
+          <div role="group" aria-label={t('a.views')} className="flex gap-0.5 rounded-full border border-ink-3 bg-ink-2 p-[3px]">
             {(['dir', 'detail'] as const).map((v) => (
               <button key={v} type="button" aria-pressed={view === v} onClick={() => switchTo(v)}
-                className="inline-flex h-[26px] items-center justify-center gap-1.5 rounded-md px-2.5 text-[13px] font-medium text-fg-soft transition-colors hover:text-fg aria-pressed:bg-ink-3 aria-pressed:text-fg">
+                className="inline-flex h-[26px] items-center justify-center gap-1.5 rounded-full px-2.5 text-[13px] font-medium text-fg-soft transition-colors hover:text-fg aria-pressed:bg-paper aria-pressed:text-ink">
                 {v === 'dir' ? <Icon.grid className="size-3.5" /> : <Icon.detail className="size-3.5" />}{t(v === 'dir' ? 'v.dir' : 'v.det')}
               </button>
             ))}
@@ -186,6 +186,16 @@ export default function Search() {
           {ws?.projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
         </select>
       </TitleRow>
+
+      {!q && <section className="flex min-h-[380px] flex-col items-center justify-center rounded-2xl border border-ink-3 bg-ink-2/40 px-6 py-12 text-center">
+        <Mark className="mb-7 size-20" />
+        <h2 className="disp text-2xl">{t('s.welcome')}</h2>
+        <p className="mt-3 max-w-md leading-relaxed text-fg-soft">{t('s.empty')}</p>
+        <div className="mt-6 flex flex-wrap justify-center gap-2">
+          {CHANNELS.map((c) => <Ch key={c} c={c} className="rounded-full border border-line px-3 py-1.5 text-xs text-fg-soft">{CH[c]}</Ch>)}
+        </div>
+        <a href="library.html" className={cx(btn, 'mt-8')}><Icon.library />{t('nav.library')}<Icon.chevron /></a>
+      </section>}
 
       {ms.length > 0 && view === 'dir' && (
         <div className="grid gap-10">
@@ -201,7 +211,7 @@ export default function Search() {
                 </header>
                 <div className="grid grid-cols-4 gap-6 max-xl:grid-cols-3 max-md:grid-cols-2 max-xs:grid-cols-1">
                   {g.items.map(({ m: x, i }) => (
-                    <button key={i} type="button" onClick={() => open(i)} className="group -m-2 flex flex-col justify-start rounded-xl p-2 text-left transition-colors duration-200 hover:bg-ink-2">
+                    <button key={i} type="button" onClick={() => open(i)} className="group -m-2 flex min-w-0 flex-col justify-start rounded-xl border border-transparent p-2 text-left transition-colors duration-200 hover:border-line hover:bg-ink-2">
                       <span className={cx('block overflow-hidden rounded-lg', i === last && 'ring-2 ring-red')}>
                         <Thumb thumb={x.thumbnail} label={t('frame.of', { t: x.video_title })} className="w-full">
                           <span className="absolute inset-0 grid place-items-center opacity-0 transition-opacity duration-200 group-hover:opacity-100"><span className="grid size-11 place-items-center rounded-full bg-ink/70"><Icon.play className="size-4 text-fg" /></span></span>
@@ -231,7 +241,7 @@ export default function Search() {
 
       {ms.length > 0 && view === 'detail' && (
         <div className="grid grid-cols-12 items-start gap-6">
-          <section aria-label={t('a.player')} className="col-span-7 min-w-0 overflow-hidden rounded-[10px] bg-ink-2 shadow-edge max-md:col-span-12">
+          <section aria-label={t('a.player')} className="col-span-7 min-w-0 overflow-hidden rounded-2xl border border-ink-3 bg-ink-2 max-md:col-span-12">
             <div className="relative aspect-video bg-black">
               {entry && <video key={entry.url} ref={vid} src={entry.url} controls playsInline preload="metadata" className="block size-full"
                 onError={(e) => { setPlaying(false); fail(new Error(t('err.playback', { code: e.currentTarget.error?.code ?? 0 }))); }}
@@ -243,7 +253,7 @@ export default function Search() {
             </div>
             <div className="flex min-h-14 flex-wrap items-center gap-3.5 border-b border-ink-3 px-4 py-2">
               <button type="button" onClick={toggle} aria-pressed={playing} aria-label={playing ? t('pause') : t('play')} aria-keyshortcuts="Space"
-                className="grid size-8 flex-none place-items-center rounded-full bg-red-fill text-white transition-[transform,background-color] duration-150 ease-out hover:bg-red active:scale-[.92]">
+                className="grid size-8 flex-none place-items-center rounded-full bg-paper text-ink transition-[transform,background-color] duration-150 ease-out hover:bg-white active:scale-[.92]">
                 {playing ? <Icon.pause className="size-3.5" /> : <Icon.play className="size-3.5" />}
               </button>
               <span ref={time} className="whitespace-nowrap text-fg-soft [&_b]:font-medium [&_b]:text-fg" />
@@ -267,12 +277,12 @@ export default function Search() {
                   onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); seekAt(e); }}
                   onPointerMove={(e) => { if (e.currentTarget.hasPointerCapture(e.pointerId)) seekAt(e); }} onKeyDown={onPlotKey}>
                   {CHANNELS.map((c) => (
-                    <span key={c} className="relative h-[18px] rounded bg-ink-3">
+                    <span key={c} className="relative h-[18px] rounded-full bg-ink-3">
                       {c !== 'visual' && entry?.v.has_audio === false && <span className="absolute top-0 left-2 text-[11px] leading-[18px] text-faint">{t('s.noaudio')}</span>}
                       {mine.filter((x) => x.channels.some((h) => h.channel === c)).map((x) => {
                         const on = ms.indexOf(x) === picked;
                         return <span key={ms.indexOf(x)} title={`${tc(x.start_ms)} – ${tc(x.end_ms)}`} style={{ left: pct(x.start_ms), width: pct(x.end_ms - x.start_ms) }}
-                          className={cx('absolute min-w-1 rounded-sm transition-[background-color,top,bottom] duration-200 ease-out', on ? 'top-0 bottom-0 bg-red' : 'top-[3px] bottom-[3px] bg-hit hover:bg-fg')} />;
+                          className={cx('absolute min-w-1 rounded-full transition-[background-color,top,bottom] duration-200 ease-out', on ? 'top-0 bottom-0 bg-paper' : 'top-[3px] bottom-[3px] bg-hit hover:bg-fg')} />;
                       })}
                     </span>
                   ))}
