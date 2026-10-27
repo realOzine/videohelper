@@ -127,6 +127,20 @@ func (p *Processor) Search(ctx context.Context, q Query) (Result, error) {
 	if err != nil {
 		return result, err
 	}
+	for _, r := range p.routes {
+		if id, ok := q.SpaceOverride[r.channel]; ok {
+			if id != r.localID {
+				return result, fmt.Errorf("所选模型当前未运行: %w", store.ErrConflict)
+			}
+			eligible, indexed, err := p.coverage(ctx, videos, r)
+			if err != nil {
+				return result, err
+			}
+			if indexed < eligible {
+				return result, fmt.Errorf("所选模型尚未完成索引: %w", store.ErrConflict)
+			}
+		}
+	}
 	if len(videos) == 0 {
 		return result, nil
 	}
@@ -152,18 +166,6 @@ func (p *Processor) Search(ctx context.Context, q Query) (Result, error) {
 			continue
 		}
 		active++
-		if id, ok := q.SpaceOverride[r.channel]; ok {
-			if id != r.localID {
-				return result, fmt.Errorf("所选模型当前未运行: %w", store.ErrConflict)
-			}
-			eligible, indexed, err := p.coverage(ctx, videos, r)
-			if err != nil {
-				return result, err
-			}
-			if indexed < eligible {
-				return result, fmt.Errorf("所选模型尚未完成索引: %w", store.ErrConflict)
-			}
-		}
 		text := q.Text
 		if override, ok := q.ChannelQueries[r.channel]; ok {
 			text = override
