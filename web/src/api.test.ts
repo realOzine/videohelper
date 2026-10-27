@@ -20,7 +20,7 @@ test('desktop connection stays in memory and API errors do not navigate to login
     assert.deepEqual(await get('/v1/videos'), { videos: [] });
     await post('/v1/imports/url', { url: 'https://example.com/video' });
     assert.equal(calls[0][0], 'http://127.0.0.1:12345/v1/videos');
-    assert.equal((calls[0][1]?.headers as Record<string, string>).Authorization, 'Bearer process-capability');
+    assert.equal((calls[0][1]?.headers as Record<string, string>)['X-Desktop-Token'], 'process-capability');
     assert.equal(calls[1][1]?.body, '{"url":"https://example.com/video"}');
     await assert.rejects(get('/fail'), (err: unknown) => err instanceof ApiError && err.code === 'not_ready' && err.message === 'Models are preparing');
   } finally { globalThis.fetch = originalFetch; }

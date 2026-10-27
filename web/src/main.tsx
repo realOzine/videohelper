@@ -5,12 +5,11 @@ import { connect } from './api.ts';
 
 // Keep page URLs and lazy chunks while sharing the desktop session.
 const pages = {
-  index: lazy(() => import('./pages/Search.tsx')),
   search: lazy(() => import('./pages/Search.tsx')),
   library: lazy(() => import('./pages/Library.tsx')),
   video: lazy(() => import('./pages/Video.tsx')),
 };
-const Page = pages[document.body.dataset.page as keyof typeof pages] ?? pages.index;
+const Page = pages[document.body.dataset.page as keyof typeof pages] ?? pages.search;
 
 function App() {
   const [state, setState] = useState<string | null>(null);

@@ -105,7 +105,9 @@ export default function Video() {
               <div className="mt-1 text-[13px] text-fg-soft">{v.duration_ms ? `${tc(v.duration_ms)} · ` : ''}{t('v.upload')} · {tracks(v)} · {t('v.added', { w: when(v.created_at) })}</div>
             </div>
             <div className="ml-auto flex flex-wrap gap-2 max-md:ml-0 max-md:w-full">
-              {(v.status === 'failed' || (v.status === 'ready' && failed)) && <button type="button" className={btnPrimary} onClick={(e) => retry(e.currentTarget)}>{t('retry')}</button>}
+              {(v.status === 'failed' || v.status === 'cancelled' || (v.status === 'ready' && failed)) && <button type="button" className={btnPrimary} onClick={(e) => retry(e.currentTarget)}>{t('retry')}</button>}
+              {busy(v.status) && <button type="button" className={btn} onClick={() => post(`/v1/videos/${id}/cancel`).then(() => load()).catch(fail)}>{t('desktop.cancel')}</button>}
+              {v.status === 'deleted' && <button type="button" className={btnPrimary} onClick={() => post(`/v1/videos/${id}/restore`).then(() => load()).then(() => reload()).catch(fail)}>{t('desktop.restore')}</button>}
               {!!ws?.projects.length && (
                 <>
                   <label htmlFor="addp" className="sr-only">{t('v.addproject')}</label>

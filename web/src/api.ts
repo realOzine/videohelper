@@ -16,7 +16,7 @@ export type { Stage };
 
 interface Connection { base: string; token: string }
 export interface LocalFile { path: string; name: string; size: number }
-export interface RuntimeState { stage: string; message: string; device: string; error: string; fraction: number | null; ready: boolean }
+export interface RuntimeState { stage: string; message: string; device: string; reason?: string; error: string; fraction: number | null; ready: boolean }
 
 declare global {
   interface Window { mygo?: { call<T>(method: string, ...args: unknown[]): Promise<T> } }
@@ -41,7 +41,7 @@ export async function call<T = unknown>(method: string, path: string, body?: unk
   try {
     res = await fetch(s.base + path, {
       method, signal, body: body === undefined ? undefined : JSON.stringify(body),
-      headers: { Authorization: `Bearer ${s.token}`, ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
+      headers: { 'X-Desktop-Token': s.token, ...(body === undefined ? {} : { 'Content-Type': 'application/json' }) },
     });
   } catch (err) {
     if (signal?.aborted) throw signal.reason;
