@@ -113,6 +113,12 @@ func TestReopenPersists(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if duplicate, err := Open(ctx, dir); !errors.Is(err, ErrConflict) {
+		if duplicate != nil {
+			duplicate.Close()
+		}
+		t.Fatalf("second desktop owner accepted: %v", err)
+	}
 	p, err := s.CreateProject(ctx, "persistent")
 	if err != nil {
 		t.Fatal(err)

@@ -7,6 +7,7 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
+	"io"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -15,6 +16,7 @@ import (
 
 	sqlitevec "github.com/asg017/sqlite-vec-go-bindings/cgo"
 	_ "github.com/mattn/go-sqlite3"
+	"github.com/ozine/videohelper/internal/desktop/filelock"
 )
 
 var (
@@ -32,6 +34,7 @@ type Store struct {
 	db   *sql.DB
 	root *os.Root
 	dir  string
+	lock io.Closer
 }
 
 // Tx is valid only inside Checkpoint or CompleteJob. Its output is committed
@@ -49,8 +52,16 @@ func Open(ctx context.Context, dataDir string) (*Store, error) {
 	if err := os.MkdirAll(filepath.Join(dir, "media"), 0700); err != nil {
 		return nil, err
 	}
+	lock, err := filelock.Try(filepath.Join(dir, "library.lock"))
+	if errors.Is(err, filelock.ErrLocked) {
+		return nil, ErrConflict
+	}
+	if err != nil {
+		return nil, err
+	}
 	root, err := os.OpenRoot(filepath.Join(dir, "media"))
 	if err != nil {
+		lock.Close()
 		return nil, err
 	}
 	vecOnce.Do(sqlitevec.Auto)
@@ -58,10 +69,11 @@ func Open(ctx context.Context, dataDir string) (*Store, error) {
 	db, err := sql.Open("sqlite3", u.String()+"?_foreign_keys=on&_journal_mode=WAL&_synchronous=FULL&_busy_timeout=5000&_txlock=immediate")
 	if err != nil {
 		root.Close()
+		lock.Close()
 		return nil, err
 	}
 	db.SetMaxOpenConns(1)
-	s := &Store{db: db, root: root, dir: dir}
+	s := &Store{db: db, root: root, dir: dir, lock: lock}
 	if err := s.init(ctx); err != nil {
 		s.Close()
 		return nil, err
@@ -90,7 +102,7 @@ func (s *Store) init(ctx context.Context) error {
 	})
 }
 
-func (s *Store) Close() error { return errors.Join(s.db.Close(), s.root.Close()) }
+func (s *Store) Close() error { return errors.Join(s.db.Close(), s.root.Close(), s.lock.Close()) }
 
 func (s *Store) write(ctx context.Context, fn func(*sql.Tx) error) error {
 	tx, err := s.db.BeginTx(ctx, nil)
