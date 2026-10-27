@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { byVideo, channelState, defaultView, eachLimit, marks, modelPrefs, partRange, pipeline, searchFields, tc, ticks } from './lib.ts';
+import { byVideo, channelState, defaultView, marks, modelPrefs, pipeline, searchFields, tc, ticks } from './lib.ts';
 
 test('gallery groups moments by video in rank order, and picks the opening view', () => {
   const ms = [{ video_id: '7' }, { video_id: '3' }, { video_id: '7' }, { video_id: '9' }];
@@ -32,24 +32,6 @@ test('pipeline puts probe first, asr before speech encoding, and drops empty lan
 
 test('channel state', () => {
   assert.deepEqual(channelState(stages), { visual: 'done', speech: 'failed', audio: 'none' });
-});
-
-test('upload parts cover the file exactly', () => {
-  assert.deepEqual(partRange(1, 16, 40), [0, 16]);
-  assert.deepEqual(partRange(3, 16, 40), [32, 40]);
-});
-
-test('eachLimit bounds concurrency and stops after a failure', async () => {
-  let live = 0, peak = 0;
-  const seen: number[] = [];
-  await assert.rejects(eachLimit([1, 2, 3, 4, 5, 6], 2, async (n) => {
-    live++; peak = Math.max(peak, live); seen.push(n);
-    await new Promise((r) => setTimeout(r, 5));
-    live--;
-    if (n === 2) throw new Error('part 2');
-  }), /part 2/);
-  assert.equal(peak, 2);
-  assert.ok(seen.length < 6, `kept uploading after the failure: ${seen}`);
 });
 
 test('dictionary markup splits without HTML', () => {

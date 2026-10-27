@@ -39,21 +39,6 @@ export function channelState(stages: Stage[]): Record<Channel, ChannelState> {
   return { visual: state('visual'), speech: state('speech'), audio: state('audio') };
 }
 
-// Byte range [start, end) of upload part n (1-based), as the server planned it.
-export const partRange = (n: number, partSize: number, size: number) => [(n - 1) * partSize, Math.min(n * partSize, size)];
-
-// Runs fn over items with at most `limit` in flight; the first failure stops new work and rejects.
-export async function eachLimit<T>(items: T[], limit: number, fn: (item: T, i: number) => Promise<void>) {
-  let next = 0;
-  const worker = async () => {
-    while (next < items.length) {
-      const i = next++;
-      try { await fn(items[i], i); } catch (err) { next = items.length; throw err; }
-    }
-  };
-  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
-}
-
 // Axis ticks for a timeline of `dur` ms: every 10, 5 or 2 minutes, 30 s, or 10 s for clips under a minute.
 export function ticks(dur: number) {
   const step = dur > 1800000 ? 600000 : dur > 600000 ? 300000 : dur > 180000 ? 120000 : dur > 60000 ? 30000 : 10000, out: number[] = [];

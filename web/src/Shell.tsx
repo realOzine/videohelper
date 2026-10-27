@@ -84,7 +84,7 @@ export function Shell({ page, query = '', ws, onNewProject, notice, children }: 
 
       <main className="col-start-2 min-w-0 px-[29px] pt-7 pb-12 max-md:col-start-1 max-md:px-4 max-md:pt-5 max-md:pb-10">
         <RuntimeStatus />
-        {notice && <p role="alert" className="mb-6 flex items-center gap-3 rounded-[10px] bg-red-soft px-4 py-3 text-neg-ink">{notice}</p>}
+        {notice && <p role="alert" className="mb-6 flex items-center gap-3 rounded-[10px] bg-red-soft px-4 py-3 text-neg-ink"><span className="flex-1">{notice}</span><button type="button" className="font-medium text-fg underline underline-offset-[3px]" onClick={() => location.reload()}>{t('retry')}</button></p>}
         {children}
       </main>
     </div>
@@ -141,7 +141,7 @@ function RuntimeStatus() {
     <div className="flex flex-wrap items-center gap-2 text-[13px]">
       <span className={cx('size-1.5 rounded-full', state?.ready ? 'bg-pos' : state?.error || error ? 'bg-red' : 'animate-beat bg-red')} />
       <span className="font-medium">{state?.ready ? t('desktop.ready') : t('desktop.preparing')}</span>
-      {state?.device && <span className="rounded bg-ink-3 px-1.5 font-mono text-xs text-fg-soft">{state.device.toUpperCase()}</span>}
+      {state?.device && <span title={state.reason} className="rounded bg-ink-3 px-1.5 font-mono text-xs text-fg-soft">{state.device.toUpperCase()}</span>}
       <span className="min-w-0 text-fg-soft">{state?.error || error || state?.message}</span>
     </div>
     {state?.fraction != null && !state.ready && <progress aria-label={t('desktop.preparing')} className="mt-2 h-1 w-full accent-red" value={state.fraction} max={1} />}
