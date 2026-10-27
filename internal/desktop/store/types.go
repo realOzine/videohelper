@@ -27,9 +27,10 @@ type Video struct {
 }
 
 type Project struct {
-	ID        int64     `json:"id,string"`
-	Name      string    `json:"name"`
-	CreatedAt time.Time `json:"created_at"`
+	ID         int64     `json:"id,string"`
+	Name       string    `json:"name"`
+	CreatedAt  time.Time `json:"created_at"`
+	VideoCount int       `json:"video_count"`
 }
 
 type VideoFilter struct {
@@ -38,6 +39,7 @@ type VideoFilter struct {
 	Status    string
 	Deleted   bool
 	Limit     int
+	BeforeID  *int64
 }
 
 type Job struct {

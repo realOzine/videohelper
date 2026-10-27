@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -92,7 +93,7 @@ func TestManagedFilesRejectEscapeAndCancel(t *testing.T) {
 	if err := os.Symlink(outside, filepath.Join(s.dir, "media", "videos", "1", "escape")); err != nil {
 		t.Fatal(err)
 	}
-	if err := s.WriteFile(context.Background(), "videos/1/escape/owned", nil); err == nil {
+	if err := s.WriteFile(context.Background(), "videos/1/escape/owned", strings.NewReader("data")); err == nil {
 		t.Fatal("symlink escape accepted")
 	}
 	ctx, cancel := context.WithCancel(context.Background())
@@ -127,5 +128,38 @@ func TestReopenPersists(t *testing.T) {
 	ps, err := s.ListProjects(ctx)
 	if err != nil || len(ps) != 1 || ps[0].ID != p.ID {
 		t.Fatalf("%v %v", ps, err)
+	}
+}
+
+func TestProjectMembershipCountAndCursor(t *testing.T) {
+	s := testStore(t)
+	ctx := context.Background()
+	a, b := fixtureVideo(t, s), fixtureVideo(t, s)
+	p, err := s.CreateProject(ctx, "my list")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []int64{a.ID, b.ID, a.ID} {
+		if err := s.AddProjectVideo(ctx, p.ID, id); err != nil {
+			t.Fatal(err)
+		}
+	}
+	projects, err := s.ListProjects(ctx)
+	if err != nil || len(projects) != 1 || projects[0].VideoCount != 2 {
+		t.Fatalf("%+v %v", projects, err)
+	}
+	page, err := s.ListVideos(ctx, VideoFilter{ProjectID: &p.ID, BeforeID: &b.ID, Limit: 1})
+	if err != nil || len(page) != 1 || page[0].ID != a.ID {
+		t.Fatalf("%+v %v", page, err)
+	}
+	if err := s.RemoveProjectVideo(ctx, p.ID, a.ID); err != nil {
+		t.Fatal(err)
+	}
+	if err := s.DeleteVideo(ctx, b.ID); err != nil {
+		t.Fatal(err)
+	}
+	projects, err = s.ListProjects(ctx)
+	if err != nil || projects[0].VideoCount != 0 {
+		t.Fatalf("%+v %v", projects, err)
 	}
 }
