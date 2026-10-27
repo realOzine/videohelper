@@ -58,9 +58,11 @@ python3 deploy/aws/demo.py connect
 
 `start` 从 CloudFormation 获取专用实例 ID，读取已完整发布的 SHA，开机、等待 SSM、部署；不会创建第二台服务器。`connect` 保持前台运行，在浏览器打开 `http://localhost:8080`。公网安全组没有入站规则，不能直接访问实例公网 IP。
 
-另开终端进入管理会话并签发八小时 Demo token；复制到 Web 的登录 / token 输入位置。不要把令牌或 `runtime.env` 发到聊天、Git、日志中。
+另开终端进入管理会话并签发八小时 Demo token；复制到 Web 的登录 / token 输入位置。将登录页的“API 地址”改为 `http://localhost:8080`，不要沿用本地开发默认的 18000 端口。不要把令牌或 `runtime.env` 发到聊天、Git、日志中。
 
 ```bash
+export AWS_PROFILE=videohelper-demo
+export AWS_REGION=us-east-2
 python3 deploy/aws/demo.py shell
 # 以下在 EC2 会话中运行；输出只给本地操作人员使用。
 sudo docker compose -p videohelper-demo \
