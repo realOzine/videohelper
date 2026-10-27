@@ -18,6 +18,7 @@ class Settings:
     cache_dir: Path = Path("/var/cache/videohelper-ml")
     cache_max_bytes: int = 50_000_000_000
     s3_endpoint: str | None = None
+    local_media_root: Path | None = None
 
     def __post_init__(self):
         if not self.token:
@@ -37,4 +38,9 @@ class Settings:
             cache_dir=Path(os.getenv("ML_CACHE_DIR", cls.cache_dir)),
             cache_max_bytes=int(os.getenv("ML_CACHE_MAX_BYTES", cls.cache_max_bytes)),
             s3_endpoint=os.getenv("ML_S3_ENDPOINT"),
+            local_media_root=(
+                Path(os.environ["ML_LOCAL_MEDIA_ROOT"])
+                if os.getenv("ML_LOCAL_MEDIA_ROOT")
+                else None
+            ),
         )

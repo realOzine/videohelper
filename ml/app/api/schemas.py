@@ -7,7 +7,14 @@ InputKind = Literal["text", "video", "audio", "image"]
 PositiveInt = Annotated[int, Field(strict=True, gt=0)]
 Timestamp = Annotated[int, Field(strict=True, ge=0)]
 Identifier = Annotated[str, Field(min_length=1, pattern=r"^[a-z0-9@._-]+$")]
-S3URI = Annotated[str, Field(pattern=r"^s3://[a-z0-9][a-z0-9.-]*/[^?#]+$")]
+MediaURI = Annotated[
+    str,
+    Field(
+        pattern=r"^(?:s3://[a-z0-9][a-z0-9.-]*/[^?#\r\n]+|"
+        r"local://media/[A-Za-z0-9_-][A-Za-z0-9._-]*"
+        r"(?:/[A-Za-z0-9_-][A-Za-z0-9._-]*)*)$"
+    ),
+]
 Fingerprint = Annotated[str, Field(pattern=r"^sha256:[0-9a-f]{64}$")]
 
 
@@ -16,7 +23,7 @@ class Schema(BaseModel):
 
 
 class ImageRef(Schema):
-    uri: S3URI
+    uri: MediaURI
 
 
 class MediaRef(ImageRef):
