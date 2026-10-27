@@ -120,7 +120,7 @@ func run() error {
 						mu.Lock()
 						engine = p
 						mu.Unlock()
-						err = p.Run(ctx)
+						err = superviseProcessor(ctx, p.Run, manager.State)
 					}
 				}
 			}
