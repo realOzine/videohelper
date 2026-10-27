@@ -54,6 +54,8 @@ type Manager struct {
 	uv, root, python, visualProfile, visualManifest string
 	services                                        Services
 	processes                                       []*ownedProcess
+	active                                          map[*ownedProcess]struct{}
+	ensureDone                                      chan struct{}
 	cancel                                          context.CancelFunc
 	closed                                          bool
 }
@@ -62,7 +64,7 @@ func New(dataDir string, assets fs.FS) *Manager {
 	if absolute, err := filepath.Abs(dataDir); err == nil {
 		dataDir = absolute
 	}
-	return &Manager{dir: dataDir, assets: assets, state: State{Stage: "pending", Message: "正在准备本地运行时"}}
+	return &Manager{dir: dataDir, assets: assets, active: make(map[*ownedProcess]struct{}), state: State{Stage: "pending", Message: "正在准备本地运行时"}}
 }
 
 func (m *Manager) State() State {
@@ -106,7 +108,10 @@ func (m *Manager) Ensure(ctx context.Context, notify func(Progress)) (err error)
 	}
 	ctx, cancel := context.WithCancel(ctx)
 	m.cancel = cancel
+	done := make(chan struct{})
+	m.ensureDone = done
 	m.mu.Unlock()
+	defer close(done)
 	defer cancel()
 	defer func() {
 		if err != nil {
@@ -284,11 +289,23 @@ func (m *Manager) run(ctx context.Context, path string, args, extra []string) (s
 	var output, stderr tailBuffer
 	cmd.Stdout = &output
 	cmd.Stderr = &stderr
+	m.mu.Lock()
+	if m.closed {
+		m.mu.Unlock()
+		return "", errors.New("runtime is closed")
+	}
 	p, err := startOwned(ctx, cmd)
+	if err == nil {
+		m.active[p] = struct{}{}
+	}
+	m.mu.Unlock()
 	if err != nil {
 		return "", err
 	}
 	<-p.done
+	m.mu.Lock()
+	delete(m.active, p)
+	m.mu.Unlock()
 	if ctx.Err() != nil {
 		return "", ctx.Err()
 	}
@@ -488,10 +505,21 @@ func (m *Manager) Close(ctx context.Context) error {
 		m.cancel()
 	}
 	processes := append([]*ownedProcess(nil), m.processes...)
+	for process := range m.active {
+		processes = append(processes, process)
+	}
+	ensureDone := m.ensureDone
 	m.mu.Unlock()
 	var err error
 	for _, process := range processes {
 		err = errors.Join(err, process.stop(ctx))
+	}
+	if ensureDone != nil {
+		select {
+		case <-ensureDone:
+		case <-ctx.Done():
+			err = errors.Join(err, ctx.Err())
+		}
 	}
 	return err
 }
