@@ -25,11 +25,11 @@
 ## 第一次创建
 
 1. 在 AWS CLI 登录 `videohelper-demo` profile，并用 `aws sts get-caller-identity` 确认项目。目标 `r6a.large` 不允许在 FREE 计划启动，须先由项目所有者确认升级 Paid；升级涉及其所有项目且不可撤销。CLI 凭据保存在用户的 AWS 凭据管理中，不提交 Git。
-2. 创建 CodeConnections GitHub 连接，在 AWS 控制台完成 GitHub App 授权，仅选择 `realOzine/videohelper`，验证状态为 `AVAILABLE`。
+2. 创建 CodeConnections GitHub 连接，在 AWS 控制台完成 GitHub App 授权：安装目标必须是仓库所有者 `realOzine`，仅选择 `videohelper`。只授权 GitHub 身份、或选择另一个组织的已有安装，都不能访问这个私有仓库。验证 `AVAILABLE` 后还需以 CodeBuild webhook / 源码拉取确认实际仓库权限。
 3. 审查代码和历史的凭据风险，推送私有 GitHub `main`。AWS Toolkit 的 25 个技能仅在仓库 `.agents/skills/`；不是用户全局技能。
-4. 校验 `stack.yaml`：cfn-lint、`stack.guard`、CloudFormation change set。检查 AWS 服务返回的验证事件，再执行变更集。必须传入已验证的 AL2023 x86_64 AMI 和连接 ARN。创建 IAM 服务角色需要 `CAPABILITY_IAM`；这里不创建人的 IAM 用户或长期密钥。
+4. 校验 `stack.yaml`：cfn-lint、`stack.guard`、CloudFormation change set。检查 AWS 服务返回的验证事件，再执行变更集。首次创建可用 `execute-change-set --disable-rollback` 保留失败现场供修复；失败后立即停止已经创建的 EC2，保留现场不等于停止计费。必须传入已验证的 AL2023 x86_64 AMI 和连接 ARN。创建 IAM 服务角色需要 `CAPABILITY_IAM`；这里不创建人的 IAM 用户或长期密钥。
 5. EC2 首次启动先安装两小时自动停机 timer，再准备 Docker / SSM。确认 `/opt/videohelper/bootstrap-ready` 和 timer 正常；首次镜像构建期间先停止空闲 EC2。
-6. 首次手动触发 `videohelper-demo-build`。后续 `main` 的代码 push 自动触发；仅文档 / 技能变化跳过。构建运行检查，依次推送 Go、Web、WeMM CPU、ASR/CLAP CPU 镜像，最后发布 S3 `latest.json`。
+6. 先检查 CodeBuild Linux/Small 并发额度 `L-9D07B6EF` 至少为 1；新项目可能为 0，需要申请。额度获批后首次手动触发 `videohelper-demo-build`。后续 `main` 的代码 push 自动触发；根目录文档、`docs/` 和技能变化跳过。构建运行检查，依次推送 Go、Web、WeMM CPU、ASR/CLAP CPU 镜像，最后发布 S3 `latest.json`。配额待审批时可由已登录 AWS CLI 的操作人员在本地构建并推送相同 SHA 镜像，再执行 `demo.py publish --sha SHA`；这不等同于自动发布链路已通过验收。
 7. 等待首次构建 `buildStatus=SUCCEEDED`（期望版本已发布），再显式启动并部署，准备固定修订权重；用真实短视频检查上传、索引、搜索、播放，再检查停机 / 开机数据保留。
 
 ```bash
