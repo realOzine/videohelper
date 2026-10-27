@@ -9,7 +9,6 @@ import (
 var (
 	identifier  = regexp.MustCompile(`^[a-z0-9@._-]+$`)
 	fingerprint = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
-	s3URI       = regexp.MustCompile(`^s3://[a-z0-9][a-z0-9.-]*/[^?#\r\n]+$`)
 	localURI    = regexp.MustCompile(`^local://media/[A-Za-z0-9_-][A-Za-z0-9._-]*(/[A-Za-z0-9_-][A-Za-z0-9._-]*)*$`)
 )
 
@@ -53,7 +52,7 @@ func validMedia(uri string, start, end int) bool {
 }
 
 func validURI(uri string) bool {
-	return s3URI.MatchString(uri) || localURI.MatchString(uri)
+	return localURI.MatchString(uri)
 }
 
 func validateEmbedRequest(req EmbedRequest, info SpaceInfo) error {

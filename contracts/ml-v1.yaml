@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: VideoHelper ML
   version: 1.0.0
-  description: 内部 ML 契约 v1。仅传 S3 引用和绝对毫秒窗口；模型专属限制由 /v1/spaces 报告。WeMM 编码文字、视频、图片；CLAP 编码声音，查询文字原样传入，不做翻译。
+  description: 内部 ML 契约 v1。仅传受管 local://media/ 引用和绝对毫秒窗口；模型专属限制由 /v1/spaces 报告。WeMM 编码文字、视频、图片；CLAP 编码声音，查询文字原样传入，不做翻译。
 paths:
   /healthz:
     get:
@@ -49,7 +49,7 @@ paths:
                 type: string
               description: 沿用请求 id；健康检查可生成。
         '503':
-          description: busy / not_ready：队列满、缓存占用或模型未就绪。
+          description: busy / not_ready：队列满或模型未就绪。
           content:
             application/json:
               schema:
@@ -129,7 +129,7 @@ paths:
               schema:
                 type: string
         '503':
-          description: busy / not_ready：队列满、缓存占用或模型未就绪。
+          description: busy / not_ready：队列满或模型未就绪。
           content:
             application/json:
               schema:
@@ -247,7 +247,7 @@ paths:
               schema:
                 type: string
         '503':
-          description: busy / not_ready：队列满、缓存占用或模型未就绪。
+          description: busy / not_ready：队列满或模型未就绪。
           content:
             application/json:
               schema:
@@ -293,7 +293,7 @@ paths:
         schema:
           type: string
       description: 每个输入只含 text、video、audio、image 之一，返回顺序与 inputs 一致。时间窗口满足 0≤start_ms<end_ms，end_ms
-        截到媒体结尾；输入数量、类型和时长遵循 /v1/spaces。cosine 向量 L2 归一化，所有值有限。 image 仅包含 S3 uri，不含时间窗口；当前搜索输入仅
+        截到媒体结尾；输入数量、类型和时长遵循 /v1/spaces。cosine 向量 L2 归一化，所有值有限。 image 仅包含受管本地 uri，不含时间窗口；当前搜索输入仅
         text。
   /v1/transcribe:
     post:
@@ -368,7 +368,7 @@ paths:
               schema:
                 type: string
         '503':
-          description: busy / not_ready：队列满、缓存占用或模型未就绪。
+          description: busy / not_ready：队列满或模型未就绪。
           content:
             application/json:
               schema:
@@ -481,7 +481,7 @@ paths:
               schema:
                 type: string
         '503':
-          description: busy / not_ready：队列满、缓存占用或模型未就绪。
+          description: busy / not_ready：队列满或模型未就绪。
           content:
             application/json:
               schema:
@@ -526,7 +526,7 @@ paths:
         required: false
         schema:
           type: string
-      description: 已加载运行时快照；不包含令牌、缓存路径或对象存储配置。runtime_version 独立于 embedding fingerprint；不得用于判断向量兼容性。
+      description: 已加载运行时快照；不包含令牌、本地路径配置。runtime_version 独立于 embedding fingerprint；不得用于判断向量兼容性。
 components:
   schemas:
     RuntimeModel:
@@ -717,7 +717,7 @@ components:
           type: string
           not:
             pattern: '[\r\n]'
-          pattern: ^(?:s3://[a-z0-9][a-z0-9.-]*/[^?#\r\n]+|local://media/[A-Za-z0-9_-][A-Za-z0-9._-]*(?:/[A-Za-z0-9_-][A-Za-z0-9._-]*)*)$
+          pattern: ^local://media/[A-Za-z0-9_-][A-Za-z0-9._-]*(?:/[A-Za-z0-9_-][A-Za-z0-9._-]*)*$
           title: Uri
         start_ms:
           type: integer
@@ -850,7 +850,7 @@ components:
           type: string
           not:
             pattern: '[\r\n]'
-          pattern: ^(?:s3://[a-z0-9][a-z0-9.-]*/[^?#\r\n]+|local://media/[A-Za-z0-9_-][A-Za-z0-9._-]*(?:/[A-Za-z0-9_-][A-Za-z0-9._-]*)*)$
+          pattern: ^local://media/[A-Za-z0-9_-][A-Za-z0-9._-]*(?:/[A-Za-z0-9_-][A-Za-z0-9._-]*)*$
           title: Uri
         start_ms:
           type: integer
@@ -1000,7 +1000,7 @@ components:
           type: string
           not:
             pattern: '[\r\n]'
-          pattern: ^(?:s3://[a-z0-9][a-z0-9.-]*/[^?#\r\n]+|local://media/[A-Za-z0-9_-][A-Za-z0-9._-]*(?:/[A-Za-z0-9_-][A-Za-z0-9._-]*)*)$
+          pattern: ^local://media/[A-Za-z0-9_-][A-Za-z0-9._-]*(?:/[A-Za-z0-9_-][A-Za-z0-9._-]*)*$
           title: Uri
       required:
       - uri

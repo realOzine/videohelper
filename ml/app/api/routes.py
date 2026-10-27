@@ -1,5 +1,3 @@
-from contextlib import ExitStack
-
 import numpy as np
 from fastapi import APIRouter, Depends, Request
 
@@ -14,6 +12,7 @@ from app.api.schemas import (
     TranscribeRequest,
     TranscribeResponse,
 )
+from app.media.local import local_media_path
 from app.media.probe import duration_ms
 from app.runtime import describe_runtime
 
@@ -54,42 +53,41 @@ async def embed(body: EmbedRequest, request: Request):
             raise MLError(400, "invalid_input", "Media window exceeds max_span_ms")
 
     def infer():
-        with ExitStack() as stack:
-            files = {}
-            inputs = []
-            for item in body.inputs:
-                if item.text is not None:
-                    inputs.append(TextInput(item.text))
-                    continue
-                media = item.video or item.audio or item.image
-                if media.uri not in files:
-                    files[media.uri] = stack.enter_context(
-                        request.app.state.cache.acquire(media.uri)
-                    )
-                path = files[media.uri]
-                if item.image is not None:
-                    inputs.append(ImageInput(path))
-                    continue
-                duration = duration_ms(path)
-                end_ms = min(media.end_ms, duration)
-                if media.start_ms >= end_ms:
-                    raise MLError(422, "media_unreadable", "No media in requested window")
-                inputs.append(MediaInput(item.kind, path, media.start_ms, end_ms))
-            vectors = np.asarray(adapter.embed(inputs, body.role))
-            if vectors.shape != (len(inputs), info.dim) or not np.isfinite(vectors).all():
-                raise MLError(500, "internal", "Invalid embedding output")
-            if info.metric == "cosine" and not np.allclose(
-                np.linalg.norm(vectors, axis=1),
-                1,
-                atol=1e-4,
-            ):
-                raise MLError(500, "internal", "Embedding is not L2 normalized")
-            return EmbedResponse(
-                space=info.id,
-                fingerprint=info.fingerprint,
-                dim=info.dim,
-                vectors=vectors.tolist(),
-            )
+        files = {}
+        inputs = []
+        for item in body.inputs:
+            if item.text is not None:
+                inputs.append(TextInput(item.text))
+                continue
+            media = item.video or item.audio or item.image
+            if media.uri not in files:
+                files[media.uri] = local_media_path(
+                    media.uri, request.app.state.settings.local_media_root
+                )
+            path = files[media.uri]
+            if item.image is not None:
+                inputs.append(ImageInput(path))
+                continue
+            duration = duration_ms(path)
+            end_ms = min(media.end_ms, duration)
+            if media.start_ms >= end_ms:
+                raise MLError(422, "media_unreadable", "No media in requested window")
+            inputs.append(MediaInput(item.kind, path, media.start_ms, end_ms))
+        vectors = np.asarray(adapter.embed(inputs, body.role))
+        if vectors.shape != (len(inputs), info.dim) or not np.isfinite(vectors).all():
+            raise MLError(500, "internal", "Invalid embedding output")
+        if info.metric == "cosine" and not np.allclose(
+            np.linalg.norm(vectors, axis=1),
+            1,
+            atol=1e-4,
+        ):
+            raise MLError(500, "internal", "Embedding is not L2 normalized")
+        return EmbedResponse(
+            space=info.id,
+            fingerprint=info.fingerprint,
+            dim=info.dim,
+            vectors=vectors.tolist(),
+        )
 
     return await registry.gates[body.space, body.role].run(infer, request.state.deadline)
 
@@ -107,28 +105,26 @@ async def transcribe(body: TranscribeRequest, request: Request):
         raise MLError(400, "invalid_input", "Window exceeds max_window_ms")
 
     def infer():
-        with request.app.state.cache.acquire(body.uri) as path:
-            duration = duration_ms(path)
-            end_ms = min(body.end_ms, duration)
-            if body.start_ms >= end_ms:
-                raise MLError(422, "media_unreadable", "No media in requested window")
-            transcript = adapter.transcribe(path, body.language, body.start_ms, end_ms)
-            sentence_start = word_start = body.start_ms
-            valid = transcript.duration_ms == duration and transcript.language in info.languages
-            for sentence in transcript.sentences:
-                valid &= sentence_start <= sentence.start_ms < sentence.end_ms <= end_ms
-                sentence_start = sentence.start_ms
-                for word in sentence.words:
-                    valid &= (
-                        max(word_start, sentence.start_ms) <= word.s < word.e <= sentence.end_ms
-                    )
-                    word_start = word.s
-            if not valid:
-                raise MLError(500, "internal", "Invalid transcript output")
-            return TranscribeResponse(
-                model=info.id,
-                fingerprint=info.fingerprint,
-                **transcript.model_dump(),
-            )
+        path = local_media_path(body.uri, request.app.state.settings.local_media_root)
+        duration = duration_ms(path)
+        end_ms = min(body.end_ms, duration)
+        if body.start_ms >= end_ms:
+            raise MLError(422, "media_unreadable", "No media in requested window")
+        transcript = adapter.transcribe(path, body.language, body.start_ms, end_ms)
+        sentence_start = word_start = body.start_ms
+        valid = transcript.duration_ms == duration and transcript.language in info.languages
+        for sentence in transcript.sentences:
+            valid &= sentence_start <= sentence.start_ms < sentence.end_ms <= end_ms
+            sentence_start = sentence.start_ms
+            for word in sentence.words:
+                valid &= max(word_start, sentence.start_ms) <= word.s < word.e <= sentence.end_ms
+                word_start = word.s
+        if not valid:
+            raise MLError(500, "internal", "Invalid transcript output")
+        return TranscribeResponse(
+            model=info.id,
+            fingerprint=info.fingerprint,
+            **transcript.model_dump(),
+        )
 
     return await registry.gates[body.model, "transcribe"].run(infer, request.state.deadline)

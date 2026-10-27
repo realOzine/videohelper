@@ -32,7 +32,7 @@ func TestAudioWireAndWindowBoundaries(t *testing.T) {
 	}))
 	defer server.Close()
 	client := New(config.MLConfig{Token: "test", EmbedTimeout: time.Second, QueryTimeout: time.Second}, func(string) (string, bool) { return server.URL, true })
-	reference := &MediaRef{URI: "s3://test-bucket/normalized_video.mp4", StartMs: 1200, EndMs: 3700}
+	reference := &MediaRef{URI: "local://media/normalized_video.mp4", StartMs: 1200, EndMs: 3700}
 	if _, err := client.Embed(context.Background(), EmbedRequest{Space: id, Role: "document", Inputs: []EmbedInput{{Audio: reference}}}); err != nil {
 		t.Fatal(err)
 	}

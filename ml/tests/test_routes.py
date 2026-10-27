@@ -4,7 +4,7 @@ import pytest
 from app.api.schemas import Transcript
 
 QUERY = {"space": "wemm-2b@r1", "role": "query", "inputs": [{"text": "hello"}]}
-URI = "s3://test/normalized_video.mp4"
+URI = "local://media/normalized_video.mp4"
 
 
 def test_auth_request_id_health_and_ready(client):
@@ -224,17 +224,19 @@ def test_transcribe_rejects_invalid_overlap_output(
 
 
 def test_media_failure_does_not_expose_source_error(client):
-    def fail(*args):
-        raise OSError("secret credentials")
-
-    client.app.state.cache.download = fail
     response = client.post(
         "/v1/embed",
         json={
             **QUERY,
             "role": "document",
             "inputs": [
-                {"video": {"uri": URI, "start_ms": 0, "end_ms": 100}},
+                {
+                    "video": {
+                        "uri": "local://media/secret-credentials.mp4",
+                        "start_ms": 0,
+                        "end_ms": 100,
+                    }
+                },
             ],
         },
     )
@@ -276,10 +278,9 @@ def test_http_busy_and_deadline_preserve_running_capacity(client, monkeypatch):
 def test_image_document_embeds_but_image_query_and_timestamp_are_rejected(client, tmp_path):
     from PIL import Image
 
-    path = tmp_path / "test.png"
+    path = tmp_path / "image.png"
     Image.new("RGB", (32, 24), "red").save(path)
-    client.app.state.cache.download = lambda uri, write, limit: write(path.read_bytes())
-    image = {"image": {"uri": "s3://test/image.png"}}
+    image = {"image": {"uri": "local://media/image.png"}}
     response = client.post("/v1/embed", json={**QUERY, "role": "document", "inputs": [image]})
     assert response.status_code == 200, response.text
     assert len(response.json()["vectors"][0]) == 1024

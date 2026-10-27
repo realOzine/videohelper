@@ -18,3 +18,11 @@ func TestLocalMediaReferences(t *testing.T) {
 		}
 	}
 }
+
+func TestExternalMediaProtocolsRejected(t *testing.T) {
+	for _, uri := range []string{"s3://bucket/key", "https://example.org/video", "file:///etc/passwd"} {
+		if validURI(uri) {
+			t.Fatalf("accepted external protocol %q", uri)
+		}
+	}
+}

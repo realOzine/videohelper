@@ -10,24 +10,17 @@ from fastapi.exceptions import RequestValidationError
 from app.api.errors import MLError, error_response, handle_error
 from app.api.routes import router
 from app.core.registry import Registry
-from app.media.cache import MediaCache, S3Downloader
 from app.settings import Settings
 
 logger = logging.getLogger(__name__)
 
 
-def create_app(settings: Settings | None = None, *, downloader=None) -> FastAPI:
+def create_app(settings: Settings | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         config = settings or Settings.from_env()
         app.state.settings = config
         app.state.ready = False
-        app.state.cache = MediaCache(
-            config.cache_dir,
-            config.cache_max_bytes,
-            downloader or S3Downloader(config.s3_endpoint),
-            local_root=config.local_media_root,
-        )
         app.state.registry = await asyncio.to_thread(
             Registry,
             config.models_file,

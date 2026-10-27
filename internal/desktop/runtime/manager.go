@@ -427,7 +427,7 @@ func (m *Manager) Start(ctx context.Context) (services Services, err error) {
 		endpoint := fmt.Sprintf("http://127.0.0.1:%d", port)
 		cmd := exec.CommandContext(runCtx, m.profilePython(pair[0]), "-m", "app.cli", "serve", "--models", m.manifest(pair[1]), "--host", "127.0.0.1", "--port", fmt.Sprint(port))
 		cmd.Dir = m.root
-		cmd.Env = m.environment([]string{"ML_INTERNAL_TOKEN=" + m.services.Token, "ML_CACHE_DIR=" + filepath.Join(m.dir, "runtime", "media-cache", pair[0]), "HF_HUB_OFFLINE=1"})
+		cmd.Env = m.environment([]string{"ML_INTERNAL_TOKEN=" + m.services.Token, "HF_HUB_OFFLINE=1"})
 		var logs tailBuffer
 		cmd.Stdout = &logs
 		cmd.Stderr = &logs

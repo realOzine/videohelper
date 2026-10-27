@@ -136,7 +136,7 @@ def test_fake_audio_http_contract(client):
         "inputs": [
             {
                 "audio": {
-                    "uri": "s3://test/audio.mp4",
+                    "uri": "local://media/audio.mp4",
                     "start_ms": 100,
                     "end_ms": 1900,
                 }

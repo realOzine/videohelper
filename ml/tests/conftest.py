@@ -43,12 +43,10 @@ def media_file(tmp_path):
 
 @pytest.fixture
 def client(tmp_path, media_file):
-    settings = Settings(token="test-secret", fake=True, cache_dir=tmp_path / "cache")
-
-    def download(uri, write, max_bytes):
-        write(media_file.read_bytes())
-
-    app = create_app(settings, downloader=download)
+    for name in ("normalized_video.mp4", "audio.mp4"):
+        (tmp_path / name).write_bytes(media_file.read_bytes())
+    settings = Settings(token="test-secret", fake=True, local_media_root=tmp_path)
+    app = create_app(settings)
     with TestClient(app, headers=HEADERS) as client:
         yield client
 

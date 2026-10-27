@@ -10,9 +10,8 @@ Identifier = Annotated[str, Field(min_length=1, pattern=r"^[a-z0-9@._-]+$")]
 MediaURI = Annotated[
     str,
     Field(
-        pattern=r"^(?:s3://[a-z0-9][a-z0-9.-]*/[^?#\r\n]+|"
-        r"local://media/[A-Za-z0-9_-][A-Za-z0-9._-]*"
-        r"(?:/[A-Za-z0-9_-][A-Za-z0-9._-]*)*)$"
+        pattern=r"^local://media/[A-Za-z0-9_-][A-Za-z0-9._-]*"
+        r"(?:/[A-Za-z0-9_-][A-Za-z0-9._-]*)*$"
     ),
 ]
 Fingerprint = Annotated[str, Field(pattern=r"^sha256:[0-9a-f]{64}$")]
