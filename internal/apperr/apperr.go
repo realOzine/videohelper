@@ -6,12 +6,7 @@ type Kind int
 
 const (
 	Invalid Kind = iota + 1
-	Unauthenticated
-	Forbidden
 	NotFound
-	Conflict
-	TooLarge
-	Quota
 	Unavailable
 	Internal
 )
@@ -53,21 +48,11 @@ func message(k Kind) string {
 	switch k {
 	case Invalid:
 		return "参数不合法"
-	case Unauthenticated:
-		return "请先登录"
-	case Forbidden:
-		return "没有访问权限"
 	case NotFound:
 		return "资源不存在"
-	case Conflict:
-		return "当前状态不允许此操作"
-	case TooLarge:
-		return "内容超过大小限制"
-	case Quota:
-		return "已超出套餐额度"
 	case Unavailable:
 		return "服务暂时不可用"
 	default:
-		return "服务器内部错误"
+		return "处理失败"
 	}
 }

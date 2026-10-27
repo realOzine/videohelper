@@ -6,7 +6,7 @@ Add --verify only for final selected/default verification; it never changes sele
 Plan keys: baseline_run_id, development_query_ids, verification_query_ids,
 cases: [{run_id, overrides: {k, rrf-k, merge-gap}, fused_weights: {visual,speech,audio}}].
 Omitted case overrides/weights inherit the baseline settings. Run retrieval separately
-with run.retrieve_run; this tool reads saved evidence and never executes model calls.
+on the historical server revision; this tool reads saved evidence and never executes model calls.
 Python API: summarize(plan, reports, verify=False) returns (summary, selected_config).
 summary.cases keeps plan order: eligible, objective, tie_break, development[mode]
 aggregates; summary.selection_basis.ranking orders eligible run IDs best first.
