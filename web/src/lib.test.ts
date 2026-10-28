@@ -127,6 +127,6 @@ test('effective channels inherit server defaults and invalid historical choices 
   assert.deepEqual(usableModelPrefs(sound, chs), sound);
   assert.equal(hasActiveChannel(chs.map((c) => ({ ...c, default_weight: c.channel === 'audio' ? 1 : 0 })), defaults), true, 'defaults come from the catalog, not hardcoded visual/speech weights');
   assert.deepEqual(usableModelPrefs({ spaces: { visual: 'old-model-fingerprint' }, weights: {} }, chs), defaults);
-  const currentDefault = { spaces: { speech: 's1' }, weights: {} };
-  assert.equal(usableModelPrefs(currentDefault, chs), currentDefault, 'the server default remains allowed while indexing');
+  const currentDefault = { spaces: { speech: 's1' }, weights: { audio: 1 } };
+  assert.deepEqual(searchFields(usableModelPrefs(currentDefault, chs)), { channel_weights: { audio: 1 } }, 'a model that became the default must not be sent as a strict complete-index override');
 });

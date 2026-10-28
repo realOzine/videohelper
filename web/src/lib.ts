@@ -127,6 +127,10 @@ export function usableModelPrefs(p: ModelPrefs, chs: ModelCatalog[]): ModelPrefs
   const known = (c: string) => chs.some((ch) => ch.channel === c);
   const spacesValid = Object.entries(p.spaces).every(([c, id]) => chs.some((ch) => ch.channel === c && ch.models.some((m) => m.space_id === id && (m.status === 'ready' || ch.default_space_ids[0] === id))));
   if (!hasActiveChannel(chs, p) || !Object.keys(p.weights).every(known) || !spacesValid) return { spaces: {}, weights: {} };
+  // A formerly custom model can become the default. Omit it just as the dialog does,
+  // so the server does not treat the default as a strict complete-index override.
+  const spaces = Object.fromEntries(Object.entries(p.spaces).filter(([c, id]) => chs.find((ch) => ch.channel === c)?.default_space_ids[0] !== id));
+  if (Object.keys(spaces).length !== Object.keys(p.spaces).length) return { spaces, weights: p.weights };
   return p;
 }
 

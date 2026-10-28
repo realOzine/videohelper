@@ -58,7 +58,10 @@ export default function Search() {
         const { channels } = await post<{ channels: ChannelModels[] }>('/v1/search/models', project ? { project_id: project } : {});
         const safe = usableModelPrefs(prefs, channels);
         if (safe !== prefs) {
-          try { localStorage.removeItem(PREFS); } catch { /* still use defaults when storage is blocked */ }
+          try {
+            if (isCustom(safe)) localStorage.setItem(PREFS, JSON.stringify(safe));
+            else localStorage.removeItem(PREFS);
+          } catch { /* still use the repaired choice when storage is blocked */ }
           prefs = safe;
         }
       }
