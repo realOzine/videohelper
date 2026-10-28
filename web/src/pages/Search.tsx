@@ -394,8 +394,9 @@ function Models({ prefs }: { prefs: ModelPrefs }) {
       <button type="button" className={btn} aria-haspopup="dialog" onClick={show}>
         {t('mdl.btn')}{custom && <span className="text-red-text">· {t('mdl.custom')}</span>}
       </button>
-      <dialog ref={box} aria-labelledby="mdlh" className="m-auto w-[min(640px,calc(100%-32px))] rounded-[14px] bg-ink-2 text-fg shadow-edge backdrop:bg-black/60">
-        <form className="p-6 max-xs:p-4" onSubmit={(e) => { e.preventDefault(); if (valid && draft) save(draft); }}>
+      <dialog ref={box} aria-labelledby="mdlh" className="m-auto max-h-[calc(100dvh-32px)] w-[min(640px,calc(100%-32px))] overflow-hidden rounded-[14px] bg-ink-2 text-fg shadow-edge backdrop:bg-black/60">
+        <form className="flex max-h-[calc(100dvh-32px)] flex-col" onSubmit={(e) => { e.preventDefault(); if (valid && draft) save(draft); }}>
+          <div className="min-h-0 overflow-y-auto p-6 max-xs:p-4">
           <h2 id="mdlh" tabIndex={-1} autoFocus className="text-lg font-semibold outline-none">{t('mdl.title')}</h2>
           <p className="mt-1 text-[13px] text-fg-soft">{t('mdl.sub')}</p>
           {err ? <p className="mt-5 text-neg-ink">{err}</p> : !chs ? <p className="mt-5 text-fg-soft">{t('mdl.loading')}</p> : (
@@ -429,7 +430,8 @@ function Models({ prefs }: { prefs: ModelPrefs }) {
               ))}
             </div>
           )}
-          <div className="mt-6 flex flex-wrap items-center gap-2">
+          </div>
+          <div className="flex flex-none flex-wrap items-center gap-2 border-t border-ink-3 px-6 py-4 max-xs:px-4">
             {chs && !valid && <p id="mdl-validation" role="status" className="w-full text-[13px] text-neg-ink">{t('mdl.require')}</p>}
             {custom && <button type="button" className={btn} onClick={() => save(null)}>{t('mdl.reset')}</button>}
             <span className="flex-1" />
