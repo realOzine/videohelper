@@ -1,5 +1,7 @@
 # AWS 单用户 Demo 操作手册
 
+本文对应 `cloud` 分支的旧服务器版本；当前桌面应用位于 `main`。仓库配置已改为面向 `cloud`，既有 CodeBuild、webhook 和 IAM 分支关联须另行同步；修改这些文件不代表云端配置已经更新。
+
 这是最低服务数量的测试部署：一台可停止的 CPU EC2 运行所有容器，私有 S3 保存媒体与备份。不是高可用或公开多用户环境。构建成功或 `/healthz` 成功不能代替真实模型验收。2026-10-27 已在 Ohio `r6a.large` 上部署版本 `67b22a2edd81e2f7c0dd24f9b8744d9711e4d4e9`，使用一段六秒中文语音测试视频通过鉴权、分片上传、七个处理阶段、三通道搜索、S3 CORS 和 Range 播放。轮询约 120 秒观察到索引完成，一次查询耗时 2.18 秒；模型均报告 `fake=false`、CPU / float32。该样本不能外推长视频速度、并发容量或检索质量。
 
 GitHub App 连接及 CodeBuild webhook 已激活，GitHub Actions 检查通过；AWS CodeBuild Linux/Small 并发配额仍为 0（申请 1 已提交），首次发布由本地 Docker + AWS CLI 完成。配额获批后须按下文触发一次构建并确认 `SUCCEEDED`，才能认定自动发布链路验收完成。
@@ -10,7 +12,7 @@ GitHub App 连接及 CodeBuild webhook 已激活，GitHub Actions 检查通过�
 
 | 操作 / 资源 | 为什么需要 | 计费与停止后的状态 |
 |---|---|---|
-| 创建 CodeConnections | 让 AWS GitHub App 只读取授权的私有仓库 | 无常驻计算；保留连接方便后续发布 |
+| 创建 CodeConnections | 让 AWS GitHub App 只读取授权的 GitHub 仓库 | 无常驻计算；保留连接方便后续发布 |
 | 创建 CloudFormation 栈 | 版本化管理网络、存储、角色、主机和构建配置 | 普通 AWS 资源类型的栈管理不另收资源运行费；实际资源各自计费 |
 | VPC、子网、路由、IGW、安全组 | 主机可主动联网；不开放入站端口 | 无 NAT Gateway / ALB 固定费用；动态公网 IPv4 只在实例运行时使用 |
 | EC2 `r6a.large`，2 vCPU / 16 GiB | 先验证 WeMM CPU + ASR/CLAP，避免 GPU 配额和费用 | Ohio 查询报价 $0.1134/小时，停止后无实例计算费；无交换空间时首次并行加载曾触发 OOM |
@@ -29,11 +31,11 @@ GitHub App 连接及 CodeBuild webhook 已激活，GitHub Actions 检查通过�
 ## 第一次创建
 
 1. 在 AWS CLI 登录 `videohelper-demo` profile，并用 `aws sts get-caller-identity` 确认项目。目标 `r6a.large` 不允许在 FREE 计划启动，须先由项目所有者确认升级 Paid；升级涉及其所有项目且不可撤销。CLI 凭据保存在用户的 AWS 凭据管理中，不提交 Git。
-2. 创建 CodeConnections GitHub 连接，在 AWS 控制台完成 GitHub App 授权：安装目标必须是仓库所有者 `realOzine`，仅选择 `videohelper`。只授权 GitHub 身份、或选择另一个组织的已有安装，都不能访问这个私有仓库。验证 `AVAILABLE` 后还需以 CodeBuild webhook / 源码拉取确认实际仓库权限。
-3. 审查代码和历史的凭据风险，推送私有 GitHub `main`。AWS Toolkit 的 25 个技能仅在仓库 `.agents/skills/`；不是用户全局技能。
+2. 创建 CodeConnections GitHub 连接，在 AWS 控制台完成 GitHub App 授权：安装目标必须是仓库所有者 `realOzine`，仅选择 `videohelper`。只授权 GitHub 身份、或选择另一个组织的已有安装，不能替代目标仓库的 GitHub App 授权。验证 `AVAILABLE` 后还需以 CodeBuild webhook / 源码拉取确认实际仓库权限。
+3. 审查代码和历史的凭据风险，推送 GitHub 仓库的 `cloud` 分支。AWS Toolkit 的 25 个技能仅在仓库 `.agents/skills/`；不是用户全局技能。
 4. 校验 `stack.yaml`：cfn-lint、`stack.guard`、CloudFormation change set。检查 AWS 服务返回的验证事件，再执行变更集。首次创建可用 `execute-change-set --disable-rollback` 保留失败现场供修复；失败后立即停止已经创建的 EC2，保留现场不等于停止计费。必须传入已验证的 AL2023 x86_64 AMI 和连接 ARN。创建 IAM 服务角色需要 `CAPABILITY_IAM`；这里不创建人的 IAM 用户或长期密钥。
 5. EC2 首次启动先安装两小时自动停机 timer，再准备 Docker / SSM。确认 `/opt/videohelper/bootstrap-ready` 和 timer 正常；首次镜像构建期间先停止空闲 EC2。
-6. 先检查 CodeBuild Linux/Small 并发额度 `L-9D07B6EF` 至少为 1；新项目可能为 0，需要申请。额度获批后首次手动触发 `videohelper-demo-build`。后续 `main` 的代码 push 自动触发；根目录文档、`docs/` 和技能变化跳过。构建运行检查，依次推送 Go、Web、WeMM CPU、ASR/CLAP CPU 镜像，最后发布 S3 `latest.json`。配额待审批时可由已登录 AWS CLI 的操作人员在本地构建并推送相同 SHA 镜像，再执行 `demo.py publish --sha SHA`；这不等同于自动发布链路已通过验收。
+6. 先检查 CodeBuild Linux/Small 并发额度 `L-9D07B6EF` 至少为 1；新项目可能为 0，需要申请。额度获批后首次手动触发 `videohelper-demo-build`。云端分支关联同步后，后续 `cloud` 的代码 push 自动触发；根目录文档、`docs/` 和技能变化跳过。构建运行检查，依次推送 Go、Web、WeMM CPU、ASR/CLAP CPU 镜像，最后发布 S3 `latest.json`。配额待审批时可由已登录 AWS CLI 的操作人员在本地构建并推送相同 SHA 镜像，再执行 `demo.py publish --sha SHA`；这不等同于自动发布链路已通过验收。
 7. 等待首次构建 `buildStatus=SUCCEEDED`（期望版本已发布），再显式启动并部署，准备固定修订权重；用真实短视频检查上传、索引、搜索、播放，再检查停机 / 开机数据保留。
 
 ```bash
@@ -42,7 +44,7 @@ export AWS_REGION=us-east-2
 aws login --profile videohelper-demo
 aws sts get-caller-identity
 
-# 只在尚未构建期望版本时触发；普通 main push 已会自动触发。
+# 只在尚未构建期望版本时触发；云端分支关联同步后，普通 cloud push 会自动触发。
 aws codebuild start-build --project-name videohelper-demo-build
 ```
 

@@ -1,5 +1,7 @@
 # VideoHelper
 
+`cloud` 分支保留旧服务器与 AWS Demo 版本；当前桌面应用位于 [`main`](https://github.com/realOzine/videohelper/tree/main)。以下说明对应 `cloud`。
+
 本地视频处理与文字搜索：保留原片音轨，通过 WeMM 编码画面，通过 FunASR 转录后编码文字，通过 CLAP 编码声音，保留 `visual`、`speech`、`audio` 三路索引。当前默认检索采用 K=5、RRF=60、gap=1，查询权重为 `visual:speech:audio=1:1:0`；变更依据、局限和回滚方法见 [Evaluation.md](docs/Evaluation.md)。图片文档编码已提供 ML 接口；搜索输入为文字。设计与契约见 [docs/design.md](docs/design.md) 和 [docs/spec.md](docs/spec.md)。
 
 需要 Go、Python 3.12、uv、FFmpeg/ffprobe 和 Docker Compose。当前真实模型清单使用 Apple Silicon MPS 运行 WeMM，CPU 运行 ASR、CLAP。以下命令在仓库根目录执行；每个终端先载入 `.env`。
@@ -129,4 +131,4 @@ CPU 默认监听宿主机 8001；CUDA 用 `--profile cuda` 和服务名 `wemm-cu
 
 ## AWS 单用户 Demo
 
-部署、资源计费和启停操作见 [部署手册](deploy/aws/README.md)，架构见 [设计文档](docs/design.md#102-aws-单用户-demo)。CPU Demo 已通过短样本和启停验证；私有 GitHub `main` 已配置 CodeConnections / CodeBuild 发布，但自动发布运行验收仍等待 AWS 并发配额。停止状态不自动开机。AWS Toolkit 技能仅安装于本仓库 `.agents/skills/`，未安装到用户全局技能目录。
+部署、资源计费和启停操作见 [部署手册](deploy/aws/README.md)，架构见 [设计文档](docs/design.md#102-aws-单用户-demo)。CPU Demo 已通过短样本和启停验证；GitHub 仓库已配置 CodeConnections / CodeBuild 发布，本分支配置目标为 `cloud`，既有云端分支关联须另行同步，自动发布运行验收仍等待 AWS 并发配额。停止状态不自动开机。AWS Toolkit 技能仅安装于本仓库 `.agents/skills/`，未安装到用户全局技能目录。

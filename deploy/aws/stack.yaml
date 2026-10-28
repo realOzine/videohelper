@@ -311,7 +311,7 @@ Resources:
                     codeconnections:FullRepositoryId: !Ref GitHubRepository
                     codeconnections:ProviderAction: [GitPull, GetRepository, GetBranch, GetCommit, ListBranches, IsRepositoryEmpty]
                   StringEqualsIfExists:
-                    codeconnections:BranchName: main
+                    codeconnections:BranchName: cloud
   # No VPC attachment: the short-lived builder needs public package registries without a NAT gateway.
   BuildProject:
     Type: AWS::CodeBuild::Project
@@ -338,7 +338,7 @@ Resources:
         GitCloneDepth: 1
         BuildSpec: deploy/aws/buildspec.yaml
         Auth: {Type: CODECONNECTIONS, Resource: !Ref ConnectionArn}
-      SourceVersion: refs/heads/main
+      SourceVersion: refs/heads/cloud
       Cache: {Type: LOCAL, Modes: [LOCAL_DOCKER_LAYER_CACHE]}
       LogsConfig:
         CloudWatchLogs: {Status: ENABLED, GroupName: !Ref BuildLogs}
@@ -346,7 +346,7 @@ Resources:
         Webhook: true
         FilterGroups:
           - - {Type: EVENT, Pattern: PUSH}
-            - {Type: HEAD_REF, Pattern: '^refs/heads/main$'}
+            - {Type: HEAD_REF, Pattern: '^refs/heads/cloud$'}
             - {Type: FILE_PATH, Pattern: '^(.agents/|docs/|[^/]+\.md$)', ExcludeMatchedPattern: true}
       Tags: [{Key: Project, Value: videohelper}, {Key: Environment, Value: demo}]
   MonthlyBudget:
