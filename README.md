@@ -131,4 +131,4 @@ CPU 默认监听宿主机 8001；CUDA 用 `--profile cuda` 和服务名 `wemm-cu
 
 ## AWS 单用户 Demo
 
-部署、资源计费和启停操作见 [部署手册](deploy/aws/README.md)，架构见 [设计文档](docs/design.md#102-aws-单用户-demo)。CPU Demo 已通过短样本和启停验证；GitHub 仓库已配置 CodeConnections / CodeBuild 发布，本分支配置目标为 `cloud`，既有云端分支关联须另行同步，自动发布运行验收仍等待 AWS 并发配额。停止状态不自动开机。AWS Toolkit 技能仅安装于本仓库 `.agents/skills/`，未安装到用户全局技能目录。
+部署、资源计费和启停操作见 [部署手册](deploy/aws/README.md)，架构见 [设计文档](docs/design.md#102-aws-单用户-demo)。CPU Demo 曾通过短样本和启停验证。2026-10-29 已移除本仓库的 GitHub 自动交付入口，Actions 在仓库级关闭，push 不再触发交付；`cloud` 的部署配置仅保留供手动使用或未来显式恢复。本次未改动 AWS 云资源，也未删除 CodeBuild 项目。停止状态不自动开机。AWS Toolkit 技能仅安装于本仓库 `.agents/skills/`，未安装到用户全局技能目录。
