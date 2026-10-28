@@ -14,7 +14,15 @@ import (
 	"time"
 )
 
-const videoColumns = `id,title,source_kind,source_url,source_filename,source_key,normalized_video_key,duration_ms,has_video,has_audio,thumbs,status,error,deleted_at,created_at,updated_at`
+// Keep the v1 on-disk status constraint. A cancelled latest job distinguishes
+// user cancellation from failure without rebuilding existing SQLite libraries.
+// Only failed videos derive this state, so older cancelled jobs cannot mask a
+// later retry, successful index, or a genuine failure.
+const videoStatus = `CASE WHEN video.status='failed' AND
+ (SELECT j.status FROM job j WHERE j.video_id=video.id ORDER BY j.id DESC LIMIT 1)='cancelled'
+ THEN 'cancelled' ELSE video.status END`
+
+const videoColumns = `id,title,source_kind,source_url,source_filename,source_key,normalized_video_key,duration_ms,has_video,has_audio,thumbs,` + videoStatus + `,error,deleted_at,created_at,updated_at`
 
 type scanner interface{ Scan(...any) error }
 
@@ -80,7 +88,7 @@ func (s *Store) ListVideos(ctx context.Context, f VideoFilter) ([]Video, error) 
 		args = append(args, *f.BeforeID)
 	}
 	if f.Status != "" {
-		query += " AND status=?"
+		query += " AND (" + videoStatus + ")=?"
 		args = append(args, f.Status)
 	}
 	if f.ProjectID != nil {

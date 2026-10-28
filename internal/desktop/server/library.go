@@ -1,6 +1,7 @@
 package server
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -158,6 +159,19 @@ func (s *Server) cancelVideo(r *http.Request) (any, error) {
 	}
 	p, err := s.engine()
 	if err != nil {
+		// Imports are durable while models prepare. They must remain cancellable
+		// before a processor exists; no in-flight model process exists here.
+		j, err := s.Store.LatestJob(r.Context(), n)
+		if errors.Is(err, store.ErrNotFound) || err == nil && j.Status != "queued" && j.Status != "running" {
+			return nil, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+		err = s.Store.CancelJob(r.Context(), j.ID)
+		if errors.Is(err, store.ErrConflict) {
+			err = nil // The job may have completed while cancellation was requested.
+		}
 		return nil, err
 	}
 	return nil, p.Cancel(r.Context(), n)
