@@ -1,11 +1,11 @@
 // One video: its header and actions, the pipeline in the order it runs (polled while busy), the player and a search inside it.
 import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
-import { call, get, post, type Moment, type Video as V } from '../api.ts';
+import { ApiError, call, get, post, type Moment, type Video as V } from '../api.ts';
 import { addStrings, t, useLang } from '../i18n.ts';
 import { CHANNELS, channelState, pipeline, stageKind, tc, timeRange, type Stage } from '../lib.ts';
-import { Empty, newProject, panel, panelBase, PanelHead, Shell, useNotice, useLibrary } from '../Shell.tsx';
-import { btn, btnDanger, btnPrimary, Ch, cx, field, Icon, Pill, select, TcBadge, Thumb } from '../ui.tsx';
-import { busy, stageLabel, tracks, videoProgress, when } from './format.ts';
+import { Empty, newProject, panel, panelBase, PanelHead, Shell, useLibrary } from '../Shell.tsx';
+import { btn, btnDanger, btnPrimary, Ch, cx, ErrorDetails, field, Icon, Pill, select, TcBadge, Thumb } from '../ui.tsx';
+import { busy, stageLabel, tracks, videoError, videoProgress, when } from './format.ts';
 
 addStrings({ 'v.reindex': '重新索引' }, { 'v.reindex': 'Rebuild index' });
 
@@ -31,14 +31,15 @@ function Cell({ s }: { s: Stage }) {
       {s.progress != null && s.status === 'running' && (
         <span className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-red-track"><i className="block h-full origin-left rounded-full bg-red transition-transform duration-[600ms] ease-out" style={{ transform: `scaleX(${s.progress})` }} /></span>
       )}
-      {s.error && <span className="text-[13px] text-neg-ink">{s.error}</span>}
+      {s.error && s.status !== 'cancelled' && <div className="text-[13px] text-neg-ink"><ErrorDetails {...videoError(s.error, s.stage)} /></div>}
     </div>
   );
 }
 
 export default function Video() {
   useLang();
-  const { notice, fail } = useNotice();
+  const [issue, setIssue] = useState<unknown>(null);
+  const fail = useCallback((err: unknown) => setIssue(err), []);
   const { ws, reload } = useLibrary(fail);
   const [data, setData] = useState<{ video: V; stages: Stage[] } | null>(null);
   const [url, setUrl] = useState('');
@@ -68,7 +69,7 @@ export default function Video() {
 
   const retry = async (b: HTMLButtonElement) => {
     b.disabled = true;
-    try { await post(`/v1/videos/${id}/retry`); await load(); reload().catch(fail); } catch (err) { fail(err); } finally { b.disabled = false; }
+    try { await post(`/v1/videos/${id}/retry`); setIssue(null); await load(); reload().catch(fail); } catch (err) { fail(err); } finally { b.disabled = false; }
   };
   const remove = async () => {
     if (!v || !confirm(t('v.confirmdelete', { t: v.title }))) return;
@@ -83,7 +84,7 @@ export default function Video() {
     e.preventDefault();
     const q = String(new FormData(e.currentTarget).get('vq') || '').trim();
     if (!q) return;
-    try { setFound((await post<{ moments: Moment[] }>('/v1/search', { query: q, video_ids: [id], limit: 20 })).moments); } catch (err) { fail(err); }
+    try { setFound((await post<{ moments: Moment[] }>('/v1/search', { query: q, video_ids: [id], limit: 20 })).moments); setIssue(null); } catch (err) { fail(err); }
   };
   const jump = (ms: number) => { const el = vid.current; if (!el) return; el.currentTime = ms / 1000; el.play().catch(fail); };
 
@@ -95,8 +96,9 @@ export default function Video() {
   const CH = Object.fromEntries(CHANNELS.map((c) => [c, t(`ch.${c}`)]));
 
   return (
-    <Shell page="video" ws={ws} notice={notice} onNewProject={() => newProject(reload, fail)}>
+    <Shell page="video" ws={ws} notice="" onNewProject={() => newProject(reload, fail)}>
       <p className="mb-3"><a className="inline-flex items-center gap-0.5 font-medium text-fg-soft underline-offset-[3px] hover:underline" href="library.html">{t('nav.library')}<Icon.chevron className="size-3" /></a></p>
+      {issue != null && <div role="alert" className="mb-6 rounded-xl border border-red-line bg-red-soft p-4 text-neg-ink"><ErrorDetails {...videoError(issue)} /></div>}
       {v && (
         <div>
           <section aria-label={t('a.video')} className={cx(panelBase, 'mb-6 flex items-center gap-4 p-3.5 max-xl:flex-wrap')}>
@@ -131,6 +133,7 @@ export default function Video() {
               </div>
               <span className="text-xs text-faint">{added || `${done ? `${t('v.progress.steps', { n: done })} · ` : ''}${t('v.updated', { t: when(latest) })}`}</span>
             </header>
+            {v.status === 'failed' && <div role="alert" className="mt-3 text-sm text-neg-ink"><ErrorDetails {...videoError(failed?.error || v.error, failed?.stage)} /></div>}
             {!!stages.length && <details key={v.status === 'ready' ? 'complete' : 'active'} open={v.status !== 'ready'} className="mt-4">
             <summary className="mb-3 w-fit cursor-pointer text-sm font-medium">{t('h.progress')}</summary>
             <div className="grid grid-cols-[1fr_1fr_3fr_1fr] items-start gap-3 max-xl:grid-cols-2 max-xs:grid-cols-1">
@@ -148,7 +151,7 @@ export default function Video() {
             <section aria-label={t('a.player')} className="min-w-0 overflow-hidden rounded-2xl border border-ink-3 bg-ink-2 @min-[960px]:col-span-8">
               <div className="relative aspect-video bg-black">
                 {url ? <video ref={vid} src={url} controls playsInline preload="metadata" className="block size-full"
-                  onError={(e) => fail(new Error(t('err.playback', { code: e.currentTarget.error?.code ?? 0 })))}
+                  onError={(e) => fail(new ApiError(0, 'playback', `MediaError ${e.currentTarget.error?.code ?? 0}: ${e.currentTarget.error?.message || ''}`))}
                   onLoadedMetadata={(e) => { if (startAt) e.currentTarget.currentTime = startAt / 1000; }} />
                   : <p className="absolute inset-0 grid place-items-center p-4 text-center text-fg-soft">{t('v.noplay')}</p>}
               </div>

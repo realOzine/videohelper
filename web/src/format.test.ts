@@ -8,7 +8,8 @@ Object.assign(globalThis, {
 });
 const { setLang } = await import('./i18n.ts');
 await import('./strings.ts');
-const { videoProgress } = await import('./pages/format.ts');
+const { videoError, videoProgress } = await import('./pages/format.ts');
+const { ApiError } = await import('./api.ts');
 const stage = (name: string, status = 'done'): Stage => ({ stage: name, status, attempt: 1, updated_at: '2026-10-28T00:00:00Z' });
 
 test('ready summary names only completed embedding channels and respects missing audio', () => {
@@ -34,4 +35,26 @@ test('queued, copying, running, cancelled and failed have distinct truthful summ
   for (const status of ['indexing', 'importing', 'cancelled', 'failed']) assert.doesNotMatch(summary(status), /0\s*\/\s*0/);
   setLang('zh');
   assert.match(summary('cancelled'), /已取消/);
+});
+
+test('errors use localized stable codes or stage context and retain raw diagnostic details', () => {
+  const raw = 'ffprobe /private/media/中文 文件.mp4: Invalid data found\nmoov atom not found';
+  setLang('en');
+  const damaged = videoError(raw, 'probe');
+  assert.match(damaged.summary, /could not be read/);
+  assert.doesNotMatch(damaged.summary, /ffprobe|moov|private|中文/);
+  assert.equal(damaged.detail, raw);
+  const cancelled = new ApiError(499, 'cancelled', '任务已取消');
+  assert.equal(videoError(cancelled).summary, 'The operation was canceled. Retry when needed.');
+  assert.equal(videoError(cancelled).detail, '任务已取消');
+  assert.match(videoError(new ApiError(503, 'not_ready', 'backend endpoint died'), 'probe').summary, /Local models/);
+  assert.match(videoError(new ApiError(0, 'network', '')).summary, /local service/);
+  assert.equal(videoError(new ApiError(0, 'network', '')).detail, undefined);
+  assert.match(videoError('opaque tool failure', 'embed:speech:local-id').summary, /encoding did not finish/);
+  assert.match(videoError('opaque tool failure', 'new_stage').summary, /technical details/);
+  assert.equal(videoError(new Error(raw)).detail, raw);
+  setLang('zh');
+  assert.match(videoError(raw, 'probe').summary, /无法读取视频/);
+  assert.match(videoError(cancelled).summary, /操作已取消/);
+  assert.equal(videoError(raw, 'probe').detail, raw);
 });
