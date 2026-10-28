@@ -89,8 +89,6 @@ export function byVideo<M extends { video_id: string }>(ms: M[]) {
 // A search that reaches several videos opens on the gallery; one video opens straight on the detail.
 export const defaultView = (ms: { video_id: string }[]): 'dir' | 'detail' => (new Set(ms.map((m) => m.video_id)).size > 1 ? 'dir' : 'detail');
 
-// Only a page name of this app may follow sign-in, never another site.
-
 // Splits a translated string on <b>…</b> and <code>…</code> so markup in the dictionary renders without innerHTML.
 export function marks(s: string): { tag: '' | 'b' | 'code'; text: string }[] {
   return s.split(/(<b>.*?<\/b>|<code>.*?<\/code>)/).filter(Boolean).map((part) => {

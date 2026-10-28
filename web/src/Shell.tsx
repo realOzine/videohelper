@@ -166,7 +166,7 @@ function RuntimeStatus() {
     <div className="flex flex-wrap items-center gap-2 text-[13px]">
       <span className={cx('size-1.5 flex-none rounded-full', failed ? 'bg-red' : state?.ready ? 'bg-pos' : 'animate-beat bg-fg-soft')} />
       <span className="font-medium">{failed ? t('desktop.failed') : state?.ready ? t('desktop.ready') : t('desktop.preparing')}</span>
-      {state?.device && <span className="rounded bg-ink-3 px-1.5 font-mono text-xs text-fg-soft">{state.device.toUpperCase()}</span>}
+      {state?.device && <span title={state.reason} className="rounded bg-ink-3 px-1.5 font-mono text-xs text-fg-soft">{state.device.toUpperCase()}</span>}
       {state?.error && <button type="button" disabled={retrying} className="ml-auto text-fg underline underline-offset-[3px] disabled:opacity-50" onClick={retry}>{t('retry')}</button>}
     </div>
     {failed ? <div className="mt-2"><ErrorDetails summary={error ? errorSummary(error) : t('desktop.failureHelp')} detail={state?.error || (error ? errText(error) : undefined)} /></div>
