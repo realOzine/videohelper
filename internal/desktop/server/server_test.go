@@ -90,6 +90,51 @@ func TestPrivateLoopbackAndStrictJSON(t *testing.T) {
 	}
 }
 
+func TestCancelBeforeModelsReadyAndFilter(t *testing.T) {
+	s, db := startTest(t)
+	v, err := db.ImportURL(t.Context(), "https://example.com/video.mp4", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := "/v1/videos/" + strconv.FormatInt(v.ID, 10)
+	for range 2 {
+		if res := request(t, s, "POST", path+"/cancel", "", nil); res.StatusCode != 204 {
+			t.Fatal(res.Status)
+		}
+	}
+	var detail struct {
+		Video store.Video `json:"video"`
+	}
+	if err := json.NewDecoder(request(t, s, "GET", path, "", nil).Body).Decode(&detail); err != nil || detail.Video.Status != "cancelled" {
+		t.Fatalf("%+v %v", detail, err)
+	}
+	for _, status := range []string{"failed", "cancelled", "deleted"} {
+		var page struct {
+			Videos []store.Video `json:"videos"`
+		}
+		if err := json.NewDecoder(request(t, s, "GET", "/v1/videos?status="+status, "", nil).Body).Decode(&page); err != nil {
+			t.Fatal(err)
+		}
+		want := 0
+		if status == "cancelled" {
+			want = 1
+		}
+		if len(page.Videos) != want {
+			t.Fatalf("%s: %+v", status, page.Videos)
+		}
+	}
+	if res := request(t, s, "DELETE", path, "", nil); res.StatusCode != 204 {
+		t.Fatal(res.Status)
+	}
+	if res := request(t, s, "POST", path+"/restore", "", nil); res.StatusCode != 200 {
+		t.Fatal(res.Status)
+	}
+	got, err := db.Video(t.Context(), v.ID)
+	if err != nil || got.Status != "cancelled" {
+		t.Fatalf("%+v %v", got, err)
+	}
+}
+
 func TestImportsRemainDurablyQueuedWhileModelsPrepare(t *testing.T) {
 	s, db := startTest(t)
 	source := filepath.Join(t.TempDir(), "source.mp4")

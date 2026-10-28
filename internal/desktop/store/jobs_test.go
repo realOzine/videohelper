@@ -218,7 +218,7 @@ func TestDeleteRestoreInterruptedVideoCanRetryWithoutProcessor(t *testing.T) {
 				t.Fatal(err)
 			}
 			restored, err := s.RestoreVideo(ctx, v.ID)
-			if err != nil || restored.Status != "failed" || restored.Error != "任务已取消" || restored.SourceKey != v.SourceKey {
+			if err != nil || restored.Status != "cancelled" || restored.Error != "任务已取消" || restored.SourceKey != v.SourceKey {
 				t.Fatalf("restored video is stuck: %+v %v", restored, err)
 			}
 			if n, err := s.RecoverJobs(ctx); err != nil || n != 0 {
