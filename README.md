@@ -1,63 +1,92 @@
-# VideoHelper Desktop
+<p align="center">
+  <img src="Design/Icon/png/videohelper-app-icon-256.png" width="96" height="96" alt="VideoHelper app icon">
+</p>
 
-个人使用的视频检索桌面 App：导入本地视频或链接，用文字找到画面、转录和声音，再跳转播放。使用 MyGo、Go、React、SQLite + sqlite-vec，优先支持 Apple Silicon Mac。
+<h1 align="center">VideoHelper</h1>
 
-打开即用，没有账号、租户、JWT、套餐、PostgreSQL、Redis、S3 或 Docker。项目只是本地视频分组。界面采用 `Design/Icon/` 的墨黑、米纸色与红色播放头，图标和字体随程序携带。
+<p align="center"><strong>Find the moment you remember.</strong></p>
 
-## 构建与运行
+<p align="center">
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#features">Features</a> ·
+  <a href="#how-it-works">How it works</a> ·
+  <a href="#docs">Docs</a> ·
+  English · <a href="README.zh-CN.md">简体中文</a>
+</p>
 
-开发需要 Go 1.27.3、Node.js 24+ 与目标系统 C 编译工具链。macOS 安装 Xcode Command Line Tools 后执行：
+VideoHelper is a personal desktop video library that searches scenes, spoken words and sounds. Import a local file or video link, describe what you remember, and jump to the matching moment.
+
+Your library, media and model inference stay on your computer. There is no account or hosted backend to set up.
+
+## Why VideoHelper?
+
+- Find a scene in footage without scrubbing through every file.
+- Look up a line in a Chinese interview or recorded talk and play it in context.
+- Search for a sound, such as applause or waves, across a project’s clips.
+
+## Quick start
+
+**The validated target is Apple Silicon Mac with macOS 13 or later.** Intel Macs are currently unsupported. Windows and Linux implementations have not yet passed real-device GUI and model validation.
+
+There are no published binary releases yet. To build from source, install **Go 1.27.3**, **Node.js 24+** and a C toolchain. On macOS, use Xcode Command Line Tools.
 
 ```sh
+git clone https://github.com/realOzine/videohelper.git
+cd videohelper
 npm --prefix web ci
 make desktop
 ./bin/VideoHelper
 ```
 
-`make build` 同样构建桌面应用。macOS 产物 `bin/VideoHelper` 是可单独复制运行的主二进制；`.local/desktop-build/` 下还保留 MyGo 的系统应用包装。构建内嵌前端、字体、模型服务源码与固定依赖清单。当前 Mac 构建为本机架构、最低 macOS 13，使用本地签名，尚未做 Developer ID 公证。
+`bin/VideoHelper` is the single main executable you can copy to another compatible Apple Silicon Mac. The build includes the UI, fonts and model-service source, but **does not include installed models or their runtime dependencies**. Mac builds are locally signed and have not been notarized with a Developer ID.
 
-Mac 单文件首次启动会在数据目录的 `Launcher/VideoHelper.app` 恢复应用包装，并交给系统启动，以获得正常的 Dock、窗口和文件选择器身份。终端中的启动器随后退出，桌面窗口继续运行；关闭窗口或按 `⌘Q` 退出应用。更新包装时原子替换，失败保留旧版本，不要求用户安装签名工具。
+### First launch
 
-首次运行会在后台下载私有 Python、FFmpeg/ffprobe、yt-dlp、Deno、模型依赖与固定版本权重。用户无需手工安装这些组件。窗口显示准备阶段、实际推理设备和失败重试入口；资料库与已有视频播放不依赖模型准备完成。后续运行复用缓存。
+VideoHelper downloads private Python, media tools, model dependencies and weights into its application data directory. **The first setup needs internet access, reachable dependency/model hosts and sufficient disk space.** You do not need to install Python, FFmpeg or yt-dlp yourself. Later launches reuse the cache.
 
-主程序单文件交付不等于运行时不创建文件：数据库、原片、模型和释放的运行环境均在应用数据目录中。
+The window shows preparation progress and the selected device. You can browse the library and play already prepared videos while models load; new imports wait in a persistent queue.
 
-## 使用
+On macOS, the single executable restores a small `.app` wrapper in the data directory and starts it through the system. The terminal launcher then exits while the app keeps running. Close the window or press `⌘Q` to quit.
 
-1. 在资料库选择本地文件，或粘贴视频链接。导入复制原片，不改动用户源文件；模型准备期间先持久排队。
-2. 后台完成探测、播放副本、缩略图、转录及三通道向量索引。任务可以取消、重试；退出后可恢复未完成任务。
-3. 在全部视频、项目或单个视频中输入描述，点击命中片段定位播放。
-4. 删除视频先进入“已删除”，可恢复。界面没有自动清空原片的后台策略。
+1. Open **Library** and select local videos or paste a video link.
+2. Wait for processing to finish, then describe a scene, line or sound in the search box.
+3. Open a matching moment to play it. Use projects or search within one video to narrow the scope.
 
-默认搜索权重为画面 `1`、转录 `1`、声音 `0`；声音已经建索引，需在通道设置中主动开启召回。查询文字原样传入模型，不自动翻译。
+## Features
 
-WeMM 根据实际 Torch 运算自动选择 MPS → CUDA → CPU；ASR 与 CLAP 当前使用 CPU。不同后端的索引身份隔离，切换后不能混用旧向量。需要重建时从视频详情发起重新索引，原片保留。
+- **Three search channels.** Picture and speech are enabled by default. Sound is indexed too; enable it in **Models** when you want sound-based matches. Queries are passed to the models without automatic translation.
+- **Local files and video links.** Use the native file picker or import a link through yt-dlp. Local imports copy the original into the library and leave your source file unchanged. Download support depends on the source site.
+- **Moments you can play.** Results include timestamps, thumbnails and transcript excerpts where available. Jump to a hit, move between hits or scrub the timeline.
+- **A manageable library.** Group videos into projects, search across the library or within a project/video, and restore deleted videos.
+- **Resumable work.** View processing stages, cancel or retry tasks, and resume unfinished work after restarting the app.
+- **Chinese and English UI.** Both languages share the same local library. The current speech transcription model supports Chinese.
 
-## 数据与运行边界
+## How it works
 
-默认使用系统用户配置目录下的 `VideoHelper`：macOS 为 `~/Library/Application Support/VideoHelper`；Windows 为 `%APPDATA%/VideoHelper`；Linux 为 `$XDG_CONFIG_HOME/VideoHelper` 或 `~/.config/VideoHelper`。开发和验证可用 `VIDEOHELPER_DATA_DIR` 指向独立目录。
-
-- `library.sqlite`：视频、项目、任务、转录和向量。
-- `media/`：受管原片、播放副本、缩略图与原始转录结果。
-- `models/`：固定 revision 的模型权重缓存。
-- `runtime/`：版本隔离的私有工具、Python 和模型依赖环境。
-- `Launcher/`：macOS 单文件启动时恢复的应用包装。
-- `desktop.log`：本地应用日志。
-
-备份数据库前先退出应用；原片与数据库一起保存，模型和工具缓存可重新准备。运行环境包含绝对路径，不直接搬运旧虚拟环境到新目录。
-
-跨平台实现与实际验收分开：Apple Silicon macOS 是当前验证目标；Windows x64、Linux x64 已提供运行时配置，但仍需目标机 GUI、音视频和真实推理验收。Linux 需要系统 GTK/WebKitGTK，Windows 需要 WebView2。Intel Mac 的当前 Torch / Transformers 组合没有兼容发行，应用会明确报错，不会假称已回退到可用 CPU。
-
-## 验证
-
-```sh
-make test-go
-make test-web
-make vet
+```text
+Local video / video link
+        ↓
+Managed original + playback copy + thumbnails
+        ↓
+Picture · Chinese transcript · Sound indexes
+        ↓
+Text query → matching moments → jump to playback
 ```
 
-Apple Silicon Mac 已使用真实模型完成六秒视频的原生文件导入、yt-dlp 本地 HTTP 链接导入、三通道索引、中文搜索、视频播放、项目分组、删除恢复与重启保留验证。模型权重复用了缓存；这个短样本不代表冷安装、长视频性能或检索质量验收。 GUI 自动化中出现过视频区域黑屏、缩放窗口后恢复的现象，尚未区分窗口合成与捕获问题。
+The desktop shell uses [MyGo](https://github.com/egoist/mygo), Go and React. SQLite stores the library and task state; sqlite-vec searches the vectors. WeMM-Embedding-2B encodes video and transcript text, FunASR transcribes Chinese speech, and CLAP HTSAT unfused encodes sound. ASR and sound analysis retain the original audio.
 
-真实工具与模型验证为显式 opt-in；命令和证据边界见 [桌面运行时](docs/desktop-runtime.md)。假模型测试只验证接线、事务、取消和恢复。旧 PostgreSQL 后端的检索指标不能作为 SQLite 后端质量证明；冻结语料与历史证据保留在 [Eval](Eval/README.md)。所有构建和测试排除 `model-test/`。
+WeMM selects MPS → CUDA → CPU using actual runtime checks; ASR and CLAP currently run on CPU. This detection does not establish support or performance on an unvalidated platform. See the [runtime guide](docs/desktop-runtime.md) for device selection, downloads and platform requirements.
 
-产品边界见 [设计](docs/design.md)，模块与接口见 [实现说明](docs/spec.md)。此前服务端实现可在 Git 历史 `cc1fb38` 查看；桌面分支不再维护其部署入口。
+On macOS, data lives in `~/Library/Application Support/VideoHelper` by default. `VIDEOHELPER_DATA_DIR` can select another directory. A single-file delivery still creates a database, managed media, model caches and private runtime files. Quit the app before backing up the database together with its media.
+
+## Docs
+
+The detailed guides are currently in Chinese:
+
+- [Product design](docs/design.md) — scope, desktop behavior and data boundaries.
+- [Implementation](docs/spec.md) — modules, local interfaces, tasks and retrieval.
+- [Runtime setup](docs/desktop-runtime.md) — downloads, platforms, component licenses and explicit model tests.
+- [Evaluation](Eval/README.md) — frozen datasets and historical evidence. Earlier server results do not establish desktop retrieval quality.
+- [Cloud/server branch](https://github.com/realOzine/videohelper/tree/cloud) — the previous server implementation.
+
+For development checks, run `make test-web`, `make test-go` and `make vet`. Apple Silicon Mac validation covers real-model import, indexing, search, playback and persistence; it does not establish cold-install reliability, long-video performance or retrieval quality.
