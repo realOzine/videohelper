@@ -77,6 +77,16 @@ export const input = cx(field, 'h-[38px]');
 export const select = 'h-8 rounded-full border border-line bg-ink-2 pr-7 pl-3 text-fg';
 export const srOnly = 'sr-only';
 
+export function ErrorDetails({ summary, detail }: { summary: string; detail?: string }) {
+  return <div className="min-w-0 max-w-full [overflow-wrap:anywhere]">
+    <p>{summary}</p>
+    {detail && <details className="mt-2 text-xs leading-relaxed text-fg-soft">
+      <summary className="w-fit cursor-pointer font-medium underline underline-offset-[3px]">{t('err.details')}</summary>
+      <pre className="mt-2 max-w-full rounded-lg border border-line bg-ink/50 p-3 font-mono whitespace-pre-wrap [overflow-wrap:anywhere] select-text">{detail}</pre>
+    </details>}
+  </div>;
+}
+
 export function LangSwitch({ className, button }: { className?: string; button?: string }) {
   const lang = useLang();
   return (
