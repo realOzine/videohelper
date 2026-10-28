@@ -4,7 +4,8 @@ import { get, post, type Project, type Video, type RuntimeState } from './api.ts
 import { t, useLang } from './i18n.ts';
 import './strings.ts';
 import { usePageQuery } from './pageQuery.ts';
-import { cx, errText, Icon, LangSwitch, Logo } from './ui.tsx';
+import { runtimeMessageKey } from './feedback.ts';
+import { cx, ErrorDetails, errorSummary, errText, Icon, LangSwitch, Logo } from './ui.tsx';
 
 export interface LibraryState { projects: Project[]; failed: number }
 
@@ -23,15 +24,15 @@ export function useLibrary(fail: (err: unknown) => void) {
 
 // One error line at the top of the canvas.
 export function useNotice() {
-  const [notice, setNotice] = useState('');
-  const fail = useCallback((err: unknown) => setNotice(errText(err)), []);
+  const [notice, setNotice] = useState<unknown>(null);
+  const fail = useCallback((err: unknown) => setNotice(() => err), []);
   return { notice, fail };
 }
 
 const navItem = 'desktop-nav';
 
 export function Shell({ page, query = '', ws, onNewProject, notice, children, onQueryLink }: {
-  page: 'search' | 'library' | 'video'; query?: string; ws: LibraryState | null; onNewProject: () => void; notice: string; children: ReactNode; onQueryLink?: MouseEventHandler<HTMLDivElement>;
+  page: 'search' | 'library' | 'video'; query?: string; ws: LibraryState | null; onNewProject: () => void; notice: unknown; children: ReactNode; onQueryLink?: MouseEventHandler<HTMLDivElement>;
 }) {
   const lang = useLang();
   const navDialog = useRef<HTMLDialogElement>(null), navButton = useRef<HTMLButtonElement>(null);
@@ -96,7 +97,7 @@ export function Shell({ page, query = '', ws, onNewProject, notice, children, on
 
       <main className="col-start-2 min-w-0 px-8 pt-9 pb-12 max-lg:col-start-1 max-lg:px-4 max-lg:pt-5 max-lg:pb-10">
         <RuntimeStatus />
-        {notice && <p role="alert" className="mb-6 flex items-center gap-3 rounded-[10px] bg-red-soft px-4 py-3 text-neg-ink"><span className="flex-1">{notice}</span><button type="button" className="font-medium text-fg underline underline-offset-[3px]" onClick={() => location.reload()}>{t('retry')}</button></p>}
+        {notice != null && notice !== '' && <section role="alert" className="mb-6 flex flex-wrap items-start gap-3 rounded-[10px] bg-red-soft px-4 py-3 text-neg-ink"><div className="min-w-0 flex-1"><ErrorDetails summary={errorSummary(notice)} detail={errText(notice)} /></div><button type="button" className="font-medium text-fg underline underline-offset-[3px]" onClick={() => location.reload()}>{t('retry')}</button></section>}
         {children}
       </main>
     </div>
@@ -119,7 +120,7 @@ export const panelBase = 'min-w-0 rounded-2xl border border-ink-3 bg-ink-2';
 export const panel = `${panelBase} p-5`;
 export function PanelHead({ title, id, children }: { title: ReactNode; id?: string; children?: ReactNode }) {
   return (
-    <header className="mb-4 flex items-center justify-between gap-3">
+    <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
       <h2 id={id} className="text-lg leading-[1.3] font-semibold">{title}</h2>
       {children}
     </header>
@@ -139,24 +140,37 @@ export async function newProject(reload: () => Promise<void>, fail: (err: unknow
 
 function RuntimeStatus() {
   const [state, setState] = useState<RuntimeState | null>(null);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<unknown>(null);
+  const [retrying, setRetrying] = useState(false);
   useEffect(() => {
-    let stopped = false;
+    const controller = new AbortController();
+    let timer = 0;
     const poll = async () => {
-      try { const next = await get<RuntimeState>('/v1/desktop/runtime'); if (!stopped) { setState(next); setError(''); } }
-      catch (err) { if (!stopped) setError(err instanceof Error ? err.message : String(err)); }
+      try {
+        const next = await get<RuntimeState>('/v1/desktop/runtime', controller.signal);
+        if (!controller.signal.aborted) { setState(next); setError(null); }
+      } catch (err) { if (!controller.signal.aborted) setError(err); }
+      finally { if (!controller.signal.aborted) timer = window.setTimeout(poll, 2000); }
     };
-    poll(); const timer = window.setInterval(poll, 2000);
-    return () => { stopped = true; clearInterval(timer); };
+    poll();
+    return () => { controller.abort(); clearTimeout(timer); };
   }, []);
+  const failed = Boolean(state?.error || error || state?.stage === 'failed');
+  const retry = async () => {
+    setRetrying(true);
+    try { await post('/v1/desktop/runtime/retry'); }
+    catch (err) { setError(err); }
+    finally { setRetrying(false); }
+  };
   return <section aria-live="polite" className="mb-6 rounded-xl border border-ink-3 bg-ink-2/60 px-4 py-3">
     <div className="flex flex-wrap items-center gap-2 text-[13px]">
-      <span className={cx('size-1.5 flex-none rounded-full', state?.ready ? 'bg-pos' : state?.error || error ? 'bg-red' : 'animate-beat bg-fg-soft')} />
-      <span className="font-medium">{state?.ready ? t('desktop.ready') : t('desktop.preparing')}</span>
-      {state?.device && <span title={state.reason} className="rounded bg-ink-3 px-1.5 font-mono text-xs text-fg-soft">{state.device.toUpperCase()}</span>}
-      {(state?.error || error || (!state?.ready && state?.message)) && <span className="min-w-0 text-xs leading-relaxed break-words text-fg-soft">{state?.error || error || state?.message}</span>}
-      {state?.error && <button type="button" className="ml-auto text-fg underline underline-offset-[3px]" onClick={() => post('/v1/desktop/runtime/retry').catch((err) => setError(errText(err)))}>{t('retry')}</button>}
+      <span className={cx('size-1.5 flex-none rounded-full', failed ? 'bg-red' : state?.ready ? 'bg-pos' : 'animate-beat bg-fg-soft')} />
+      <span className="font-medium">{failed ? t('desktop.failed') : state?.ready ? t('desktop.ready') : t('desktop.preparing')}</span>
+      {state?.device && <span className="rounded bg-ink-3 px-1.5 font-mono text-xs text-fg-soft">{state.device.toUpperCase()}</span>}
+      {state?.error && <button type="button" disabled={retrying} className="ml-auto text-fg underline underline-offset-[3px] disabled:opacity-50" onClick={retry}>{t('retry')}</button>}
     </div>
-    {state?.fraction != null && !state.ready && <progress aria-label={t('desktop.preparing')} className="mt-2 h-1 w-full accent-red" value={state.fraction} max={1} />}
+    {failed ? <div className="mt-2"><ErrorDetails summary={error ? errorSummary(error) : t('desktop.failureHelp')} detail={state?.error || (error ? errText(error) : undefined)} /></div>
+      : !state?.ready && <p className="mt-2 text-xs leading-relaxed text-fg-soft">{t(runtimeMessageKey(state?.stage))}</p>}
+    {state?.fraction != null && !state.ready && !failed && <progress aria-label={t('desktop.preparing')} className="mt-2 h-1 w-full accent-red" value={state.fraction} max={1} />}
   </section>;
 }

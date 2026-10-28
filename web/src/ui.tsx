@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { ApiError, type Thumbnail } from './api.ts';
 import { setLang, t, useLang } from './i18n.ts';
 import { marks } from './lib.ts';
+import { errorSummaryKey } from './feedback.ts';
 import mark from '../../Design/Icon/videohelper-icon-reversed.svg';
 import logo from '../../Design/Kite/horizontal-reversed.svg';
 
@@ -100,3 +101,4 @@ export function LangSwitch({ className, button }: { className?: string; button?:
 
 export const errText = (err: unknown) =>
   err instanceof ApiError && err.code === 'network' ? t('err.network') : err instanceof Error ? err.message : String(err);
+export const errorSummary = (err: unknown) => t(errorSummaryKey(err instanceof ApiError ? err.code : undefined));
