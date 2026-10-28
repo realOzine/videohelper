@@ -2,8 +2,8 @@
 // hit lanes are the scrubber (one row per channel, the playhead through all three). Back returns to the gallery.
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { get, post, type Moment, type Video } from '../api.ts';
-import { t, useLang } from '../i18n.ts';
-import { byVideo, CHANNELS, defaultView, modelName, modelPrefs, searchFields, seekMedia, tc, ticks, timeRange, type ModelPrefs } from '../lib.ts';
+import { addStrings, t, useLang } from '../i18n.ts';
+import { byVideo, CHANNELS, defaultView, hasActiveChannel, modelName, modelPrefs, readModelPrefs, searchFields, seekMedia, tc, ticks, timeRange, usableModelPrefs, type ModelPrefs } from '../lib.ts';
 import { newProject, panel, PanelHead, Shell, TitleRow, useNotice, useLibrary } from '../Shell.tsx';
 import { btn, btnPrimary, Ch, cx, errText, Icon, Mark, Rich, select, TcBadge, Thumb } from '../ui.tsx';
 
@@ -13,13 +13,20 @@ interface ChannelModels {
   channel: string; default_space_ids: string[]; default_weight: number;
   models: { space_id: string; status: string; eligible_videos: number; indexed_videos: number }[];
 }
-// the viewer's model choice applies to every search in this browser until reset (a per-viewer convenience)
+addStrings({
+  'mdl.require': '请至少开启一个搜索通道。',
+  'mdl.sub': '每一路选一个编码模型。只能选已为当前范围编码完成的模型；选择保存在此应用中，不会重建索引。',
+}, {
+  'mdl.require': 'Enable at least one search channel.',
+  'mdl.sub': 'Pick one encoding model per channel. Only models that have finished encoding this scope can be picked; the choice stays in this app and rebuilds no index.',
+});
+// The model choice applies to every search in this app until reset.
 const PREFS = 'vh-models';
-const prefs = ((): ModelPrefs => {
-  try { const p = JSON.parse(localStorage.getItem(PREFS) || 'null'); if (p?.spaces && p?.weights) return p; } catch { /* blocked storage: defaults */ }
+const storedPrefs = ((): ModelPrefs => {
+  try { return readModelPrefs(localStorage.getItem(PREFS)); } catch { /* blocked storage: defaults */ }
   return { spaces: {}, weights: {} };
 })();
-const custom = Object.keys(prefs.spaces).length + Object.keys(prefs.weights).length > 0;
+const isCustom = (p: ModelPrefs) => Object.keys(p.spaces).length + Object.keys(p.weights).length > 0;
 type View = 'dir' | 'detail';
 const params = new URLSearchParams(location.search);
 const q = (params.get('q') || '').trim(), project = params.get('project') || '';
@@ -39,15 +46,29 @@ export default function Search() {
   const [fromDir, setFromDir] = useState<boolean>(!!history.state?.fromDir);
   const [last, setLast] = useState(-1);
   const [meta, setMeta] = useState<Record<string, Video>>({});
+  const [prefs, setPrefs] = useState(storedPrefs);
   const vid = useRef<HTMLVideoElement>(null), plot = useRef<HTMLSpanElement>(null), ph = useRef<HTMLSpanElement>(null), time = useRef<HTMLSpanElement>(null);
   const loaded = useRef(new Map<string, Promise<Entry>>()), pickedRef = useRef(-1), entryRef = useRef<Entry | null>(null), pending = useRef<number | null>(null);
   const ms = found?.ms ?? emptyMoments;
 
   useEffect(() => {
     if (!q) return;
-    post<{ moments: Moment[]; skipped_channels: string[] }>('/v1/search', { query: q, project_id: project || undefined, limit: 50, ...searchFields(prefs) })
+    const search = async () => {
+      let prefs = storedPrefs;
+      if (isCustom(prefs)) {
+        const { channels } = await post<{ channels: ChannelModels[] }>('/v1/search/models', project ? { project_id: project } : {});
+        const safe = usableModelPrefs(prefs, channels);
+        if (safe !== prefs) {
+          try { localStorage.removeItem(PREFS); } catch { /* still use defaults when storage is blocked */ }
+          prefs = safe;
+        }
+      }
+      setPrefs(prefs);
+      return post<{ moments: Moment[]; skipped_channels: string[] }>('/v1/search', { query: q, project_id: project || undefined, limit: 50, ...searchFields(prefs) });
+    };
+    search()
       .then((r) => setFound({ ms: r.moments, skipped: r.skipped_channels || [] }))
-      .catch((err) => fail(custom ? new Error(t('mdl.failed', { msg: errText(err) })) : err));
+      .catch(fail);
   }, [fail]);
 
   // the playhead and clock follow the real video by direct DOM writes, so playback does not re-render the list
@@ -169,7 +190,7 @@ export default function Search() {
       <TitleRow title={q ? `“${q}”` : t('s.title')} sub={!q ? undefined : !found ? ' ' : !ms.length ? t('s.none') + note : (
         <><Rich k="s.sub" vars={{ n: ms.length, v: new Set(ms.map((x) => x.video_id)).size, title: best.video_title, tc: tc(best.start_ms), chs: best.channels.map((h) => CH[h.channel]).join(t('and')) }} />{note}</>
       )}>
-        {q && <Models />}
+        {q && <Models prefs={prefs} />}
         {ms.length > 0 && (
           <div role="group" aria-label={t('a.views')} className="flex gap-0.5 rounded-full border border-ink-3 bg-ink-2 p-[3px]">
             {(['dir', 'detail'] as const).map((v) => (
@@ -345,14 +366,17 @@ export default function Search() {
 
 // Picks one encoding model per channel from the catalog for this scope, and whether each channel takes part.
 // Only models that have finished encoding the scope can be picked (the server refuses the rest); applying reloads the search.
-function Models() {
+function Models({ prefs }: { prefs: ModelPrefs }) {
   const box = useRef<HTMLDialogElement>(null);
   const [chs, setChs] = useState<ChannelModels[] | null>(null);
   const [err, setErr] = useState('');
   const [pick, setPick] = useState<Record<string, string>>({});
   const [on, setOn] = useState<Record<string, boolean>>({});
+  const custom = isCustom(prefs);
+  const draft = chs ? modelPrefs(chs, pick, on) : null;
+  const valid = !!chs && !!draft && hasActiveChannel(chs, draft);
   const show = () => {
-    box.current!.showModal(); setErr('');
+    box.current!.showModal(); setErr(''); setChs(null);
     post<{ channels: ChannelModels[] }>('/v1/search/models', project ? { project_id: project } : {}).then(({ channels }) => {
       setChs(channels.sort((a, b) => CHANNELS.indexOf(a.channel as never) - CHANNELS.indexOf(b.channel as never)));
       // a kept choice this scope cannot serve falls back to the default, so applying repairs it
@@ -371,7 +395,7 @@ function Models() {
         {t('mdl.btn')}{custom && <span className="text-red-text">· {t('mdl.custom')}</span>}
       </button>
       <dialog ref={box} aria-labelledby="mdlh" className="m-auto w-[min(640px,calc(100%-32px))] rounded-[14px] bg-ink-2 text-fg shadow-edge backdrop:bg-black/60">
-        <form className="p-6 max-xs:p-4" onSubmit={(e) => { e.preventDefault(); if (chs) save(modelPrefs(chs, pick, on)); }}>
+        <form className="p-6 max-xs:p-4" onSubmit={(e) => { e.preventDefault(); if (valid && draft) save(draft); }}>
           <h2 id="mdlh" tabIndex={-1} autoFocus className="text-lg font-semibold outline-none">{t('mdl.title')}</h2>
           <p className="mt-1 text-[13px] text-fg-soft">{t('mdl.sub')}</p>
           {err ? <p className="mt-5 text-neg-ink">{err}</p> : !chs ? <p className="mt-5 text-fg-soft">{t('mdl.loading')}</p> : (
@@ -406,10 +430,11 @@ function Models() {
             </div>
           )}
           <div className="mt-6 flex flex-wrap items-center gap-2">
+            {chs && !valid && <p id="mdl-validation" role="status" className="w-full text-[13px] text-neg-ink">{t('mdl.require')}</p>}
             {custom && <button type="button" className={btn} onClick={() => save(null)}>{t('mdl.reset')}</button>}
             <span className="flex-1" />
             <button type="button" className={btn} onClick={() => box.current!.close()}>{t('mdl.cancel')}</button>
-            <button type="submit" className={btnPrimary} disabled={!chs}>{t('mdl.apply')}</button>
+            <button type="submit" className={btnPrimary} disabled={!valid} aria-describedby={chs && !valid ? 'mdl-validation' : undefined}>{t('mdl.apply')}</button>
           </div>
         </form>
       </dialog>

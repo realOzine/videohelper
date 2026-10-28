@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { byVideo, channelState, defaultView, marks, modelName, modelPrefs, pipeline, searchFields, seekMedia, tc, ticks, timeRange } from './lib.ts';
+import { byVideo, channelState, defaultView, hasActiveChannel, marks, modelName, modelPrefs, pipeline, readModelPrefs, searchFields, seekMedia, tc, ticks, timeRange, usableModelPrefs } from './lib.ts';
 
 test('result seeking waits for metadata of the selected video instead of seeking the previous source', () => {
   const video = { readyState: 4, currentSrc: 'http://localhost/media/old.mp4', currentTime: 5 };
@@ -93,4 +93,40 @@ test('model choice keeps only what differs from the defaults', () => {
   assert.deepEqual(searchFields(same), {});
   const p = modelPrefs(chs, { visual: 'wemm-2b-cpu@r1', speech: 'wemm-2b@r1', audio: 'clap@r1' }, { visual: true, speech: false, audio: true });
   assert.deepEqual(searchFields(p), { space_overrides: { visual: 'wemm-2b-cpu@r1' }, channel_weights: { speech: 0, audio: 1 } });
+});
+
+test('saved model preferences reject malformed shapes, channels and non-finite or negative weights', () => {
+  const defaults = { spaces: {}, weights: {} };
+  for (const raw of [null, '{', 'null', '[]', '{"spaces":[],"weights":{}}', '{"spaces":{},"weights":[]}',
+    '{"spaces":{"visual":42},"weights":{}}', '{"spaces":{"visual":"  "},"weights":{}}',
+    '{"spaces":{},"weights":{"visual":"0"}}', '{"spaces":{},"weights":{"visual":-1}}',
+    '{"spaces":{},"weights":{"visual":1e999}}', '{"spaces":{},"weights":{"unknown":1}}']) {
+    assert.deepEqual(readModelPrefs(raw), defaults, String(raw));
+  }
+  const p = { spaces: { visual: 'wemm@r1' }, weights: { speech: 0, audio: 1 } };
+  assert.deepEqual(readModelPrefs(JSON.stringify(p)), p);
+});
+
+test('effective channels inherit server defaults and invalid historical choices fall back before search', () => {
+  const chs = [
+    { channel: 'visual', default_space_ids: ['v1'], default_weight: 1, models: [{ space_id: 'v1', status: 'ready' }] },
+    { channel: 'speech', default_space_ids: ['s1'], default_weight: 1, models: [{ space_id: 's1', status: 'indexing' }] },
+    { channel: 'audio', default_space_ids: ['a1'], default_weight: 0, models: [{ space_id: 'a1', status: 'ready' }] },
+  ];
+  const defaults = { spaces: {}, weights: {} };
+  assert.equal(hasActiveChannel(chs, defaults), true);
+  const partial = readModelPrefs('{"spaces":{},"weights":{"visual":0}}');
+  assert.equal(hasActiveChannel(chs, partial), true, 'speech still inherits its positive server weight');
+  assert.equal(usableModelPrefs(partial, chs), partial);
+  const off = modelPrefs(chs, {}, { visual: false, speech: false, audio: false });
+  assert.deepEqual(off.weights, { visual: 0, speech: 0 }, 'audio already defaults to zero');
+  assert.equal(hasActiveChannel(chs, off), false);
+  assert.deepEqual(searchFields(usableModelPrefs(readModelPrefs(JSON.stringify(off)), chs)), {}, 'legacy all-off storage must search with defaults');
+  const sound = modelPrefs(chs, {}, { visual: false, speech: false, audio: true });
+  assert.equal(hasActiveChannel(chs, sound), true);
+  assert.deepEqual(usableModelPrefs(sound, chs), sound);
+  assert.equal(hasActiveChannel(chs.map((c) => ({ ...c, default_weight: c.channel === 'audio' ? 1 : 0 })), defaults), true, 'defaults come from the catalog, not hardcoded visual/speech weights');
+  assert.deepEqual(usableModelPrefs({ spaces: { visual: 'old-model-fingerprint' }, weights: {} }, chs), defaults);
+  const currentDefault = { spaces: { speech: 's1' }, weights: {} };
+  assert.equal(usableModelPrefs(currentDefault, chs), currentDefault, 'the server default remains allowed while indexing');
 });

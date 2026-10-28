@@ -102,11 +102,39 @@ export function marks(s: string): { tag: '' | 'b' | 'code'; text: string }[] {
 // A viewer's model choice for search, kept only where it differs from the server's defaults: one space per channel
 // (space_overrides) and a query multiplier where a channel is switched on or off (channel_weights).
 export interface ModelPrefs { spaces: Record<string, string>; weights: Record<string, number> }
-export function modelPrefs(chs: { channel: string; default_space_ids: string[]; default_weight: number }[], pick: Record<string, string>, on: Record<string, boolean>): ModelPrefs {
+export interface ModelDefaults { channel: string; default_space_ids: string[]; default_weight: number }
+export interface ModelCatalog extends ModelDefaults { models: { space_id: string; status: string }[] }
+
+// localStorage is untrusted input, including preferences left by older app versions.
+export function readModelPrefs(raw: string | null): ModelPrefs {
+  const object = (x: unknown): x is Record<string, unknown> => !!x && typeof x === 'object' && !Array.isArray(x);
+  try {
+    const p: unknown = JSON.parse(raw || 'null');
+    if (object(p) && object(p.spaces) && object(p.weights)
+      && Object.keys(p).every((k) => k === 'spaces' || k === 'weights')
+      && Object.entries(p.spaces).every(([c, id]) => CHANNELS.includes(c as Channel) && typeof id === 'string' && id.trim().length > 0)
+      && Object.entries(p.weights).every(([c, w]) => CHANNELS.includes(c as Channel) && typeof w === 'number' && Number.isFinite(w) && w >= 0)) {
+      return { spaces: p.spaces as Record<string, string>, weights: p.weights as Record<string, number> };
+    }
+  } catch { /* invalid JSON uses defaults */ }
+  return { spaces: {}, weights: {} };
+}
+
+// Missing overrides inherit the catalog's weight; an empty overrides object means defaults, not zero channels.
+export const hasActiveChannel = (chs: ModelDefaults[], p: ModelPrefs) => chs.some((c) => (p.weights[c.channel] ?? c.default_weight) > 0);
+
+export function usableModelPrefs(p: ModelPrefs, chs: ModelCatalog[]): ModelPrefs {
+  const known = (c: string) => chs.some((ch) => ch.channel === c);
+  const spacesValid = Object.entries(p.spaces).every(([c, id]) => chs.some((ch) => ch.channel === c && ch.models.some((m) => m.space_id === id && (m.status === 'ready' || ch.default_space_ids[0] === id))));
+  if (!hasActiveChannel(chs, p) || !Object.keys(p.weights).every(known) || !spacesValid) return { spaces: {}, weights: {} };
+  return p;
+}
+
+export function modelPrefs(chs: ModelDefaults[], pick: Record<string, string>, on: Record<string, boolean>): ModelPrefs {
   const p: ModelPrefs = { spaces: {}, weights: {} };
   for (const c of chs) {
     if (pick[c.channel] && pick[c.channel] !== c.default_space_ids[0]) p.spaces[c.channel] = pick[c.channel];
-    if (on[c.channel] !== c.default_weight > 0) p.weights[c.channel] = on[c.channel] ? 1 : 0;
+    if (on[c.channel] !== (c.default_weight > 0)) p.weights[c.channel] = on[c.channel] ? 1 : 0;
   }
   return p;
 }
