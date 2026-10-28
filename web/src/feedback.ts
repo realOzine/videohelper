@@ -16,7 +16,9 @@ export const libraryEmptyKey = (project: string, status: string) => status ? 'l.
 
 export function runtimeMessageKey(stage?: string): string {
   switch (stage) {
-    case 'extracting': case 'tools': case 'python': case 'packages': return 'desktop.installing';
+    case 'extracting': case 'tools': case 'checking': return 'desktop.checking';
+    case 'checking_models': return 'desktop.checkingModels';
+    case 'python': case 'packages': return 'desktop.installing';
     case 'detecting': return 'desktop.detecting';
     case 'models': return 'desktop.models';
     case 'installed': case 'loading': return 'desktop.loading';
