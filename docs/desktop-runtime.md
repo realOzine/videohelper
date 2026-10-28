@@ -9,11 +9,13 @@ macOS 单文件会先恢复数据目录内的 `Launcher/VideoHelper.app` 并交�
 ## 首次启动与重复启动
 
 1. 根据打包资源内容生成隔离目录 `runtime/ml-<digest>`，保留 `ml/`、`plugins/`、`profiles/` 的相对关系。
-2. 按 `internal/desktop/runtime/components.json` 下载固定组件。下载写私有 staging，限制体积，核验发行文件 SHA256，提取固定目标文件后才发布。损坏的已安装文件不会直接执行；安装锁使用 OS 文件锁，失败或取消只清理本次 staging。校验后的 FFmpeg 和 ffprobe 以本体哈希组合发布到同一个私有 `media-<digest>/` 目录，优先硬链接，跨文件系统时复制；yt-dlp 的 `--ffmpeg-location` 指向这个目录，不依赖系统 PATH 发现 ffprobe。
-3. 固定 uv 0.13.6 使用随包 `python-downloads.json` 安装 CPython 3.12.15、build 20261021。该目录来自同版 uv 的上游元数据，含各平台准确 URL 与 SHA256；不修改用户 PATH、Python 可执行入口或 Windows 注册表。
-4. profile 使用自己的私有 `.venv` 与 `uv sync --frozen --no-dev --no-default-groups --no-editable`，不依赖用户的 Python 环境。各依赖版本、下载地址与哈希来自该 profile 的 `uv.lock`。没有 NVIDIA 候选的 Linux/Windows 使用 CPU wheel；CUDA 候选才安装 cu130 wheel。
-5. 首先尝试用缓存离线 `prepare`，缺失时才联网准备固定 revision 的权重。`HF_HOME` 固定为数据目录下的 `models/`；生产明确 `ML_FAKE=0`。WeMM 的固定修订与远程代码哈希检查继续生效。
+2. 按 `internal/desktop/runtime/components.json` 校验私有工具缓存；缺失或损坏时才下载固定组件。下载写私有 staging，限制体积，核验发行文件 SHA256，提取固定目标文件后才发布。损坏的已安装文件不会直接执行；安装锁使用 OS 文件锁，失败或取消只清理本次 staging。校验后的 FFmpeg 和 ffprobe 以本体哈希组合发布到同一个私有 `media-<digest>/` 目录，优先硬链接，跨文件系统时复制；yt-dlp 的 `--ffmpeg-location` 指向这个目录，不依赖系统 PATH 发现 ffprobe。
+3. 首先以固定 uv 0.13.6 执行 `python find --managed-python --no-python-downloads` 检查 CPython 3.12.15；已存在则直接复用，未找到时才使用随包 `python-downloads.json` 安装 build 20261021。该目录来自同版 uv 的上游元数据，含各平台准确 URL 与 SHA256；不修改用户 PATH、Python 可执行入口或 Windows 注册表。
+4. profile 使用自己的私有 `.venv`。首先按原有同步参数执行 `uv sync --frozen --no-dev --no-default-groups --no-editable --check --offline`，命中则复用现有环境；检查不通过时才去掉 `--check --offline` 安装或修复，不依赖用户的 Python 环境。各依赖版本、下载地址与哈希来自该 profile 的 `uv.lock`。没有 NVIDIA 候选的 Linux/Windows 使用 CPU wheel；CUDA 候选才安装 cu130 wheel。
+5. 首先离线 `prepare` 检查固定模型缓存；失败且未取消时记录原始原因，再联网尝试补齐固定 revision 的权重。若联网准备也失败，返回的诊断同时保留离线与在线失败。取消检查不会触发安装或联网回退。`HF_HOME` 固定为数据目录下的 `models/`；生产明确 `ML_FAKE=0`。WeMM 的固定修订与远程代码哈希检查继续生效。
 6. 两个 ML 服务仅绑定 loopback 随机端口，使用本次随机内部令牌。以 `HF_HUB_OFFLINE=1` 加载，等待 `/readyz` 并核对 `/v1/spaces` 后才向处理器提供端点。
+
+`checking` / `checking_models` 表示检查缓存，`python` / `packages` 只在实际进入安装分支时发出，`models` 只在联网补齐分支发出；完整暖缓存启动不经过这三类安装/下载阶段。之后的 `loading` 仍会把本地权重加载到内存和设备，不代表重新下载。此改动不改变资源版本目录、依赖锁、模型 fingerprint 或私有缓存位置，也不自动搜索、导入其他 Hugging Face 缓存。
 
 运行时与模型缓存独立于媒体与数据库。Python 仅读取 `ML_LOCAL_MEDIA_ROOT` 中的受管本地文件，S3 downloader、Boto3 与远端媒体缓存已移除；路径解析不复制文件，Go 在所有推理退出前保持输入存活。版本升级保留旧运行时；当前没有自动清理旧版本策略。首次安装需网络、足够磁盘空间和依赖源可达；下载失败可以重新启动后重试。
 
@@ -57,4 +59,4 @@ VH_TEST_DESKTOP_TOOLS_DIR=/absolute/disposable/data go test ./internal/desktop/r
 VH_TEST_DESKTOP_DIR=/absolute/disposable/data go test ./internal/desktop/runtime -run '^TestManagerIntegration$' -v -timeout 35m
 ```
 
-工具测试校验实际发行文件与版本/许可；yt-dlp 测试在清空 PATH 后从本地 HTTP DASH fixture 下载分离音视频、合并并提取 WAV，验证其确实找到私有 ffprobe；它不证明某个线上站点当前可下载。Manager 测试实际安装私有依赖、加载模型、验证 `fake=false` 并编码原文中文查询，保存无令牌诊断；已有权重缓存时属于 warm-cache 验证，不能当作全新设备冷下载证明。
+工具测试校验实际发行文件与版本/许可；yt-dlp 测试在清空 PATH 后从本地 HTTP DASH fixture 下载分离音视频、合并并提取 WAV，验证其确实找到私有 ffprobe；它不证明某个线上站点当前可下载。Manager 测试实际安装私有依赖、加载模型、验证 `fake=false` 并编码原文中文查询，保存无令牌诊断；已有权重缓存时属于 warm-cache 验证，不能当作全新设备冷下载证明。该测试结束真实查询后停止自建模型进程，以新 Manager 在同目录再次 Ensure，并断言暖启动没有 `python`、`packages`、`models` 阶段。

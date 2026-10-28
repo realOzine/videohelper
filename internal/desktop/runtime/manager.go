@@ -9,6 +9,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"log"
 	"net"
 	"net/http"
 	"os"
@@ -137,14 +138,14 @@ func (m *Manager) Ensure(ctx context.Context, notify func(Progress)) (err error)
 		return err
 	}
 	defer unlock()
-	m.update("extracting", "正在释放内置模型服务", notify)
+	m.update("extracting", "正在检查内置模型服务", notify)
 	m.root, err = extractAssets(m.assets, filepath.Join(m.dir, "runtime"))
 	if err != nil {
 		return err
 	}
 	paths := make(map[string]string)
 	for _, component := range components {
-		m.update("tools", "正在准备 "+component.Name, notify)
+		m.update("tools", "正在校验本地工具："+component.Name, notify)
 		paths[component.Name], err = installComponent(ctx, downloadClient(), filepath.Join(m.dir, "runtime", "tools"), component)
 		if err != nil {
 			return err
@@ -165,21 +166,8 @@ func (m *Manager) Ensure(ctx context.Context, notify func(Progress)) (err error)
 	if strings.Contains(license, "not legally redistributable") {
 		return errors.New("the selected FFmpeg build is not redistributable")
 	}
-	metadata := filepath.Join(m.root, "python-downloads.json")
-	if err = os.WriteFile(metadata, pythonDownloads, 0600); err != nil {
+	if err = m.ensurePython(ctx, notify); err != nil {
 		return err
-	}
-	m.update("python", "正在准备私有 Python 3.12.15", notify)
-	if _, err = m.run(ctx, m.uv, []string{"python", "install", "cpython-3.12.15", "--no-bin", "--no-registry", "--python-downloads-json-url", metadata}, nil); err != nil {
-		return err
-	}
-	output, err := m.run(ctx, m.uv, []string{"python", "find", "cpython-3.12.15", "--managed-python", "--no-python-downloads"}, nil)
-	if err != nil {
-		return err
-	}
-	m.python = strings.TrimSpace(output)
-	if !filepath.IsAbs(m.python) {
-		return errors.New("uv returned a non-absolute Python path")
 	}
 	m.visualProfile = "wemm-cpu"
 	if platform == "darwin/arm64" {
@@ -193,26 +181,23 @@ func (m *Manager) Ensure(ctx context.Context, notify func(Progress)) (err error)
 	}
 	var fallbackReason string
 	for _, profile := range []string{m.visualProfile, "speech-audio-cpu"} {
-		m.update("packages", "正在安装固定依赖："+profile, notify)
-		if err = m.installProfile(ctx, profile); err != nil {
+		if err = m.ensureProfile(ctx, profile, notify); err != nil {
 			if profile != "wemm-cuda" || ctx.Err() != nil {
 				return err
 			}
-			m.update("packages", "CUDA 运行时安装失败，正在准备 CPU 运行时", notify)
 			fallbackReason = "CUDA 运行时安装失败，使用 CPU"
 			m.visualProfile = "wemm-cpu"
-			if err = m.installProfile(ctx, m.visualProfile); err != nil {
+			if err = m.ensureProfile(ctx, m.visualProfile, notify); err != nil {
 				return err
 			}
 		}
 	}
 	m.update("detecting", "正在用 PyTorch 实际运算检测 MPS / CUDA / CPU", notify)
-	output, err = m.run(ctx, m.profilePython(m.visualProfile), []string{filepath.Join(m.root, "ml", "app", "hardware.py")}, nil)
+	output, err := m.run(ctx, m.profilePython(m.visualProfile), []string{filepath.Join(m.root, "ml", "app", "hardware.py")}, nil)
 	if err != nil && m.visualProfile == "wemm-cuda" && ctx.Err() == nil {
 		fallbackReason = "CUDA Torch 运行失败，使用 CPU"
 		m.visualProfile = "wemm-cpu"
-		m.update("packages", fallbackReason, notify)
-		if err = m.installProfile(ctx, m.visualProfile); err != nil {
+		if err = m.ensureProfile(ctx, m.visualProfile, notify); err != nil {
 			return err
 		}
 		output, err = m.run(ctx, m.profilePython(m.visualProfile), []string{filepath.Join(m.root, "ml", "app", "hardware.py")}, nil)
@@ -250,15 +235,8 @@ func (m *Manager) Ensure(ctx context.Context, notify func(Progress)) (err error)
 	m.services = Services{VisualSpace: space, AudioSpace: "clap-htsat-unfused@r1", Transcriber: "paraformer-zh@r1", Device: probe.Backend}
 	m.mu.Unlock()
 	for _, pair := range [][2]string{{m.visualProfile, m.visualManifest}, {"speech-audio-cpu", "speech-audio-cpu"}} {
-		m.update("models", "正在准备固定模型权重："+pair[1], notify)
-		args := []string{"-m", "app.cli", "prepare", "--models", m.manifest(pair[1])}
-		if _, err = m.run(ctx, m.profilePython(pair[0]), args, []string{"HF_HUB_OFFLINE=1"}); err != nil {
-			if ctx.Err() != nil {
-				return ctx.Err()
-			}
-			if _, err = m.run(ctx, m.profilePython(pair[0]), args, []string{"HF_HUB_OFFLINE=0"}); err != nil {
-				return err
-			}
+		if err = m.prepareModels(ctx, pair[0], pair[1], notify); err != nil {
+			return err
 		}
 	}
 	m.update("installed", "本地运行时已准备完成，设备："+probe.Backend+" "+probe.Reason, notify)
@@ -266,9 +244,63 @@ func (m *Manager) Ensure(ctx context.Context, notify func(Progress)) (err error)
 }
 
 func (m *Manager) profile(name string) string { return filepath.Join(m.root, "ml", "profiles", name) }
-func (m *Manager) installProfile(ctx context.Context, name string) error {
-	_, err := m.run(ctx, m.uv, []string{"sync", "--project", m.profile(name), "--frozen", "--no-dev", "--no-default-groups", "--no-editable", "--python", m.python}, nil)
-	return err
+func (m *Manager) ensurePython(ctx context.Context, notify func(Progress)) error {
+	m.update("checking", "正在检查私有 Python", notify)
+	find := []string{"python", "find", "cpython-3.12.15", "--managed-python", "--no-python-downloads"}
+	output, err := m.run(ctx, m.uv, find, nil)
+	if err != nil {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		metadata := filepath.Join(m.root, "python-downloads.json")
+		if err := os.WriteFile(metadata, pythonDownloads, 0600); err != nil {
+			return err
+		}
+		m.update("python", "正在安装私有 Python 3.12.15", notify)
+		if _, installErr := m.run(ctx, m.uv, []string{"python", "install", "cpython-3.12.15", "--no-bin", "--no-registry", "--python-downloads-json-url", metadata}, nil); installErr != nil {
+			return errors.Join(fmt.Errorf("private Python check: %w", err), installErr)
+		}
+		output, err = m.run(ctx, m.uv, find, nil)
+		if err != nil {
+			return err
+		}
+	}
+	m.python = strings.TrimSpace(output)
+	if !filepath.IsAbs(m.python) {
+		return errors.New("uv returned a non-absolute Python path")
+	}
+	return nil
+}
+
+func (m *Manager) ensureProfile(ctx context.Context, name string, notify func(Progress)) error {
+	args := []string{"sync", "--project", m.profile(name), "--frozen", "--no-dev", "--no-default-groups", "--no-editable", "--python", m.python}
+	m.update("checking", "正在检查固定依赖："+name, notify)
+	if _, err := m.run(ctx, m.uv, append(args, "--check", "--offline"), nil); err != nil {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		m.update("packages", "正在安装固定依赖："+name, notify)
+		if _, installErr := m.run(ctx, m.uv, args, nil); installErr != nil {
+			return errors.Join(fmt.Errorf("profile %s offline check: %w", name, err), installErr)
+		}
+	}
+	return nil
+}
+
+func (m *Manager) prepareModels(ctx context.Context, profile, manifest string, notify func(Progress)) error {
+	m.update("checking_models", "正在检查固定模型缓存："+manifest, notify)
+	args := []string{"-m", "app.cli", "prepare", "--models", m.manifest(manifest)}
+	if _, err := m.run(ctx, m.profilePython(profile), args, []string{"HF_HUB_OFFLINE=1"}); err != nil {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		log.Printf("Model cache check failed for %s; preparing pinned weights: %v", manifest, err)
+		m.update("models", "正在补齐固定模型权重："+manifest, notify)
+		if _, prepareErr := m.run(ctx, m.profilePython(profile), args, []string{"HF_HUB_OFFLINE=0"}); prepareErr != nil {
+			return errors.Join(fmt.Errorf("model %s offline check: %w", manifest, err), prepareErr)
+		}
+	}
+	return nil
 }
 func (m *Manager) manifest(name string) string { return filepath.Join(m.profile(name), "models.yaml") }
 func (m *Manager) profilePython(profile string) string {

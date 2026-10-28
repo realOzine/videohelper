@@ -226,6 +226,30 @@ func TestManagerIntegration(t *testing.T) {
 		diagnostics[id] = map[string]any{"dim": response.Dim, "fingerprint": response.Fingerprint, "query": "雨声"}
 		t.Log("real query", id, response.Dim, response.Fingerprint)
 	}
+	closeCtx, stop := context.WithTimeout(context.Background(), 30*time.Second)
+	err = m.Close(closeCtx)
+	stop()
+	if err != nil {
+		t.Fatal(err)
+	}
+	warm := New(dir, assets.RuntimeAssets)
+	defer func() {
+		closeCtx, stop := context.WithTimeout(context.Background(), 30*time.Second)
+		defer stop()
+		if err := warm.Close(closeCtx); err != nil {
+			t.Error(err)
+		}
+	}()
+	stages := []string{}
+	if err := warm.Ensure(ctx, func(p Progress) { stages = append(stages, p.Stage); t.Log("warm", p.Stage, p.Message) }); err != nil {
+		t.Fatal(err)
+	}
+	for _, stage := range stages {
+		if stage == "python" || stage == "packages" || stage == "models" {
+			t.Fatalf("warm startup installed or downloaded again: %v", stages)
+		}
+	}
+	diagnostics["warm_stages"] = stages
 	data, err := json.MarshalIndent(diagnostics, "", "  ")
 	if err != nil {
 		t.Fatal(err)
