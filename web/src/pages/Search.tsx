@@ -6,6 +6,7 @@ import { addStrings, t, useLang } from '../i18n.ts';
 import { byVideo, CHANNELS, defaultView, hasActiveChannel, modelName, modelPrefs, readModelPrefs, searchFields, seekMedia, tc, ticks, timeRange, usableModelPrefs, type ModelPrefs } from '../lib.ts';
 import { newProject, panel, PanelHead, Shell, TitleRow, useNotice, useLibrary } from '../Shell.tsx';
 import { btn, btnPrimary, Ch, cx, errText, Icon, Mark, Rich, select, TcBadge, Thumb } from '../ui.tsx';
+import { searchMoment, searchURL, selectSearchMoment } from '../searchHistory.ts';
 
 interface Entry { id: string; v: Video; url: string; dur: number }
 const emptyMoments: Moment[] = [];
@@ -31,8 +32,6 @@ type View = 'dir' | 'detail';
 const params = new URLSearchParams(location.search);
 const q = (params.get('q') || '').trim(), project = params.get('project') || '';
 const viewOf = () => { const v = new URLSearchParams(location.search).get('view'); return v === 'dir' || v === 'detail' ? v : null; };
-// the view and moment live in the URL, so the browser's Back leaves the detail for the gallery
-const urlWith = (extra: Record<string, string>) => `?${new URLSearchParams({ q, ...(project && { project }), ...extra })}`;
 
 export default function Search() {
   useLang();
@@ -96,8 +95,10 @@ export default function Search() {
     return loaded.current.get(id)!;
   }, [ms]);
 
-  const choose = useCallback(async (i: number, jump = true) => {
+  const choose = useCallback(async (i: number, jump = true, syncHistory = true) => {
     const m = ms[i];
+    if (!m) return;
+    if (syncHistory) selectSearchMoment(i);
     pickedRef.current = i; setPicked(i);
     let e: Entry;
     try { e = await load(m.video_id); } catch (err) { loaded.current.delete(m.video_id); return fail(err); }
@@ -106,7 +107,7 @@ export default function Search() {
     if (jump) seek(m.jump_ms, true);
   }, [ms, load, seek, fail]);
 
-  useEffect(() => { if (ms.length) choose(Math.min(Number(params.get('m')) || 0, ms.length - 1)); }, [ms, choose]);
+  useEffect(() => { if (ms.length) choose(searchMoment(ms.length), true, false); }, [ms, choose]);
   // a new search opens on the gallery when it reaches several videos, on the detail when it reaches one
   useEffect(() => { if (found) setView((v) => v ?? defaultView(found.ms)); }, [found]);
   // the gallery's rows need each video's length to place the moment on it
@@ -121,7 +122,7 @@ export default function Search() {
       const st = history.state || {};
       setView(viewOf() ?? defaultView(ms));
       setFromDir(!!st.fromDir);
-      if (typeof st.m === 'number') choose(st.m);
+      if (ms.length) choose(searchMoment(ms.length), true, false);
       if (viewOf() !== 'detail') requestAnimationFrame(() => scrollTo(0, st.scroll || 0));
     };
     addEventListener('popstate', onPop);
@@ -131,13 +132,13 @@ export default function Search() {
   // a card opens the detail as a new history entry; the gallery's entry keeps its scroll position
   const open = (i: number) => {
     history.replaceState({ ...history.state, scroll: scrollY }, '');
-    history.pushState({ m: i, fromDir: true }, '', urlWith({ view: 'detail', m: String(i) }));
+    history.pushState({ m: i, fromDir: true }, '', searchURL({ view: 'detail', m: String(i) }));
     setView('detail'); setFromDir(true); setLast(i); choose(i);
     scrollTo(0, 0);
   };
   // switching by hand changes this search's view only, without a history entry
   const switchTo = (v: View) => {
-    history.replaceState({ m: pickedRef.current }, '', urlWith({ view: v, ...(v === 'detail' && { m: String(Math.max(0, pickedRef.current)) }) }));
+    history.replaceState({ ...history.state, m: pickedRef.current, fromDir: false }, '', searchURL({ view: v, m: v === 'detail' ? String(Math.max(0, pickedRef.current)) : null }));
     setView(v); setFromDir(false);
   };
 
