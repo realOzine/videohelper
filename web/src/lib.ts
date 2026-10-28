@@ -29,6 +29,16 @@ export const tc = (ms: number, tenths = false) => {
   return `${String(m).padStart(2, '0')}:${s}${tenths ? `.${d % 10}` : ''}`;
 };
 
+// Keep normal ranges compact, but do not hide a short interval within one tenth of a second.
+export function timeRange(startMs: number, endMs: number): string {
+  let start = tc(startMs, true), end = tc(endMs, true);
+  if (startMs < endMs && start === end) {
+    const precise = (ms: number) => `${tc(ms)}.${String(Math.floor(Math.max(0, ms)) % 1000).padStart(3, '0')}`;
+    start = precise(startMs); end = precise(endMs);
+  }
+  return `${start} – ${end}`;
+}
+
 // The dictionary key of a pipeline stage: probe, prepare_media, asr, finalize, or the channel of an embed stage.
 export const stageKind = (stage: string) => (stage.startsWith('embed:') ? stage.split(':')[1] : stage);
 
@@ -51,7 +61,7 @@ export function channelState(stages: Stage[]): Record<Channel, ChannelState> {
   const state = (c: Channel): ChannelState => {
     const mine = stages.filter((s) => stageKind(s.stage) === c || (c === 'speech' && s.stage === 'asr'));
     if (!mine.length) return 'none';
-    if (mine.every((s) => s.status === 'done')) return 'done';
+    if (mine.some((s) => stageKind(s.stage) === c) && mine.every((s) => s.status === 'done')) return 'done';
     return mine.some((s) => s.status === 'failed') ? 'failed' : 'waiting';
   };
   return { visual: state('visual'), speech: state('speech'), audio: state('audio') };

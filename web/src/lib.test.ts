@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { byVideo, channelState, defaultView, marks, modelName, modelPrefs, pipeline, searchFields, seekMedia, tc, ticks } from './lib.ts';
+import { byVideo, channelState, defaultView, marks, modelName, modelPrefs, pipeline, searchFields, seekMedia, tc, ticks, timeRange } from './lib.ts';
 
 test('result seeking waits for metadata of the selected video instead of seeking the previous source', () => {
   const video = { readyState: 4, currentSrc: 'http://localhost/media/old.mp4', currentTime: 5 };
@@ -43,6 +43,13 @@ test('timecodes', () => {
   assert.equal(tc(9990, true), '00:09.9');
 });
 
+test('short time ranges retain distinct endpoints without changing ordinary ranges', () => {
+  assert.equal(timeRange(6000, 6083), '00:06.000 – 00:06.083');
+  assert.equal(timeRange(6198, 6199), '00:06.198 – 00:06.199');
+  assert.equal(timeRange(6100, 7200), '00:06.1 – 00:07.2');
+  assert.equal(timeRange(59999, 60000), '00:59.9 – 01:00.0');
+});
+
 test('pipeline puts probe first, asr before speech encoding, and drops empty lanes', () => {
   const p = pipeline([...stages, { stage: 'fetch', status: 'done', attempt: 1, updated_at: at }]);
   assert.deepEqual(p.before.map((s) => s.stage), ['fetch', 'probe', 'prepare_media']);
@@ -52,6 +59,16 @@ test('pipeline puts probe first, asr before speech encoding, and drops empty lan
 
 test('channel state', () => {
   assert.deepEqual(channelState(stages), { visual: 'done', speech: 'failed', audio: 'none' });
+});
+
+test('speech is searchable only after speech embedding, not transcription alone', () => {
+  const asr = { stage: 'asr', status: 'done', attempt: 1, updated_at: at };
+  const embed = { ...asr, stage: 'embed:speech:wemm-2b@r1' };
+  assert.equal(channelState([asr]).speech, 'waiting');
+  assert.equal(channelState([asr, { ...embed, status: 'running' }]).speech, 'waiting');
+  assert.equal(channelState([asr, { ...embed, status: 'failed' }]).speech, 'failed');
+  assert.equal(channelState([asr, embed]).speech, 'done');
+  assert.equal(channelState([]).speech, 'none');
 });
 
 test('dictionary markup splits without HTML', () => {

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { get, post, type Moment, type Video } from '../api.ts';
 import { t, useLang } from '../i18n.ts';
-import { byVideo, CHANNELS, defaultView, modelName, modelPrefs, searchFields, seekMedia, tc, ticks, type ModelPrefs } from '../lib.ts';
+import { byVideo, CHANNELS, defaultView, modelName, modelPrefs, searchFields, seekMedia, tc, ticks, timeRange, type ModelPrefs } from '../lib.ts';
 import { newProject, panel, PanelHead, Shell, TitleRow, useNotice, useLibrary } from '../Shell.tsx';
 import { btn, btnPrimary, Ch, cx, errText, Icon, Mark, Rich, select, TcBadge, Thumb } from '../ui.tsx';
 
@@ -219,7 +219,7 @@ export default function Search() {
                           {dur ? <span className="absolute inset-x-0 bottom-0 h-[3px] bg-ink/60"><i className="absolute inset-y-0 min-w-[3px] bg-red" style={{ left: `${(x.start_ms / dur) * 100}%`, width: `${((x.end_ms - x.start_ms) / dur) * 100}%` }} /></span> : null}
                         </Thumb>
                       </span>
-                      <span className="mt-2.5 flex justify-between gap-2"><span className="font-semibold">{tc(x.start_ms, true)} – {tc(x.end_ms, true)}</span><span className="text-xs text-faint">{t('s.nth', { n: i + 1 })}</span></span>
+                      <span className="mt-2.5 flex justify-between gap-2"><span className="font-semibold">{timeRange(x.start_ms, x.end_ms)}</span><span className="text-xs text-faint">{t('s.nth', { n: i + 1 })}</span></span>
                       <span className="mt-1 flex flex-wrap gap-x-2.5 gap-y-1">{x.channels.map((h) => <Ch key={h.channel} c={h.channel}>{t('rank', { ch: CH[h.channel], n: h.rank })}</Ch>)}</span>
                       {x.snippet && <span className="mt-1.5 block truncate text-[13px] text-fg-soft">“{x.snippet}”</span>}
                     </button>
@@ -281,7 +281,7 @@ export default function Search() {
                       {c !== 'visual' && entry?.v.has_audio === false && <span className="absolute top-0 left-2 text-[11px] leading-[18px] text-faint">{t('s.noaudio')}</span>}
                       {mine.filter((x) => x.channels.some((h) => h.channel === c)).map((x) => {
                         const on = ms.indexOf(x) === picked;
-                        return <span key={ms.indexOf(x)} title={`${tc(x.start_ms)} – ${tc(x.end_ms)}`} style={{ left: pct(x.start_ms), width: pct(x.end_ms - x.start_ms) }}
+                        return <span key={ms.indexOf(x)} title={timeRange(x.start_ms, x.end_ms)} style={{ left: pct(x.start_ms), width: pct(x.end_ms - x.start_ms) }}
                           className={cx('absolute min-w-1 rounded-full transition-[background-color,top,bottom] duration-200 ease-out', on ? 'top-0 bottom-0 bg-paper' : 'top-[3px] bottom-[3px] bg-hit hover:bg-fg')} />;
                       })}
                     </span>
@@ -300,7 +300,7 @@ export default function Search() {
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0">
                     <h2 className="text-lg font-semibold">{m.video_title}</h2>
-                    <p className="mt-0.5 text-[13px] text-fg-soft">{tc(m.start_ms, true)} – {tc(m.end_ms, true)}{t('s.meta', { secs: Math.round((m.end_ms - m.start_ms) / 1000), tc: tc(m.jump_ms, true) })}</p>
+                    <p className="mt-0.5 text-[13px] text-fg-soft">{timeRange(m.start_ms, m.end_ms)}{t('s.meta', { secs: Math.round((m.end_ms - m.start_ms) / 1000), tc: tc(m.jump_ms, true) })}</p>
                     <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1.5">
                       {m.channels.map((h) => <Ch key={h.channel} c={h.channel}><Rich k="rank.b" vars={{ ch: CH[h.channel], n: h.rank }} /></Ch>)}
                     </div>
@@ -329,7 +329,7 @@ export default function Search() {
                     <Thumb thumb={x.thumbnail} label={t('frame.of', { t: x.video_title })} className="w-[120px] max-md:w-24"><TcBadge>{tc(x.jump_ms)}</TcBadge></Thumb>
                     <span className="grid min-w-0 content-start gap-[3px]">
                       <span className="truncate font-semibold">{x.video_title}</span>
-                      <span className="text-[13px] text-fg-soft">{tc(x.start_ms, true)} – {tc(x.end_ms, true)}</span>
+                      <span className="text-[13px] text-fg-soft">{timeRange(x.start_ms, x.end_ms)}</span>
                       <span className="flex flex-wrap gap-x-2.5 gap-y-1">{x.channels.map((h) => <Ch key={h.channel} c={h.channel}>{t('rank', { ch: CH[h.channel], n: h.rank })}</Ch>)}</span>
                     </span>
                   </button>
