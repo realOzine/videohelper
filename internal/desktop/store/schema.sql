@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS job (
 );
 CREATE UNIQUE INDEX IF NOT EXISTS job_active_video ON job(video_id) WHERE status IN ('queued','running');
 CREATE INDEX IF NOT EXISTS job_queued ON job(status,id);
+CREATE INDEX IF NOT EXISTS job_video_latest ON job(video_id,id DESC);
 CREATE TABLE IF NOT EXISTS sentence (
  video_id INTEGER NOT NULL REFERENCES video(id) ON DELETE CASCADE,
  start_ms INTEGER NOT NULL CHECK(start_ms >= 0),
