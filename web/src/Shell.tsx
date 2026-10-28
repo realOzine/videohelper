@@ -1,9 +1,11 @@
 // The desktop frame: a ruled T of sidebar and top bar on the ink ground, the canvas beside them.
-import { useCallback, useEffect, useState, type MouseEventHandler, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type MouseEventHandler, type ReactNode } from 'react';
 import { get, post, type Project, type Video, type RuntimeState } from './api.ts';
 import { t, useLang } from './i18n.ts';
 import './strings.ts';
-import { cx, errText, Icon, LangSwitch, Logo } from './ui.tsx';
+import { usePageQuery } from './pageQuery.ts';
+import { runtimeMessageKey } from './feedback.ts';
+import { cx, ErrorDetails, errorSummary, errText, Icon, LangSwitch, Logo } from './ui.tsx';
 
 export interface LibraryState { projects: Project[]; failed: number }
 
@@ -22,23 +24,29 @@ export function useLibrary(fail: (err: unknown) => void) {
 
 // One error line at the top of the canvas.
 export function useNotice() {
-  const [notice, setNotice] = useState('');
-  const fail = useCallback((err: unknown) => setNotice(errText(err)), []);
+  const [notice, setNotice] = useState<unknown>(null);
+  const fail = useCallback((err: unknown) => setNotice(() => err), []);
   return { notice, fail };
 }
 
 const navItem = 'desktop-nav';
 
 export function Shell({ page, query = '', ws, onNewProject, notice, children, onQueryLink }: {
-  page: 'search' | 'library' | 'video'; query?: string; ws: LibraryState | null; onNewProject: () => void; notice: string; children: ReactNode; onQueryLink?: MouseEventHandler<HTMLDivElement>;
+  page: 'search' | 'library' | 'video'; query?: string; ws: LibraryState | null; onNewProject: () => void; notice: unknown; children: ReactNode; onQueryLink?: MouseEventHandler<HTMLDivElement>;
 }) {
   const lang = useLang();
-  const [open, setOpen] = useState(false);
-  const project = new URLSearchParams(location.search).get('project');
+  const navDialog = useRef<HTMLDialogElement>(null), navButton = useRef<HTMLButtonElement>(null);
+  const project = usePageQuery().get('project');
+  useEffect(() => {
+    const wide = window.matchMedia('(min-width: 60rem)');
+    const closeOnWide = () => { if (wide.matches) navDialog.current?.close(); };
+    wide.addEventListener('change', closeOnWide);
+    return () => wide.removeEventListener('change', closeOnWide);
+  }, []);
   useEffect(() => { document.title = t(`page.title.${page === 'video' ? 'video' : page}`); }, [page, lang]);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== '/' || (e.target as HTMLElement).closest('input, select, textarea')) return;
+      if (navDialog.current?.open || e.key !== '/' || (e.target as HTMLElement).closest('input, select, textarea')) return;
       e.preventDefault();
       const q = document.getElementById('q') as HTMLInputElement;
       q.focus(); q.select();
@@ -48,13 +56,10 @@ export function Shell({ page, query = '', ws, onNewProject, notice, children, on
   }, []);
   const here = page === 'video' ? 'library' : page;
 
-  return (
-    <div onClick={(e) => { onQueryLink?.(e); if (e.defaultPrevented) setOpen(false); }} className="grid min-h-svh grid-cols-[240px_minmax(0,1fr)] grid-rows-[76px_minmax(0,1fr)] text-sm leading-5 max-md:grid-cols-[minmax(0,1fr)] max-md:grid-rows-[68px_auto]">
-      <nav aria-label={t('a.nav')} className={cx('sticky top-0 row-span-2 flex h-svh flex-col gap-1.5 overflow-auto border-r border-ink-3 bg-ink-2/45 px-4 pb-5',
-        'max-md:fixed max-md:inset-0 max-md:z-20 max-md:h-full max-md:w-full max-md:bg-ink max-md:transition-transform max-md:duration-200 max-md:ease-out', !open && 'max-md:invisible max-md:-translate-x-full')}>
+  const navigation = () => <>
         <div className="mb-5 flex h-[92px] flex-none items-center justify-between px-2">
           <a href="search.html"><Logo /></a>
-          <button type="button" className="hidden size-8 place-items-center text-fg-soft max-md:grid" aria-label={t('a.closenav')} onClick={() => setOpen(false)}><Icon.x className="size-4" /></button>
+          <button type="button" autoFocus className="grid size-8 place-items-center text-fg-soft lg:hidden" aria-label={t('a.closenav')} onClick={() => navDialog.current?.close()}><Icon.x className="size-4" /></button>
         </div>
         <a className={navItem} href="search.html" aria-current={here === 'search' ? 'page' : undefined}><Icon.search />{t('nav.search')}</a>
         <a className={navItem} href="library.html" aria-current={here === 'library' && !project ? 'page' : undefined}>
@@ -67,12 +72,20 @@ export function Shell({ page, query = '', ws, onNewProject, notice, children, on
             <Icon.folder /><span className="truncate">{p.name}</span><span className="nav-count ml-auto text-xs">{p.video_count}</span>
           </a>
         ))}
-        <button type="button" className={cx(navItem, 'text-left')} onClick={onNewProject}><Icon.folder plus />{t('nav.newproject')}</button>
-      </nav>
+        <button type="button" className={cx(navItem, 'text-left')} onClick={() => { navDialog.current?.close(); onNewProject(); }}><Icon.folder plus />{t('nav.newproject')}</button>
+  </>;
 
-      <header className="col-start-2 flex min-w-0 items-center gap-4 border-b border-ink-3 px-8 max-md:col-start-1 max-md:px-4">
-        <button type="button" className="hidden size-8 flex-none place-items-center text-fg max-md:grid" aria-label={t('top.menu')} onClick={() => setOpen(true)}><Icon.menu className="size-[18px]" /></button>
+  return (
+    <div onClick={(e) => { onQueryLink?.(e); if (e.defaultPrevented) navDialog.current?.close(); }} className="grid min-h-svh grid-cols-[240px_minmax(0,1fr)] grid-rows-[76px_minmax(0,1fr)] text-sm leading-5 max-lg:grid-cols-[minmax(0,1fr)] max-lg:grid-rows-[68px_auto]">
+      <nav aria-label={t('a.nav')} className="sticky top-0 row-span-2 flex h-svh flex-col gap-1.5 overflow-auto border-r border-ink-3 bg-ink-2/45 px-4 pb-5 max-lg:hidden">{navigation()}</nav>
+      <dialog id="mobile-nav" ref={navDialog} aria-label={t('a.nav')} onClose={() => navButton.current?.focus()} className="fixed inset-0 m-0 h-dvh max-h-none w-full max-w-none overflow-y-auto border-0 bg-ink px-4 pb-5 text-fg backdrop:bg-ink/60 lg:hidden">
+        <nav className="flex min-h-full flex-col gap-1.5">{navigation()}</nav>
+      </dialog>
+
+      <header className="col-start-2 flex min-w-0 items-center gap-4 border-b border-ink-3 px-8 max-lg:col-start-1 max-lg:px-4">
+        <button ref={navButton} type="button" className="hidden size-8 flex-none place-items-center text-fg max-lg:grid" aria-label={t('top.menu')} aria-haspopup="dialog" aria-controls="mobile-nav" onClick={() => navDialog.current?.showModal()}><Icon.menu className="size-[18px]" /></button>
         <form role="search" action="search.html" className="flex h-11 w-[min(640px,100%)] items-center gap-3 rounded-full border border-line bg-ink-2 pr-3.5 pl-4 transition-colors duration-150 focus-within:border-fg-soft max-xs:w-auto max-xs:min-w-0 max-xs:flex-1">
+          {project && <input type="hidden" name="project" value={project} />}
           <Icon.search className="size-4 flex-none text-fg-soft" />
           <label htmlFor="q" className="sr-only">{t('top.searchlabel')}</label>
           <input id="q" name="q" type="search" defaultValue={query} placeholder={t('top.placeholder')} className="h-full min-w-0 flex-1 bg-transparent outline-0 placeholder:text-faint" />
@@ -82,9 +95,9 @@ export function Shell({ page, query = '', ws, onNewProject, notice, children, on
 
       </header>
 
-      <main className="col-start-2 min-w-0 px-8 pt-9 pb-12 max-md:col-start-1 max-md:px-4 max-md:pt-5 max-md:pb-10">
+      <main className="col-start-2 min-w-0 px-8 pt-9 pb-12 max-lg:col-start-1 max-lg:px-4 max-lg:pt-5 max-lg:pb-10">
         <RuntimeStatus />
-        {notice && <p role="alert" className="mb-6 flex items-center gap-3 rounded-[10px] bg-red-soft px-4 py-3 text-neg-ink"><span className="flex-1">{notice}</span><button type="button" className="font-medium text-fg underline underline-offset-[3px]" onClick={() => location.reload()}>{t('retry')}</button></p>}
+        {notice != null && notice !== '' && <section role="alert" className="mb-6 flex flex-wrap items-start gap-3 rounded-[10px] bg-red-soft px-4 py-3 text-neg-ink"><div className="min-w-0 flex-1"><ErrorDetails summary={errorSummary(notice)} detail={errText(notice)} /></div><button type="button" className="font-medium text-fg underline underline-offset-[3px]" onClick={() => location.reload()}>{t('retry')}</button></section>}
         {children}
       </main>
     </div>
@@ -95,7 +108,7 @@ export function TitleRow({ title, sub, children }: { title: ReactNode; sub?: Rea
   return (
     <div className="mb-7 flex items-end justify-between gap-5 max-lg:flex-wrap max-lg:items-start">
       <div className="min-w-0">
-        <h1 className="disp text-[30px] leading-[1.3] max-md:text-2xl">{title}</h1>
+        <h1 className="disp text-[30px] leading-[1.3] max-lg:text-2xl">{title}</h1>
         {sub && <p className="mt-2 max-w-[72ch] text-sm leading-relaxed text-fg-soft">{sub}</p>}
       </div>
       {children && <div className="flex flex-none gap-2 max-xs:w-full max-xs:[&>*]:flex-1">{children}</div>}
@@ -107,7 +120,7 @@ export const panelBase = 'min-w-0 rounded-2xl border border-ink-3 bg-ink-2';
 export const panel = `${panelBase} p-5`;
 export function PanelHead({ title, id, children }: { title: ReactNode; id?: string; children?: ReactNode }) {
   return (
-    <header className="mb-4 flex items-center justify-between gap-3">
+    <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
       <h2 id={id} className="text-lg leading-[1.3] font-semibold">{title}</h2>
       {children}
     </header>
@@ -127,24 +140,37 @@ export async function newProject(reload: () => Promise<void>, fail: (err: unknow
 
 function RuntimeStatus() {
   const [state, setState] = useState<RuntimeState | null>(null);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<unknown>(null);
+  const [retrying, setRetrying] = useState(false);
   useEffect(() => {
-    let stopped = false;
+    const controller = new AbortController();
+    let timer = 0;
     const poll = async () => {
-      try { const next = await get<RuntimeState>('/v1/desktop/runtime'); if (!stopped) { setState(next); setError(''); } }
-      catch (err) { if (!stopped) setError(err instanceof Error ? err.message : String(err)); }
+      try {
+        const next = await get<RuntimeState>('/v1/desktop/runtime', controller.signal);
+        if (!controller.signal.aborted) { setState(next); setError(null); }
+      } catch (err) { if (!controller.signal.aborted) setError(err); }
+      finally { if (!controller.signal.aborted) timer = window.setTimeout(poll, 2000); }
     };
-    poll(); const timer = window.setInterval(poll, 2000);
-    return () => { stopped = true; clearInterval(timer); };
+    poll();
+    return () => { controller.abort(); clearTimeout(timer); };
   }, []);
+  const failed = Boolean(state?.error || error || state?.stage === 'failed');
+  const retry = async () => {
+    setRetrying(true);
+    try { await post('/v1/desktop/runtime/retry'); }
+    catch (err) { setError(err); }
+    finally { setRetrying(false); }
+  };
   return <section aria-live="polite" className="mb-6 rounded-xl border border-ink-3 bg-ink-2/60 px-4 py-3">
     <div className="flex flex-wrap items-center gap-2 text-[13px]">
-      <span className={cx('size-1.5 flex-none rounded-full', state?.ready ? 'bg-pos' : state?.error || error ? 'bg-red' : 'animate-beat bg-fg-soft')} />
-      <span className="font-medium">{state?.ready ? t('desktop.ready') : t('desktop.preparing')}</span>
-      {state?.device && <span title={state.reason} className="rounded bg-ink-3 px-1.5 font-mono text-xs text-fg-soft">{state.device.toUpperCase()}</span>}
-      {(state?.error || error || (!state?.ready && state?.message)) && <span className="min-w-0 text-xs leading-relaxed break-words text-fg-soft">{state?.error || error || state?.message}</span>}
-      {state?.error && <button type="button" className="ml-auto text-fg underline underline-offset-[3px]" onClick={() => post('/v1/desktop/runtime/retry').catch((err) => setError(errText(err)))}>{t('retry')}</button>}
+      <span className={cx('size-1.5 flex-none rounded-full', failed ? 'bg-red' : state?.ready ? 'bg-pos' : 'animate-beat bg-fg-soft')} />
+      <span className="font-medium">{failed ? t('desktop.failed') : state?.ready ? t('desktop.ready') : t('desktop.preparing')}</span>
+      {state?.device && <span className="rounded bg-ink-3 px-1.5 font-mono text-xs text-fg-soft">{state.device.toUpperCase()}</span>}
+      {state?.error && <button type="button" disabled={retrying} className="ml-auto text-fg underline underline-offset-[3px] disabled:opacity-50" onClick={retry}>{t('retry')}</button>}
     </div>
-    {state?.fraction != null && !state.ready && <progress aria-label={t('desktop.preparing')} className="mt-2 h-1 w-full accent-red" value={state.fraction} max={1} />}
+    {failed ? <div className="mt-2"><ErrorDetails summary={error ? errorSummary(error) : t('desktop.failureHelp')} detail={state?.error || (error ? errText(error) : undefined)} /></div>
+      : !state?.ready && <p className="mt-2 text-xs leading-relaxed text-fg-soft">{t(runtimeMessageKey(state?.stage))}</p>}
+    {state?.fraction != null && !state.ready && !failed && <progress aria-label={t('desktop.preparing')} className="mt-2 h-1 w-full accent-red" value={state.fraction} max={1} />}
   </section>;
 }
