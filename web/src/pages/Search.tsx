@@ -23,7 +23,7 @@ addStrings({
 });
 // The model choice applies to every search in this app until reset.
 const PREFS = 'vh-models';
-const storedPrefs = ((): ModelPrefs => {
+export const storedPrefs = ((): ModelPrefs => {
   try { return readModelPrefs(localStorage.getItem(PREFS)); } catch { /* blocked storage: defaults */ }
   return { spaces: {}, weights: {} };
 })();
@@ -370,7 +370,7 @@ export default function Search() {
 
 // Picks one encoding model per channel from the catalog for this scope, and whether each channel takes part.
 // Only models that have finished encoding the scope can be picked (the server refuses the rest); applying reloads the search.
-function Models({ prefs }: { prefs: ModelPrefs }) {
+export function Models({ prefs }: { prefs: ModelPrefs }) {
   const box = useRef<HTMLDialogElement>(null);
   const [chs, setChs] = useState<ChannelModels[] | null>(null);
   const [err, setErr] = useState('');

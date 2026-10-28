@@ -52,6 +52,8 @@ func Run(connection Connection) error {
 		win := mygo.NewWindow(mygo.WindowOptions{
 			Title: "VideoHelper", URL: "/search.html", Width: 1280, Height: 840,
 			MinWidth: 760, MinHeight: 540, BackgroundColor: "#0f0e15", StateKey: "main",
+			// The page draws its own 56px title bar; the traffic lights sit centred in it.
+			TitleBarStyle: mygo.TitleBarHidden, TrafficLightPosition: &mygo.Point{X: 18, Y: 21},
 		})
 		win.Page().OnWillNavigate(func(e *mygo.NavigateEvent) {
 			if !ownPage(e.URL, mygo.IsDev()) {

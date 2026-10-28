@@ -175,29 +175,25 @@ export default function Library() {
         <span className="text-fg-soft">{rows ? t('l.total', { n: rows.length + (cursor ? '+' : '') }) : ''}</span>
         <span className="text-xs text-faint max-xs:hidden">{t('meta.sort')}</span>
       </div>
-      <div id="library-videos" role="tabpanel" aria-labelledby={`library-filter-${status || 'all'}`} tabIndex={0} aria-busy={rows === null} className="@container overflow-x-auto rounded-2xl border border-ink-3 bg-ink-2/40 px-4">
-        <table className="w-full table-fixed border-collapse">
-          <thead className="@max-[42rem]:hidden">
-            <tr className="[&>th]:h-9 [&>th]:border-b [&>th]:border-ink-3 [&>th]:px-3 [&>th]:text-left [&>th]:text-xs [&>th]:font-normal [&>th]:whitespace-nowrap [&>th]:text-fg-soft">
-              <th className="w-[44%]">{t('th.video')}</th><th className="w-[30%]">{t('th.status')}</th><th className="w-[12%] text-right!">{t('th.dur')}</th><th className="w-[14%] text-right!">{t('th.added')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows === null && <tr><td colSpan={4} className="py-3"><Empty>{t('l.loading')}</Empty></td></tr>}
-            {rows && !rows.length && <tr><td colSpan={4} className="py-3"><Empty>{t(libraryEmptyKey(project, status), { status: t(`st.${status}`) })}</Empty></td></tr>}
-            {rows?.map((v) => (
-              <tr key={v.id} className="border-b border-ink-3 transition-colors duration-150 last:border-b-0 hover:bg-ink-3/50 @max-[42rem]:grid @max-[42rem]:grid-cols-[minmax(0,1fr)_auto] @max-[42rem]:items-start @max-[42rem]:gap-x-3 @max-[42rem]:gap-y-2 @max-[42rem]:py-3 [&>td]:px-3 [&>td]:py-[12.5px] [&>td]:align-middle @max-[42rem]:[&>td]:p-0">
-                <td className="min-w-0 @max-[42rem]:col-span-2"><a className="group flex min-w-0 items-center gap-3" href={`video.html?id=${v.id}`}>
-                  <Thumb thumb={v.thumbnail} label={t('frame.of', { t: v.title })} className="w-20" />
-                  <span className="min-w-0 flex-1"><span title={v.title} className="block truncate font-semibold">{v.title}</span><span className="block text-xs text-fg-soft">{tracks(v)}</span></span>
-                </a></td>
-                <td className="min-w-0 [overflow-wrap:anywhere]"><Pill status={v.status} />{v.status === 'deleted' && <button type="button" className={cx(btn, 'mt-1')} onClick={() => post(`/v1/videos/${v.id}/restore`).then(() => refresh()).then(() => reload()).catch(fail)}>{t('desktop.restore')}</button>}{(v.status === 'failed' || v.status === 'cancelled') && <div className="mt-2 text-xs text-fg-soft">{v.status === 'failed' && <ErrorDetails summary={t('l.processingFailed')} detail={v.error} />}<button type="button" className="mt-2 font-medium text-fg underline underline-offset-[3px]" onClick={(e) => retry(v.id, e.currentTarget)}>{t('retry')}</button></div>}</td>
-                <td className="text-right @max-[42rem]:col-start-2">{v.duration_ms ? tc(v.duration_ms) : <span className="text-faint">—</span>}</td>
-                <td className="text-right @max-[42rem]:hidden">{when(v.created_at)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div id="library-videos" role="tabpanel" aria-labelledby={`library-filter-${status || 'all'}`} tabIndex={0} aria-busy={rows === null} className="rounded-2xl border border-edge bg-ink-2 [&>*+*]:border-t [&>*+*]:border-ink-3">
+        {rows === null && <div className="p-3"><Empty>{t('l.loading')}</Empty></div>}
+        {rows && !rows.length && <div className="p-3"><Empty>{t(libraryEmptyKey(project, status), { status: t(`st.${status}`) })}</Empty></div>}
+        {rows?.map((v) => (
+          <div key={v.id} className="group flex flex-wrap items-center gap-x-4 gap-y-2 px-[18px] py-3.5 transition-colors duration-150 hover:bg-ink-3/35">
+            <a href={`video.html?id=${v.id}`} tabIndex={-1} aria-hidden className="flex-none"><Thumb thumb={v.thumbnail} label={t('frame.of', { t: v.title })} className="w-24" /></a>
+            <div className="grid min-w-0 flex-[1_1_220px] gap-[3px]">
+              <a href={`video.html?id=${v.id}`} title={v.title} className="truncate text-[15px] font-semibold">{v.title}</a>
+              <span className="truncate text-[13px] text-faint">{[tracks(v), v.duration_ms ? tc(v.duration_ms) : '', when(v.created_at)].filter(Boolean).join(' · ')}</span>
+              {v.status === 'failed' && <div className="mt-1 text-xs text-neg-ink"><ErrorDetails summary={t('l.processingFailed')} detail={v.error} /></div>}
+            </div>
+            <div className="flex flex-none items-center gap-2.5">
+              {(v.status === 'failed' || v.status === 'cancelled') && <button type="button" className={btn} onClick={(e) => retry(v.id, e.currentTarget)}>{t('retry')}</button>}
+              {v.status === 'deleted' && <button type="button" className={btn} onClick={() => post(`/v1/videos/${v.id}/restore`).then(() => refresh()).then(() => reload()).catch(fail)}>{t('desktop.restore')}</button>}
+              <Pill status={v.status} />
+              <a href={`video.html?id=${v.id}`} aria-label={t('s.openvideo')} className="grid size-6 place-items-center text-faint transition-colors hover:text-fg"><Icon.chevron className="size-3" /></a>
+            </div>
+          </div>
+        ))}
       </div>
       {cursor && <p className="mt-4 text-center"><button type="button" className={btn} disabled={loadingMore} onClick={more}>{loadingMore ? t('l.loading') : t('b.more')}</button></p>}
     </Shell>

@@ -12,6 +12,8 @@
   --color-ink-3: #24232b;
   --color-ink-4: #302e38;
   --color-line: #3b3843;
+  /* hairline around panels and cards: a step brighter than ink-3 so edges read on the ink ground */
+  --color-edge: #2a2931;
   --color-fg: #f3ede2;
   --color-fg-soft: #bbb5b4;
   --color-faint: #9f999e;
@@ -46,12 +48,14 @@
   --breakpoint-xl: 68.75rem;  /* 1100: tablet */
 
   --animate-beat: beat 1.6s ease-in-out infinite;
+  --animate-wiggle: wiggle 0.7s cubic-bezier(0.36, 0.07, 0.19, 0.97);
 
   /* the one elevation cue on ink: a hairline of light along a panel's top edge */
   --shadow-edge: inset 0 1px 0 rgb(255 255 255 / 0.045);
 }
 
 @keyframes beat { 50% { opacity: 0.35; } }
+@keyframes wiggle { 15% { transform: rotate(-14deg) scale(1.06); } 35% { transform: rotate(10deg) scale(1.06); } 55% { transform: rotate(-6deg); } 75% { transform: rotate(3deg); } }
 
 @layer base {
   html { -webkit-text-size-adjust: 100%; color-scheme: dark; }
@@ -65,18 +69,21 @@
 @layer components {
   .disp { font-family: var(--font-sans); font-weight: 600; letter-spacing: -0.035em; line-height: 1.2; text-wrap: balance; white-space: pre-line; }
   :lang(zh-CN) .disp { letter-spacing: -0.025em; line-height: 1.3; }
-  .desktop-nav { position: relative; display: flex; min-height: 42px; align-items: center; gap: 12px; border-radius: 12px; padding: 8px 14px; color: var(--color-fg-soft); transition: background-color 150ms, color 150ms; }
-  .desktop-nav > svg { width: 18px; height: 18px; flex: none; }
-  .desktop-nav:hover { background: var(--color-ink-3); color: var(--color-fg); }
-  .desktop-nav[aria-current="page"] { background: var(--color-paper); color: var(--color-ink); font-weight: 600; }
-  .nav-failed { color: var(--color-red-text); }
-  .nav-count { color: var(--color-faint); }
-  .desktop-nav[aria-current="page"] .nav-failed { color: var(--color-red-deep); }
-  .desktop-nav[aria-current="page"] .nav-count { color: var(--color-on-paper-soft); }
-  .desktop-nav[aria-current="page"]::before { content: ""; position: absolute; left: 0; width: 3px; height: 20px; border-radius: 3px; background: var(--color-red); }
+  /* Top tabs: the current one sits on a red mark along the bar's bottom edge, the icon's playhead. */
+  .top-tab { position: relative; display: inline-flex; height: 34px; align-items: center; gap: 6px; white-space: nowrap; border-radius: 10px; padding: 0 14px; font-size: 15px; color: var(--color-fg-soft); transition: background-color 150ms, color 150ms; }
+  .top-tab:hover { background: var(--color-ink-2); color: var(--color-fg); }
+  .top-tab[aria-current="page"] { background: var(--color-ink-3); color: var(--color-fg); font-weight: 500; }
+  .top-tab[aria-current="page"]::after { content: ""; position: absolute; left: 50%; bottom: -11px; width: 18px; height: 2px; margin-left: -9px; border-radius: 2px; background: var(--color-red); }
+  /* Sidebar rows: the current one carries the same red mark on its left edge. */
+  .side-item { position: relative; display: flex; width: 100%; height: 36px; align-items: center; gap: 12px; border-radius: 8px; padding: 0 10px; text-align: left; color: var(--color-fg-soft); transition: background-color 150ms, color 150ms; }
+  .side-item > svg { width: 17px; height: 17px; flex: none; }
+  .side-item:hover { background: var(--color-ink-2); color: var(--color-fg); }
+  .side-item[aria-current="page"] { background: var(--color-ink-3); color: var(--color-fg); font-weight: 500; }
+  .side-item[aria-current="page"]::before { content: ""; position: absolute; left: -12px; top: 9px; width: 3px; height: 18px; border-radius: 0 3px 3px 0; background: var(--color-red); }
+  .fail-count { margin-left: auto; min-width: 18px; height: 18px; border-radius: 9px; background: var(--color-red-soft); padding: 0 5px; text-align: center; font-size: 11px; font-weight: 600; line-height: 18px; color: var(--color-neg-ink); }
   .library-tab { flex: none; border-radius: 999px; padding: 7px 14px; color: var(--color-fg-soft); transition: background-color 150ms, color 150ms; }
   .library-tab:hover { color: var(--color-fg); background: var(--color-ink-3); }
-  .library-tab[aria-selected="true"] { color: var(--color-ink); background: var(--color-paper); font-weight: 600; }
+  .library-tab[aria-selected="true"] { color: var(--color-fg); background: var(--color-ink-4); font-weight: 500; }
 
   /* channel marks: the shape tells the channel apart, the label says it */
   .ch { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }

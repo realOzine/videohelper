@@ -4,7 +4,7 @@ import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
 // One HTML file per page keeps the plain URLs (search.html, video.html?id=…) that any static host serves.
-const pages = ['search', 'library', 'video'];
+const pages = ['search', 'library', 'video', 'settings'];
 
 export default defineConfig({
   base: './',

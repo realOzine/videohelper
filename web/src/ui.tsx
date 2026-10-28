@@ -4,7 +4,6 @@ import { ApiError, type Thumbnail } from './api.ts';
 import { setLang, t, useLang } from './i18n.ts';
 import { marks } from './lib.ts';
 import { errorSummaryKey } from './feedback.ts';
-import mark from '../../Design/Icon/videohelper-icon-reversed.svg';
 import logo from '../../Design/Kite/horizontal-reversed.svg';
 
 export const cx = (...parts: (string | false | null | undefined)[]) => parts.filter(Boolean).join(' ');
@@ -19,14 +18,25 @@ export const Icon = {
   pause: (p: { className?: string }) => <svg viewBox="0 0 24 24" aria-hidden className={p.className}><path d="M7 4.5h3.5v15H7zM13.5 4.5H17v15h-3.5z" fill="currentColor" /></svg>,
   check: (p: { className?: string }) => <svg {...svg} strokeWidth={1.75} className={p.className}><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>,
   x: (p: { className?: string }) => <svg {...svg} strokeWidth={1.75} className={p.className}><path d="M7 7l10 10M17 7L7 17" /></svg>,
-  menu: (p: { className?: string }) => <svg {...svg} strokeWidth={1.75} className={p.className}><path d="M4 7h16M4 12h16M4 17h16" /></svg>,
   arrow: (p: { className?: string }) => <svg {...svg} strokeWidth={1.75} className={p.className}><path d="M7 17 17 7M9 7h8v8" /></svg>,
   grid: (p: { className?: string }) => <svg {...svg} strokeWidth={1.75} className={p.className}><rect x="3" y="4" width="8" height="7" rx="1.5" /><rect x="13" y="4" width="8" height="7" rx="1.5" /><rect x="3" y="13" width="8" height="7" rx="1.5" /><rect x="13" y="13" width="8" height="7" rx="1.5" /></svg>,
   detail: (p: { className?: string }) => <svg {...svg} strokeWidth={1.75} className={p.className}><rect x="3" y="4" width="11" height="16" rx="1.5" /><path d="M17 5h4M17 10h4M17 15h4M17 19h4" /></svg>,
+  gear: (p: { className?: string }) => <svg {...svg} strokeWidth={1.75} className={p.className}><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>,
+  sidebar: (p: { className?: string }) => <svg {...svg} strokeWidth={1.75} className={p.className}><rect x="3" y="4.5" width="18" height="15" rx="3" /><path d="M9.5 4.5v15" /></svg>,
   chevron: (p: { className?: string }) => <svg {...svg} strokeWidth={1.75} viewBox="0 0 12 12" className={p.className}><path d="M4.5 2.5 8 6l-3.5 3.5" strokeLinejoin="round" /></svg>,
 };
 
-export const Mark = ({ className = 'size-12' }: { className?: string }) => <img src={mark} alt="" aria-hidden className={cx('flex-none object-contain', className)} />;
+// Drawn inline from Design/Icon/videohelper-icon-reversed.svg so it can move (the title bar wiggles it on hover).
+export const Mark = ({ className = 'size-12' }: { className?: string }) => (
+  <svg viewBox="0 0 256 256" aria-hidden className={cx('flex-none', className)}>
+    <g fill="var(--color-paper)">
+      <rect x="25" y="55" width="90" height="34" rx="17" /><rect x="165" y="55" width="34" height="34" rx="17" />
+      <rect x="73" y="111" width="42" height="34" rx="17" /><rect x="165" y="111" width="66" height="34" rx="17" />
+      <rect x="45" y="167" width="70" height="34" rx="17" /><rect x="165" y="167" width="46" height="34" rx="17" />
+    </g>
+    <rect x="129" y="23" width="22" height="210" rx="11" fill="var(--color-red)" />
+  </svg>
+);
 // Keep the supplied outlined wordmark intact instead of recreating it with live text.
 export const Logo = ({ className = 'w-[172px]' }: { className?: string }) => <img src={logo} alt="VideoHelper" className={cx('block h-auto flex-none', className)} />;
 
