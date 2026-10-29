@@ -6,10 +6,6 @@ VideoHelper is a personal cross-platform desktop app, with macOS Apple Silicon f
 
 There are no accounts, tenants, JWT, public admin APIs, per-user limits, billing, PostgreSQL, Redis, S3 or Docker dependencies. Keep the desktop focused on responsiveness, clear UI, compatibility and search. The short-lived loopback capability and managed-file boundaries protect local process communication; they are not a user login system.
 
-## Agent Scope: Ignore `model-test/`
-
-The entire `model-test/` directory is an experimental sandbox. Unless the user explicitly requests work there, do not read, list, search, execute, modify, move, delete, or otherwise operate on it or its contents. Exclude it from searches, builds, tests and refactors. General repository work does not authorize access.
-
 ## Build and Validation
 
 - `npm --prefix web ci` installs frontend development dependencies.
