@@ -29,7 +29,7 @@ export function useNotice() {
   return { notice, fail };
 }
 
-const SIDEBAR = 'vh-sidebar';
+const SIDEBAR_HIDDEN = 'vh-sidebar-hidden';
 const current = (on: boolean) => (on ? 'page' as const : undefined);
 
 export function Shell({ page, query = '', ws, onNewProject, notice, children, onQueryLink }: {
@@ -37,10 +37,10 @@ export function Shell({ page, query = '', ws, onNewProject, notice, children, on
 }) {
   const lang = useLang();
   const project = usePageQuery().get('project');
-  // The sidebar is a choice kept in this app; narrow windows always use the title bar.
-  const [side, setSide] = useState(() => { try { return localStorage.getItem(SIDEBAR) === '1'; } catch { return false; } });
+  // Wide windows show the sidebar unless it was hidden here; narrow windows always use the title bar.
+  const [side, setSide] = useState(() => { try { return localStorage.getItem(SIDEBAR_HIDDEN) !== '1'; } catch { return true; } });
   const toggleSide = () => {
-    try { localStorage.setItem(SIDEBAR, side ? '0' : '1'); } catch { /* not remembered, still switched */ }
+    try { localStorage.setItem(SIDEBAR_HIDDEN, side ? '1' : '0'); } catch { /* not remembered, still switched */ }
     setSide(!side);
   };
   useEffect(() => { document.title = t(`page.title.${page}`); }, [page, lang]);
