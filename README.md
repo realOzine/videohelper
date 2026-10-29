@@ -34,19 +34,33 @@ There are no published binary releases yet. To build from source, install **Go 1
 git clone https://github.com/realOzine/videohelper.git
 cd videohelper
 npm --prefix web ci
-make desktop
-./bin/VideoHelper
+make release mac
+open Release/darwin-arm64/VideoHelper.app
 ```
 
-`bin/VideoHelper` is the single main executable you can copy to another compatible Apple Silicon Mac. The build includes the UI, fonts and model-service source, but **does not include installed models or their runtime dependencies**. Mac builds are locally signed and have not been notarized with a Developer ID.
+On Mac, the main output is `Release/darwin-arm64/VideoHelper.app`. Double-click it in Finder to launch, or copy the whole `.app` to another compatible Apple Silicon Mac. Mac builds are locally signed and have not been notarized with a Developer ID.
+
+### Build targets
+
+`make release` builds for the current platform. Select one platform explicitly with:
+
+| Native build host | Command | Local output |
+| --- | --- | --- |
+| Apple Silicon Mac | `make release mac` | `Release/darwin-arm64/VideoHelper.app` |
+| Windows x64 | `make release windows` | `Release/windows-amd64/VideoHelper.exe` |
+| Linux x64 | `make release linux` | `Release/linux-amd64/videohelper` |
+
+SQLite uses CGO, so each target must be built on its own OS with the appropriate C toolchain; these commands do not cross-compile all platforms from a Mac. Only the Mac target has been validated; Windows and Linux targets still need real-device acceptance. These commands create local artifacts and do not upload a GitHub release.
+
+For the existing single-main-executable workflow, use `make desktop` (or `make build`), then run `./bin/VideoHelper` on Mac. Both delivery formats include the UI, fonts and model-service source, but **do not include installed models or their runtime dependencies**.
 
 ### First launch
 
-VideoHelper downloads private Python, media tools, model dependencies and weights into its application data directory. **The first setup needs internet access, reachable dependency/model hosts and sufficient disk space.** You do not need to install Python, FFmpeg or yt-dlp yourself. Later launches reuse the cache.
+VideoHelper downloads private Python, media tools, model dependencies and weights into its application data directory. **The first setup needs internet access, reachable dependency/model hosts and sufficient disk space.** You do not need to install Python, FFmpeg or yt-dlp yourself. Later launches check and reuse cached files, then load the models; missing components or weights are downloaded when needed.
 
 The window shows preparation progress and the selected device. You can browse the library and play already prepared videos while models load; new imports wait in a persistent queue.
 
-On macOS, the single executable restores a small `.app` wrapper in the data directory and starts it through the system. The terminal launcher then exits while the app keeps running. Close the window or press `⌘Q` to quit.
+The release `.app` starts directly. If you use the standalone Mac executable instead, it restores a small `.app` wrapper in the data directory and starts it through the system; the terminal launcher then exits while the app keeps running. Close the window or press `⌘Q` to quit.
 
 1. Open **Library** and select local videos or paste a video link.
 2. Wait for processing to finish, then describe a scene, line or sound in the search box.

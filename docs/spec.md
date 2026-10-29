@@ -97,4 +97,16 @@ MPS/CUDA/CPU 的最终选择依赖真实 Torch 运算。组件的 OS/驱动检�
 
 退出时取消 UI 调用、任务和 bootstrap，等待本次创建的进程树退出后关闭数据库。模型进程意外退出时，主程序停止当前处理并允许重建运行时。单个 HTTP 请求取消不会硬中断已经进入 Torch 的线程；退出应用会结束托管模型进程。
 
-`make desktop` 内嵌 Web 资源与模型源码，导出一个可执行文件；不携带预装模型权重。构建成功、假模型接线测试、真实工具测试、真实模型短样本与 GUI 验收分别报告。旧服务端离线评估工具已退出本分支，冻结语料、历史结果和纯评分/校验工具保留，不能将旧后端基线当作新后端性能或质量证明。
+`make release` 默认构建当前平台；`make release mac`、`make release windows`、`make release linux` 显式选择单个平台，复用 MyGo 原生打包：
+
+| 命令 | 构建主机与本地产物 |
+| --- | --- |
+| `make release mac` | Apple Silicon macOS：`Release/darwin-arm64/VideoHelper.app` |
+| `make release windows` | Windows x64：`Release/windows-amd64/VideoHelper.exe` |
+| `make release linux` | Linux x64：`Release/linux-amd64/videohelper` |
+
+SQLite / sqlite-vec 使用 CGO，每个目标要求对应 OS 与本机 C 工具链；不提供从 Mac 跨编译所有平台的流程。当前只有 Apple Silicon Mac 经过实际验收，Intel Mac 暂不可用，Windows/Linux 目标仍待实机验证。Mac 产物是可在 Finder 双击的完整 `.app`，沿用本地签名，未做 Developer ID 公证；命令不上传 GitHub Release。
+
+`make desktop` / `make build` 继续内嵌 Web 资源与模型源码，并在 Mac 导出 `bin/VideoHelper` 单主程序；不携带预装模型权重。`.app` 直接运行，裸二进制仍按上述流程恢复包装；两者使用同一应用数据目录，首次安装私有运行时和模型，后续检查缓存，仅补齐缺失内容后加载。
+
+构建成功、假模型接线测试、真实工具测试、真实模型短样本与 GUI 验收分别报告。旧服务端离线评估工具已退出本分支，冻结语料、历史结果和纯评分/校验工具保留，不能将旧后端基线当作新后端性能或质量证明。

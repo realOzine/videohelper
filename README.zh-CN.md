@@ -34,19 +34,33 @@ VideoHelper 是个人使用的视频检索桌面应用，可以搜索画面、�
 git clone https://github.com/realOzine/videohelper.git
 cd videohelper
 npm --prefix web ci
-make desktop
-./bin/VideoHelper
+make release mac
+open Release/darwin-arm64/VideoHelper.app
 ```
 
-`bin/VideoHelper` 是可复制到兼容 Mac 上运行的单个主程序。构建内嵌界面、字体和模型服务源码，**不包含已安装的模型及其运行依赖**。Mac 构建使用本地签名，尚未完成 Developer ID 公证。
+Mac 的主交付物是 `Release/darwin-arm64/VideoHelper.app`，可在 Finder 中双击打开，也可将整个 `.app` 复制到兼容的 Apple Silicon Mac。Mac 构建使用本地签名，尚未完成 Developer ID 公证。
+
+### 选择构建平台
+
+`make release` 默认构建当前平台，也可以显式选择单个平台：
+
+| 原生构建主机 | 命令 | 本地产物 |
+| --- | --- | --- |
+| Apple Silicon Mac | `make release mac` | `Release/darwin-arm64/VideoHelper.app` |
+| Windows x64 | `make release windows` | `Release/windows-amd64/VideoHelper.exe` |
+| Linux x64 | `make release linux` | `Release/linux-amd64/videohelper` |
+
+SQLite 使用 CGO，每个目标都需要在对应操作系统上使用合适的 C 工具链原生构建；这些命令不能让 Mac 跨编译全部平台。目前只有 Mac 目标经过验证，Windows 和 Linux 目标仍待实机验收。命令只生成本地产物，不会上传 GitHub Release。
+
+原有单主程序方式仍可使用：执行 `make desktop`（或 `make build`），在 Mac 上运行 `./bin/VideoHelper`。两种交付形式都内嵌界面、字体和模型服务源码，**不包含已安装的模型及其运行依赖**。
 
 ### 首次启动
 
-VideoHelper 会将私有 Python、媒体工具、模型依赖和权重下载到应用数据目录。**首次准备需要联网、依赖与模型下载源可达，并预留足够磁盘空间。** 不需要自己安装 Python、FFmpeg 或 yt-dlp；之后启动会复用缓存。
+VideoHelper 会将私有 Python、媒体工具、模型依赖和权重下载到应用数据目录。**首次准备需要联网、依赖与模型下载源可达，并预留足够磁盘空间。** 不需要自己安装 Python、FFmpeg 或 yt-dlp；之后启动会检查并复用缓存，再加载模型，仅在缺失时下载相应组件或权重。
 
 窗口会显示准备进度和实际设备。模型加载期间仍可浏览资料库、播放已准备好的视频；新导入的任务会持久排队等待。
 
-macOS 上，单文件会先在数据目录恢复一个小型 `.app` 包装，再交给系统启动。终端中的启动器随后退出，应用窗口继续运行；关闭窗口或按 `⌘Q` 退出。
+发布用的 `.app` 直接启动。如果使用 Mac 单主程序入口，则会先在数据目录恢复一个小型 `.app` 包装，再交给系统启动；终端中的启动器随后退出，应用窗口继续运行。关闭窗口或按 `⌘Q` 退出。
 
 1. 打开**资料库**，选择本地视频或粘贴视频链接。
 2. 等待处理完成，在搜索框描述画面、台词或声音。
